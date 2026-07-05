@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WRO Philippines – Database System Login</title>
+  <meta name="description" content="WRO Philippines Integrated Database System – Official platform for managing participants, competitions, and records.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold:  { 300:'#f6d860', 400:'#e8c027', 500:'#D4A017', 600:'#b8860b', 700:'#8B6914' },
+            navy:  { 800:'#101a2e', 900:'#0b1220', 950:'#060c18' },
+            wro:   { red:'#e63946', orange:'#f4841a', yellow:'#f9c61b', green:'#2dc653', blue:'#1d6fa4', purple:'#8338ec' },
+          }
+        }
+      }
+    }
+  </script>
+  <script>
+    if (localStorage.getItem('wro_ph_theme') === 'light') {
+      document.documentElement.classList.add('light-mode');
+    }
+  </script>
+  <link rel="stylesheet" href="css/custom.css">
+  <script src="js/core/db.js"></script>
+  <script src="js/core/auth.js"></script>
+  <script src="js/core/utils.js"></script>
+  <script src="js/core/seed.js"></script>
+</head>
+<body class="login-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+
+  <!-- Floating Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Subtle dot grid overlay -->
+  <div class="fixed inset-0 opacity-[0.025]"
+       style="background-image: radial-gradient(rgba(212,160,23,1) 1px,transparent 1px);background-size:32px 32px;">
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Login Card -->
+  <div class="login-card w-full max-w-md relative z-10">
+
+    <!-- Main Card -->
+    <div class="glass rounded-2xl p-8 mb-4 gold-glow">
+
+      <!-- FELTA + WRO Logo -->
+      <div class="text-center mb-7">
+        <!-- Logo Image -->
+        <div class="flex justify-center mb-4">
+          <img src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines"
+               class="h-24 object-contain"
+               style="filter: drop-shadow(0 2px 12px rgba(212,160,23,0.4));">
+        </div>
+
+        <!-- WRO Rainbow bar -->
+        <div class="wro-rainbow-bar rounded-full mb-4"></div>
+
+        <!-- Title -->
+        <h1 class="text-xl font-black" style="color:#f0e9d2;">Integrated Database System</h1>
+        <p style="color:#a89060;" class="text-xs mt-1 tracking-wide">Official Competition Management Platform</p>
+
+        <!-- Online status -->
+        <div class="flex items-center justify-center gap-2 mt-3">
+          <div class="pulse-dot"></div>
+          <span class="text-xs font-medium" style="color:#D4A017;">System Online</span>
+        </div>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+
+        <div>
+          <label class="form-label">Username</label>
+          <div class="relative">
+            <input id="username" type="text" class="form-input pl-10"
+              placeholder="Enter your username" autocomplete="username" required>
+            <span class="absolute left-3 top-1/2 -translate-y-1/2" style="color:#5a6a8a;display:flex;align-items:center"><svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg></span>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Password</label>
+          <div class="relative">
+            <input id="password" type="password" class="form-input pl-10 pr-10"
+              placeholder="Enter your password" autocomplete="current-password" required>
+            <span class="absolute left-3 top-1/2 -translate-y-1/2" style="color:#5a6a8a;display:flex;align-items:center"><svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg></span>
+            <button type="button" onclick="togglePwd()"
+              class="absolute right-3 top-1/2 -translate-y-1/2 transition"
+              style="color:#5a6a8a;background:none;border:none;cursor:pointer;">
+              <span id="pwd-eye" style="display:flex;align-items:center"><svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Login Roles -->
+        <div>
+          <label class="form-label">Quick Login — Select Role</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="quickLogin('admin','admin123')"
+              class="py-2 px-3 rounded-xl text-xs font-semibold transition text-left flex items-center gap-2"
+              style="background:rgba(212,160,23,0.12);border:1px solid rgba(212,160,23,0.3);color:#f6d860;">
+              <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 6l4 6 5-4-2 10H5L3 8l5 4 4-6z'/></svg> Super Admin
+            </button>
+            <button type="button" onclick="quickLogin('eventadmin','event123')"
+              class="py-2 px-3 rounded-xl text-xs font-semibold transition text-left flex items-center gap-2"
+              style="background:rgba(29,111,164,0.12);border:1px solid rgba(29,111,164,0.3);color:#4a9fd5;">
+              <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='2'/></svg> Event Admin
+            </button>
+            <button type="button" onclick="quickLogin('judge1','judge123')"
+              class="py-2 px-3 rounded-xl text-xs font-semibold transition text-left flex items-center gap-2"
+              style="background:rgba(244,132,26,0.12);border:1px solid rgba(244,132,26,0.3);color:#f4841a;">
+              <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg> Judge
+            </button>
+            <button type="button" onclick="quickLogin('coach1','coach123')"
+              class="py-2 px-3 rounded-xl text-xs font-semibold transition text-left flex items-center gap-2"
+              style="background:rgba(45,198,83,0.12);border:1px solid rgba(45,198,83,0.3);color:#2dc653;">
+              <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/><path d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/><path d='M4 22h16'/><path d='M18 2H6v7a6 6 0 0 0 12 0V2z'/></svg> Coach
+            </button>
+            <button type="button" onclick="quickLogin('volunteer1','volunteer123')"
+              class="py-2 px-3 rounded-xl text-xs font-semibold transition text-left flex items-center gap-2 col-span-2 justify-center"
+              style="background:rgba(90,106,138,0.12);border:1px solid rgba(90,106,138,0.3);color:#8a9ab8;">
+              <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg> Volunteer
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" id="login-btn"
+          class="btn-primary w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 mt-1">
+          <span id="login-icon" style="display:flex;align-items:center"><svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg></span>
+          <span id="login-text">Sign In</span>
+        </button>
+
+        <div id="login-error"
+          class="hidden text-center text-sm p-3 rounded-xl"
+          style="color:#e63946;background:rgba(230,57,70,0.1);border:1px solid rgba(230,57,70,0.25);">
+        </div>
+      </form>
+    </div>
+
+    <!-- Credentials hint -->
+    <div class="glass rounded-xl p-4 text-center"
+         style="border:1px solid rgba(212,160,23,0.15);">
+      <p class="text-xs" style="color:#5a6a8a;">
+        Default: <span style="color:#a89060;font-family:monospace;">admin</span>
+        /
+        <span style="color:#a89060;font-family:monospace;">admin123</span>
+        &nbsp;·&nbsp; Use Quick Login above to switch roles
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-xs mt-4" style="color:#2d3a52;">
+      FELTA · WRO Philippines © 2025 · Database System v1.0
+    </p>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!DB.isSeeded()) { Seeder.run(); }
+      if (AUTH.isLoggedIn()) { window.location.href = 'dashboard.html'; }
+    });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const btn      = document.getElementById('login-btn');
+      const errEl    = document.getElementById('login-error');
+
+      btn.disabled = true;
+      document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>`;
+      document.getElementById('login-text').textContent = 'Signing in...';
+      errEl.classList.add('hidden');
+
+      setTimeout(() => {
+        const result = AUTH.login(username, password);
+        if (result.success) {
+          document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>`;
+          document.getElementById('login-text').textContent = 'Welcome!';
+          setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+        } else {
+          errEl.textContent = result.error;
+          errEl.classList.remove('hidden');
+          btn.disabled = false;
+          document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;
+          document.getElementById('login-text').textContent = 'Sign In';
+        }
+      }, 500);
+    }
+
+    function quickLogin(username, password) {
+      document.getElementById('username').value = username;
+      document.getElementById('password').value = password;
+      document.getElementById('login-form').dispatchEvent(new Event('submit'));
+    }
+
+    function togglePwd() {
+      const pwd = document.getElementById('password');
+      const eye = document.getElementById('pwd-eye');
+      if (pwd.type === 'password') { pwd.type = 'text'; eye.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>`; }
+      else                         { pwd.type = 'password'; eye.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`; }
+    }
+  </script>
+</body>
+</html>
