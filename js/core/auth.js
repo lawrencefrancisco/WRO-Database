@@ -1,5 +1,6 @@
 // ============================================================
 // WRO Philippines DBMS – Authentication & Role Management
+// Now backed by the Node.js API (JWT-based)
 // ============================================================
 
 const AUTH = {
@@ -51,34 +52,43 @@ const AUTH = {
   },
 
   _SESSION_KEY: 'wro_ph_session',
+  _API_BASE:    'http://localhost:3000/api',
 
-  /** Login */
-  login(username, password) {
-    const users = DB.getAll('users');
-    const user  = users.find(u => u.username === username && u.password === password && !u.isDeleted);
-    if (!user) return { success: false, error: 'Invalid username or password.' };
-    if (!user.isActive) return { success: false, error: 'Account is inactive. Contact administrator.' };
+  /** Login via API – returns { success, user/error } */
+  async login(username, password) {
+    try {
+      const res  = await fetch(`${this._API_BASE}/auth/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
 
-    const session = {
-      userId:    user.id,
-      name:      user.name,
-      role:      user.role,
-      email:     user.email,
-      avatar:    user.avatar || null,
-      loginTime: new Date().toISOString(),
-    };
-    sessionStorage.setItem(this._SESSION_KEY, JSON.stringify(session));
-    DB.update('users', user.id, { lastLogin: new Date().toISOString() });
-    return { success: true, user: session };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Invalid username or password.' };
+      }
+
+      // Store user + JWT token in sessionStorage
+      const session = {
+        ...data.user,
+        _token:    data.token,
+        loginTime: new Date().toISOString(),
+      };
+      sessionStorage.setItem(this._SESSION_KEY, JSON.stringify(session));
+      return { success: true, user: session };
+
+    } catch (err) {
+      return { success: false, error: 'Cannot reach server. Make sure the API is running on port 3000.' };
+    }
   },
 
-  /** Logout */
+  /** Logout – clears session and redirects */
   logout() {
     sessionStorage.removeItem(this._SESSION_KEY);
     window.location.href = 'index.html';
   },
 
-  /** Get current logged-in user */
+  /** Get current logged-in user (reads from sessionStorage) */
   currentUser() {
     try {
       const raw = sessionStorage.getItem(this._SESSION_KEY);

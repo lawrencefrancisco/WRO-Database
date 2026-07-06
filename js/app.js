@@ -8,11 +8,6 @@ const App = {
     // Guard authentication
     if (!AUTH.guard()) return;
 
-    // Seed demo data if first run
-    if (!DB.isSeeded()) {
-      Seeder.run();
-    }
-
     ThemeManager.init();
 
     // Set up routes
@@ -134,8 +129,8 @@ const App = {
       <!-- Logo -->
       <div style="padding:16px;border-bottom:1px solid rgba(212,160,23,0.2);">
         <div class="flex items-center gap-3">
-          <img src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines"
-            class="sidebar-logo-text h-12 object-contain"
+          <img id="sidebar-logo" src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines"
+            class="sidebar-logo-text js-theme-logo h-12 object-contain"
             style="filter:drop-shadow(0 1px 6px rgba(212,160,23,0.35));max-width:180px;">
           <div class="sidebar-logo-text" style="white-space:nowrap;">
             <div style="font-size:10px;font-weight:700;color:#a89060;letter-spacing:0.4px;">DATABASE SYSTEM</div>
@@ -216,6 +211,8 @@ const ThemeManager = {
     const saved = localStorage.getItem(this.key);
     if (saved === 'light') this.setLight();
     else this.setDark();
+    // Sync logo after sidebar has been rendered (App._renderSidebar runs before ThemeManager.init)
+    this._swapLogos(saved === 'light');
   },
   toggle() {
     if (document.documentElement.classList.contains('light-mode')) this.setDark();
@@ -225,11 +222,20 @@ const ThemeManager = {
     document.documentElement.classList.add('light-mode');
     localStorage.setItem(this.key, 'light');
     this.updateIcon();
+    this._swapLogos(true);
   },
   setDark() {
     document.documentElement.classList.remove('light-mode');
     localStorage.setItem(this.key, 'dark');
     this.updateIcon();
+    this._swapLogos(false);
+  },
+  _swapLogos(isLight) {
+    const dark  = 'assets/image/felta-logo-new.png';
+    const light = 'assets/image/felta-logo-new-lightmode.png';
+    document.querySelectorAll('.js-theme-logo').forEach(img => {
+      img.src = isLight ? light : dark;
+    });
   },
   updateIcon() {
     const btn = document.getElementById('theme-toggle-icon');

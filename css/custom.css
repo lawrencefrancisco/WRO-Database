@@ -432,100 +432,414 @@ input[type="checkbox"] {
   box-shadow: 0 8px 30px rgba(212,160,23,0.15);
 }
 
-/* ── Hall of Fame banner ── */
-.hof-banner {
-  background: linear-gradient(135deg,
-    rgba(212,160,23,0.12) 0%,
-    rgba(184,134,11,0.06) 50%,
-    rgba(244,132,26,0.05) 100%
-  );
-  border: 1px solid rgba(212,160,23,0.3);
-}
+/* ╔══════════════════════════════════════════════════════════════
+   ║  LIGHT MODE – Comprehensive Design System
+   ║  WRO Philippines DBMS · Clean Warm-White + FELTA Gold
+   ╚══════════════════════════════════════════════════════════════ */
 
-/* ── Footer ── */
-footer {
-  border-top: 1px solid var(--border-gold) !important;
-  color: var(--text-muted);
-}
-
-/* ── Light Mode Overrides ── */
 .light-mode {
-  --navy-950: #f8fafc;
-  --navy-900: #f1f5f9;
-  --navy-800: #e2e8f0;
-  --navy-700: #cbd5e1;
-  --navy-600: #94a3b8;
-  --navy-500: #64748b;
-  --navy-400: #475569;
+  /* ── Palette Overrides ── */
+  --navy-950: #f6f8fb;
+  --navy-900: #eef2f8;
+  --navy-800: #e4eaf4;
+  --navy-700: #d1daea;
+  --navy-600: #9aaabf;
+  --navy-500: #637388;
+  --navy-400: #3d5168;
 
-  --text-primary: #0f172a;
-  --text-secondary: #D4A017;
-  --text-muted: #64748b;
+  /* ── Gold stays gold ── */
+  --gold-100: #fef9e7;
+  --gold-300: #f6d860;
+  --gold-400: #e8c027;
+  --gold-500: #D4A017;
+  --gold-600: #b8860b;
+  --gold-700: #8B6914;
 
-  --border-gold: rgba(212, 160, 23, 0.4);
-  --border-navy: rgba(226, 232, 240, 0.8);
+  /* ── Typography ── */
+  --text-primary:   #0d1b2e;
+  --text-secondary: #b8860b;
+  --text-muted:     #5f7088;
+
+  /* ── Borders ── */
+  --border-gold:  rgba(212, 160, 23, 0.35);
+  --border-navy:  rgba(200, 215, 235, 0.9);
+  --border-light: rgba(100, 130, 180, 0.14);
 }
 
+/* ── Page Base ── */
+.light-mode body {
+  background: var(--navy-950);
+  color: var(--text-primary);
+}
+
+/* ── Scrollbar ── */
+.light-mode ::-webkit-scrollbar-track { background: var(--navy-900); }
+.light-mode ::-webkit-scrollbar-thumb { background: var(--gold-600); }
+.light-mode ::-webkit-scrollbar-thumb:hover { background: var(--gold-500); }
+
+/* ── Login Page ── */
+.light-mode .login-bg {
+  background:
+    radial-gradient(ellipse at 15% 50%, rgba(212,160,23,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 20%, rgba(29,111,164,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 95%, rgba(244,132,26,0.06) 0%, transparent 55%),
+    linear-gradient(135deg, #f0f4fb 0%, #f8fafc 50%, #eef2f8 100%);
+}
+.light-mode .orb-1 { background: rgba(212,160,23,0.12); }
+.light-mode .orb-2 { background: rgba(29,111,164,0.08); }
+.light-mode .orb-3 { background: rgba(244,132,26,0.07); }
+
+/* ── Glassmorphism ── */
 .light-mode .glass {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 160, 23, 0.22);
+  box-shadow: 0 4px 24px rgba(15, 30, 60, 0.07), 0 1px 4px rgba(15,30,60,0.04);
 }
+.light-mode .glass-light {
+  background: rgba(248, 250, 252, 0.80);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 160, 23, 0.16);
+  box-shadow: 0 2px 12px rgba(15,30,60,0.05);
+}
+
+/* ── Sidebar ── */
+.light-mode #sidebar {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-right: 1px solid rgba(212,160,23,0.20) !important;
+  box-shadow: 2px 0 20px rgba(15,30,60,0.07);
+}
+.light-mode .sidebar-section-label {
+  color: rgba(100, 120, 155, 0.65) !important;
+}
+.light-mode .nav-item:hover {
+  background: rgba(212,160,23,0.09);
+}
+.light-mode .nav-item.active {
+  background: linear-gradient(135deg, rgba(212,160,23,0.16), rgba(184,134,11,0.08));
+  border-left-color: var(--gold-500);
+}
+.light-mode .nav-item.active .nav-label { color: var(--gold-700) !important; }
+.light-mode .nav-item.active .nav-icon svg { stroke: var(--gold-600); }
+.light-mode .nav-item:hover .nav-icon svg { stroke: var(--text-primary); }
+.light-mode .nav-label { color: #2c3e58 !important; }
+.light-mode .nav-icon { color: #637388 !important; }
+
+/* ── Topbar ── */
+.light-mode #topbar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(212,160,23,0.18) !important;
+  box-shadow: 0 2px 16px rgba(15,30,60,0.06) !important;
+}
+
+/* ── Page Content Background ── */
+.light-mode #page-content {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(212,160,23,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(29,111,164,0.03) 0%, transparent 50%),
+    #f6f8fb !important;
+}
+
+/* ── KPI Cards ── */
 .light-mode .kpi-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(212,160,23,0.22);
+  box-shadow: 0 2px 12px rgba(15,30,60,0.06), 0 1px 3px rgba(15,30,60,0.04);
+}
+.light-mode .kpi-card:hover {
+  box-shadow: 0 12px 32px rgba(212,160,23,0.14), 0 4px 12px rgba(15,30,60,0.06);
+  border-color: rgba(212,160,23,0.45);
 }
 .light-mode .kpi-icon-wrap {
-  background: rgba(241, 245, 249, 0.9);
-  border: 1px solid rgba(0,0,0,0.05);
+  background: rgba(240, 245, 255, 0.95);
+  border: 1px solid rgba(100,130,180,0.12);
 }
+
+/* ── Welcome Banner ── */
+.light-mode .welcome-banner {
+  background: linear-gradient(135deg,
+    rgba(212,160,23,0.08) 0%,
+    rgba(248,250,252,0.90) 50%,
+    rgba(29,111,164,0.04) 100%
+  );
+  border: 1px solid rgba(212,160,23,0.25);
+}
+
+/* ── HOF Banner ── */
+.light-mode .hof-banner {
+  background: linear-gradient(135deg,
+    rgba(212,160,23,0.09) 0%,
+    rgba(248,250,252,0.90) 50%,
+    rgba(244,132,26,0.04) 100%
+  );
+  border: 1px solid rgba(212,160,23,0.25);
+}
+
+/* ── Competition Card ── */
+.light-mode .comp-card {
+  background: #ffffff;
+  border: 1px solid rgba(212,160,23,0.22);
+  box-shadow: 0 2px 8px rgba(15,30,60,0.05);
+}
+.light-mode .comp-card:hover {
+  border-color: rgba(212,160,23,0.45);
+  box-shadow: 0 8px 28px rgba(212,160,23,0.12), 0 2px 8px rgba(15,30,60,0.06);
+}
+
+/* ── Gold Glow (used on login card) ── */
+.light-mode .gold-glow {
+  box-shadow: 0 0 24px rgba(212,160,23,0.12), 0 8px 32px rgba(15,30,60,0.10);
+}
+
+/* ── Gradient Text stays gold — no change needed ── */
+
+/* ── Form Inputs ── */
 .light-mode .form-input,
 .light-mode select.form-input {
   background: #ffffff;
-  color: #0f172a;
-  border-color: rgba(212,160,23,0.3);
+  color: #0d1b2e;
+  border: 1px solid rgba(212,160,23,0.30);
+  box-shadow: 0 1px 3px rgba(15,30,60,0.05) inset;
 }
+.light-mode .form-input:focus {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px rgba(212,160,23,0.12);
+}
+.light-mode .form-input::placeholder { color: #9aaabf; }
 .light-mode .form-input option {
   background: #ffffff;
-  color: #0f172a;
+  color: #0d1b2e;
 }
+.light-mode .form-label { color: #5f7088; }
+
+/* ── Data Table ── */
 .light-mode .data-table th {
-  background: #f1f5f9;
-  color: #475569;
+  background: linear-gradient(180deg, #f1f5fb 0%, #eef1f8 100%);
+  color: #3d5168;
+  border-bottom: 1px solid rgba(212,160,23,0.25);
+}
+.light-mode .data-table th:first-child {
+  border-left-color: var(--gold-500);
 }
 .light-mode .data-table td {
-  border-bottom: 1px solid #e2e8f0;
-  color: #334155;
+  border-bottom: 1px solid rgba(212,160,23,0.10);
+  color: #1e3050;
 }
+.light-mode .data-table tbody tr:hover {
+  background: rgba(212,160,23,0.055);
+}
+
+/* ── Table Row hover ── */
 .light-mode .table-row:hover {
+  background: rgba(212,160,23,0.06);
+}
+
+/* ── Tab Navigation ── */
+.light-mode .tab-btn {
+  color: #5f7088;
+}
+.light-mode .tab-btn.active {
+  background: linear-gradient(135deg, rgba(212,160,23,0.15), rgba(184,134,11,0.08));
+  color: var(--gold-700);
+}
+.light-mode .tab-btn:hover:not(.active) {
+  color: #0d1b2e;
   background: rgba(212,160,23,0.08);
 }
 
-/* Tailwind Overrides */
-.light-mode .text-white { color: #0f172a !important; }
-.light-mode .text-slate-200 { color: #1e293b !important; }
-.light-mode .text-slate-300 { color: #334155 !important; }
-.light-mode .text-slate-400 { color: #475569 !important; }
-.light-mode .text-slate-500 { color: #64748b !important; }
+/* ── Status Badges ── */
+.light-mode .badge-green  { background: rgba(45,198,83,0.12);  color: #168b35; border-color: rgba(45,198,83,0.28); }
+.light-mode .badge-red    { background: rgba(230,57,70,0.10);  color: #c0162a; border-color: rgba(230,57,70,0.28); }
+.light-mode .badge-yellow { background: rgba(212,160,23,0.14); color: #8B6914; border-color: rgba(212,160,23,0.32); }
+.light-mode .badge-blue   { background: rgba(29,111,164,0.12); color: #155f93; border-color: rgba(29,111,164,0.30); }
+.light-mode .badge-purple { background: rgba(131,56,236,0.10); color: #6d1ed4; border-color: rgba(131,56,236,0.25); }
+.light-mode .badge-gray   { background: rgba(90,106,138,0.10); color: #3d5168; border-color: rgba(90,106,138,0.25); }
+.light-mode .badge-orange { background: rgba(244,132,26,0.12); color: #c65c00; border-color: rgba(244,132,26,0.30); }
+.light-mode .badge-gold   { background: rgba(212,160,23,0.14); color: #8B6914; border-color: rgba(212,160,23,0.35); }
+
+/* ── Modal ── */
+.light-mode .modal-overlay {
+  background: rgba(15, 27, 46, 0.45) !important;
+  backdrop-filter: blur(4px);
+}
+.light-mode .modal-box {
+  background: #ffffff !important;
+  border: 1px solid rgba(212,160,23,0.25) !important;
+  box-shadow: 0 20px 60px rgba(15,30,60,0.18) !important;
+}
+
+/* ── Skeleton Loader ── */
+.light-mode .skeleton {
+  background: linear-gradient(90deg, #e8eef7 25%, #f4f7fc 50%, #e8eef7 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── Loading Spinner ── */
+.light-mode .spinner {
+  border-color: rgba(212,160,23,0.18);
+  border-top-color: var(--gold-600);
+}
+
+/* ── Progress Bar ── */
+.light-mode .progress-bar {
+  background: rgba(212,160,23,0.14);
+}
+
+/* ── Section Headers ── */
+.light-mode .section-header {
+  border-bottom-color: rgba(212,160,23,0.25);
+}
+
+/* ── Footer ── */
+.light-mode footer {
+  background: rgba(255,255,255,0.80) !important;
+  border-top: 1px solid rgba(212,160,23,0.18) !important;
+  color: #5f7088 !important;
+}
+
+/* ── Empty State ── */
+.light-mode .empty-state { color: #9aaabf; }
+
+/* ── Toast Notifications (readable on both modes — keep as-is) ── */
+
+/* ── Map Container ── */
+.light-mode .leaflet-container { background: #e8eef7 !important; }
+
+/* ── Dropdown ── */
+.light-mode .dropdown-menu {
+  background: #ffffff !important;
+  border: 1px solid rgba(212,160,23,0.20) !important;
+  box-shadow: 0 8px 30px rgba(15,30,60,0.12) !important;
+}
+
+/* ╔══════════════════════════════════════════════════════════════
+   ║  TAILWIND CLASS OVERRIDES  (dark classes → light values)
+   ╚══════════════════════════════════════════════════════════════ */
+
+/* Typography */
+.light-mode .text-white        { color: #0d1b2e !important; }
+.light-mode .text-slate-100    { color: #1e293b !important; }
+.light-mode .text-slate-200    { color: #1e293b !important; }
+.light-mode .text-slate-300    { color: #334155 !important; }
+.light-mode .text-slate-400    { color: #475569 !important; }
+.light-mode .text-slate-500    { color: #64748b !important; }
+.light-mode .text-slate-600    { color: #5f7088 !important; }
+.light-mode .text-slate-700    { color: #3d5168 !important; }
+
+/* Background utilities */
+.light-mode .bg-navy-950,
+.light-mode .bg-slate-950      { background-color: #f6f8fb !important; }
+.light-mode .bg-slate-900      { background-color: #eef2f8 !important; }
+.light-mode .bg-slate-800      { background-color: #e4eaf4 !important; }
 
 .light-mode .bg-slate-700\/50,
-.light-mode .bg-slate-700\/30 {
-  background-color: rgba(241, 245, 249, 0.8) !important;
-}
-.light-mode .bg-slate-700 {
-  background-color: #cbd5e1 !important;
-  color: #0f172a !important;
-}
-.light-mode .bg-slate-700:hover {
-  background-color: #94a3b8 !important;
-}
+.light-mode .bg-slate-700\/30  { background-color: rgba(240,245,255,0.80) !important; }
+.light-mode .bg-slate-700      { background-color: #dde6f0 !important; color: #0d1b2e !important; }
+.light-mode .bg-slate-700:hover { background-color: #c8d6e8 !important; }
+
+.light-mode .bg-slate-800\/50,
+.light-mode .bg-slate-800\/60,
+.light-mode .bg-slate-800\/80  { background-color: rgba(228,234,244,0.75) !important; }
+
+.light-mode .bg-black\/70      { background-color: rgba(255,255,255,0.80) !important; }
+.light-mode .bg-black\/50      { background-color: rgba(255,255,255,0.65) !important; }
+
+/* Border utilities */
 .light-mode .border-slate-700\/50,
-.light-mode .border-slate-700\/30 {
-  border-color: rgba(0,0,0,0.08) !important;
-}
-.light-mode .bg-black\/70 {
-  background-color: rgba(255, 255, 255, 0.7) !important;
+.light-mode .border-slate-700\/30 { border-color: rgba(0,0,0,0.07) !important; }
+.light-mode .border-slate-800     { border-color: rgba(212,160,23,0.15) !important; }
+.light-mode .border-slate-700     { border-color: rgba(0,0,0,0.10) !important; }
+
+/* Divide utilities */
+.light-mode .divide-slate-700\/50 > * + * { border-color: rgba(0,0,0,0.07) !important; }
+.light-mode .divide-slate-800  > * + *    { border-color: rgba(212,160,23,0.12) !important; }
+
+/* Hover state overrides */
+.light-mode .hover\:bg-slate-700:hover  { background-color: #d1daea !important; }
+.light-mode .hover\:bg-slate-800:hover  { background-color: #e4eaf4 !important; }
+.light-mode .hover\:text-white:hover    { color: #0d1b2e !important; }
+
+/* ── Inline-style overrides via attribute selectors ── */
+.light-mode [style*="color:#f0e9d2"]  { color: #0d1b2e !important; }
+.light-mode [style*="color: #f0e9d2"] { color: #0d1b2e !important; }
+.light-mode [style*="color:#a89060"]  { color: #8B6914 !important; }
+.light-mode [style*="color: #a89060"] { color: #8B6914 !important; }
+.light-mode [style*="color:#5a6a8a"]  { color: #5f7088 !important; }
+.light-mode [style*="color: #5a6a8a"] { color: #5f7088 !important; }
+.light-mode [style*="color:#2d3a52"]  { color: #3d5168 !important; }
+.light-mode [style*="color: #2d3a52"] { color: #3d5168 !important; }
+.light-mode [style*="color:#c8b89a"]  { color: #1e3050 !important; }
+.light-mode [style*="color: #c8b89a"] { color: #1e3050 !important; }
+
+/* Hardcoded dark backgrounds */
+.light-mode [style*="background:#060c18"]  { background: #f6f8fb !important; }
+.light-mode [style*="background: #060c18"] { background: #f6f8fb !important; }
+.light-mode [style*="background:#0b1220"]  { background: #eef2f8 !important; }
+.light-mode [style*="background:#101a2e"]  { background: #e4eaf4 !important; }
+
+/* Sidebar inline text */
+.light-mode #sidebar [style*="color:#f0e9d2"] { color: #0d1b2e !important; }
+.light-mode #sidebar [style*="color:#a89060"] { color: #8B6914 !important; }
+.light-mode #sidebar [style*="color:#5a6a8a"] { color: #5f7088 !important; }
+
+/* Topbar inline text & buttons */
+.light-mode #topbar [style*="color:#a89060"]  { color: #8B6914 !important; }
+.light-mode #topbar [style*="color:#5a6a8a"]  { color: #5f7088 !important; }
+.light-mode #topbar [style*="color:#f0e9d2"]  { color: #0d1b2e !important; }
+.light-mode #topbar [style*="background:rgba(212,160,23,0.08)"] {
+  background: rgba(212,160,23,0.12) !important;
 }
 
-.light-mode img[style*="filter:grayscale(1) brightness(2)"] {
-  filter: grayscale(1) brightness(0.6) !important;
+/* Login card inline styles */
+.light-mode .login-card [style*="color:#f0e9d2"] { color: #0d1b2e !important; }
+.light-mode .login-card [style*="color:#a89060"]  { color: #8B6914 !important; }
+.light-mode .login-card [style*="color:#5a6a8a"]  { color: #5f7088 !important; }
+.light-mode .login-card [style*="color:#2d3a52"]  { color: #3d5168 !important; }
+
+/* Quick login role buttons */
+.light-mode .login-card button[style*="rgba(212,160,23"] {
+  background: rgba(212,160,23,0.14) !important;
+  border-color: rgba(212,160,23,0.35) !important;
+  color: #8B6914 !important;
 }
+.light-mode .login-card button[style*="rgba(29,111,164"] {
+  background: rgba(29,111,164,0.12) !important;
+  border-color: rgba(29,111,164,0.30) !important;
+  color: #155f93 !important;
+}
+.light-mode .login-card button[style*="rgba(244,132,26"] {
+  background: rgba(244,132,26,0.12) !important;
+  border-color: rgba(244,132,26,0.30) !important;
+  color: #c65c00 !important;
+}
+.light-mode .login-card button[style*="rgba(45,198,83"] {
+  background: rgba(45,198,83,0.11) !important;
+  border-color: rgba(45,198,83,0.28) !important;
+  color: #168b35 !important;
+}
+.light-mode .login-card button[style*="rgba(90,106,138"] {
+  background: rgba(90,106,138,0.10) !important;
+  border-color: rgba(90,106,138,0.25) !important;
+  color: #3d5168 !important;
+}
+
+/* Credentials hint card */
+.light-mode .login-card [style*="border:1px solid rgba(212,160,23,0.15)"] {
+  background: rgba(255,255,255,0.80) !important;
+}
+
+/* ── Image filter reset ── */
+.light-mode img[style*="filter:grayscale(1) brightness(2)"] {
+  filter: grayscale(0.3) brightness(0.85) !important;
+}
+
+/* ── Dot grid overlay ── */
+.light-mode .fixed.inset-0[style*="radial-gradient"] {
+  opacity: 0.018 !important;
+}
+
+/* ── Mobile overlay backdrop ── */
+.light-mode #mobile-overlay { background: rgba(15,27,46,0.35) !important; }
