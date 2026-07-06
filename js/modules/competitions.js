@@ -155,9 +155,15 @@ const Competitions = {
     const form = document.getElementById('comp-form');
     const data = Object.fromEntries(new FormData(form));
     if (!data.name.trim()) { Toast.error('Name required.'); return; }
-    data.categories = Seeder.WRO_CATEGORIES;
-    if (id) { await DB.update('competitions', id, data); Toast.success('Competition updated!'); }
-    else    { await DB.insert('competitions', data);     Toast.success('Competition added!'); }
+    if (id) {
+      // Preserve the existing categories so they are not overwritten with defaults on every edit
+      const existing = await DB.getById('competitions', id);
+      data.categories = existing?.categories || Seeder.WRO_CATEGORIES;
+      await DB.update('competitions', id, data); Toast.success('Competition updated!');
+    } else {
+      data.categories = Seeder.WRO_CATEGORIES;
+      await DB.insert('competitions', data); Toast.success('Competition added!');
+    }
     Modal.close(); await this._renderCards(); await this._loadTable();
   },
 

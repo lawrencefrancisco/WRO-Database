@@ -127,9 +127,21 @@ const Coaches = {
   _onSearch: Utils.debounce(async function(v) { Coaches._search = v; Coaches._page = 1; await Coaches._loadTable(); }, 300),
   async _onFilter() { this._filterStatus = document.getElementById('coach-status')?.value || ''; this._page = 1; await this._loadTable(); },
 
+  /** Converts MySQL DATE value to YYYY-MM-DD string for <input type="date"> */
+  _toDateInput(val) {
+    if (!val) return '';
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    } catch { return ''; }
+  },
+
   async openForm(id = null) {
     const c      = id ? await DB.getById('coaches', id) : null;
     const schools= (await DB.getAll('schools')).filter(s => !s.isDeleted && s.status === 'active');
+    const birthdayValue = this._toDateInput(c?.birthday);
     Modal.show(id ? 'Edit Coach' : 'Add Coach', `
       <form id="coach-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
@@ -138,7 +150,7 @@ const Coaches = {
         </div>
         <div>
           <label class="form-label">Birthday</label>
-          <input class="form-input" type="date" name="birthday" value="${c?.birthday||''}">
+          <input class="form-input" type="date" name="birthday" value="${birthdayValue}">
         </div>
         <div>
           <label class="form-label">Gender</label>

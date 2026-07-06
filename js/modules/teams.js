@@ -208,6 +208,12 @@ const Teams = {
             ${['pending','qualified','disqualified'].map(s=>`<option ${t?.qualificationStatus===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
+        <div><label class="form-label">Status</label>
+          <select class="form-input" name="status">
+            <option value="active"   ${(t?.status||'active')==='active'  ?'selected':''}>Active</option>
+            <option value="inactive" ${t?.status==='inactive'            ?'selected':''}>Inactive</option>
+          </select>
+        </div>
       </form>`,
       `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">Cancel</button>
        <button onclick="Teams._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Team</button>`,

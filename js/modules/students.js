@@ -103,7 +103,7 @@ const Students = {
             </div>
           </td>
           <td>
-            <div class="text-sm text-white">${s.age || '—'} yrs</div>
+            <div class="text-sm text-white">${s.age || Utils.calcAge(s.birthday) || '—'} yrs</div>
             <div class="text-xs text-slate-500">${s.gradeLevel}</div>
           </td>
           <td class="text-sm text-slate-300">${Utils.truncate(school?.schoolName,28)||'—'}</td>
@@ -140,9 +140,23 @@ const Students = {
     this._page = 1; await this._loadTable();
   },
 
+  /** Converts any date value (Date object, ISO string, YYYY-MM-DD) → YYYY-MM-DD for <input type="date"> */
+  _toDateInput(val) {
+    if (!val) return '';
+    // If it's already YYYY-MM-DD, return as-is
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    // Otherwise parse and convert (handles Date objects and ISO strings from MySQL)
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    } catch { return ''; }
+  },
+
   async openForm(id = null) {
     const s       = id ? await DB.getById('students', id) : null;
     const schools = (await DB.getAll('schools')).filter(x => !x.isDeleted);
+    const birthdayValue = this._toDateInput(s?.birthday);
     Modal.show(id ? 'Edit Student' : 'Add Student', `
       <form id="student-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
@@ -150,7 +164,7 @@ const Students = {
           <input class="form-input" name="fullName" value="${s?.fullName||''}" required>
         </div>
         <div><label class="form-label">Birthday</label>
-          <input class="form-input" type="date" name="birthday" value="${s?.birthday||''}">
+          <input class="form-input" type="date" name="birthday" value="${birthdayValue}">
         </div>
         <div><label class="form-label">Gender</label>
           <select class="form-input" name="gender">
@@ -195,6 +209,12 @@ const Students = {
           <select class="form-input" name="consentSigned">
             <option value="true" ${s?.consentSigned?'selected':''}>Yes</option>
             <option value="false" ${!s?.consentSigned?'selected':''}>No</option>
+          </select>
+        </div>
+        <div><label class="form-label">Status</label>
+          <select class="form-input" name="status">
+            <option value="active"   ${(s?.status||'active')==='active'  ?'selected':''}>Active</option>
+            <option value="inactive" ${s?.status==='inactive'            ?'selected':''}>Inactive</option>
           </select>
         </div>
       </form>`,
