@@ -6,6 +6,7 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const pool    = require('./db/pool');
+const chatRoute = require('./routes/chat');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -16,10 +17,12 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth',           require('./routes/auth'));
+app.use('/api/chat', chatRoute);
 app.use('/api/schools',        require('./routes/schools'));
 app.use('/api/coaches',        require('./routes/coaches'));
 app.use('/api/students',       require('./routes/students'));

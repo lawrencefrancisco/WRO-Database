@@ -251,6 +251,125 @@ const ThemeManager = {
 window.ThemeManager = ThemeManager;
 window.App = App;
 
+// ── AI Chatbot (Chathead) ─────────────────────────────────────
+const ChatBot = {
+  _open: false,
+
+  init() {
+    const chatInput  = document.getElementById('chat-input');
+    const sendBtn    = document.getElementById('chat-send-btn');
+    const modal      = document.getElementById('chat-modal');
+
+    // Elements might not exist on the login page – guard early
+    if (!chatInput || !sendBtn || !modal) return;
+
+    const send = () => this._sendMessage();
+    sendBtn.addEventListener('click', send);
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+  },
+
+  open() {
+    const modal   = document.getElementById('chat-modal');
+    const headBtn = document.getElementById('chat-head-btn');
+    if (!modal) return;
+    this._open = true;
+    modal.classList.add('chat-modal--open');
+    modal.setAttribute('aria-hidden', 'false');
+    headBtn?.classList.add('chat-head-btn--hidden');
+    // Focus input after animation
+    setTimeout(() => {
+      const input = document.getElementById('chat-input');
+      if (input) input.focus();
+    }, 280);
+  },
+
+  close() {
+    const modal   = document.getElementById('chat-modal');
+    const headBtn = document.getElementById('chat-head-btn');
+    if (!modal) return;
+    this._open = false;
+    modal.classList.remove('chat-modal--open');
+    modal.setAttribute('aria-hidden', 'true');
+    headBtn?.classList.remove('chat-head-btn--hidden');
+  },
+
+  _appendMessage(text, sender) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = `chat-bubble ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
+
+    const span = document.createElement('span');
+    span.textContent = text;
+    wrap.appendChild(span);
+
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+  },
+
+  _setThinking(active) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return null;
+
+    if (active) {
+      const thinking = document.createElement('div');
+      thinking.id = 'chat-thinking';
+      thinking.className = 'chat-bubble chat-bubble-ai chat-bubble-thinking';
+      thinking.innerHTML = `<span class="chat-dot-1"></span><span class="chat-dot-2"></span><span class="chat-dot-3"></span>`;
+      container.appendChild(thinking);
+      container.scrollTop = container.scrollHeight;
+    } else {
+      document.getElementById('chat-thinking')?.remove();
+    }
+  },
+
+  async _sendMessage() {
+    const input   = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    if (!input) return;
+
+    const message = input.value.trim();
+    if (!message) return;
+
+    this._appendMessage(message, 'user');
+    input.value = '';
+    input.focus();
+    if (sendBtn) sendBtn.disabled = true;
+    this._setThinking(true);
+
+    try {
+      const response = await fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+      const data = await response.json();
+      this._setThinking(false);
+      if (response.ok) {
+        this._appendMessage(data.reply || "Sorry, I didn't get a proper response.", 'ai');
+      } else {
+        this._appendMessage(`⚠️ ${data.detail || data.error || 'Unknown server error.'}`, 'ai');
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+      this._setThinking(false);
+      this._appendMessage('Error connecting to the server. Please try again.', 'ai');
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+    }
+  },
+};
+
+window.ChatBot = ChatBot;
 
 // ── Init on DOM ready ─────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+  ChatBot.init();
+});
