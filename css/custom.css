@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    WRO Philippines DBMS – Premium UI Design System v2.0
    Theme: FELTA Multimedia Brand – Bold Yellow + Deep Navy
    ============================================================ */
@@ -460,3 +460,74 @@ input[type='checkbox'] { accent-color: var(--felta-yellow); }
 .light-mode .chat-input-area { background: rgba(234,239,249,0.96); border-top-color: rgba(184,134,11,0.16); }
 .light-mode .chat-close-btn { color: #6275A0; border-color: rgba(0,0,0,0.08); background: rgba(0,0,0,0.03); }
 .light-mode .chat-head-ping { border-color: #F5F7FC; }
+
+/* ── Model Agent Selector ── */
+.chat-model-selector-wrap {
+  border-top: 1px solid rgba(245, 200, 0, 0.12);
+  background: rgba(7, 12, 30, 0.4);
+}
+.chat-model-selector-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 26, 68, 0.90);
+  border: 1px solid rgba(245, 200, 0, 0.20);
+  border-radius: 10px;
+  padding: 8px 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.chat-model-selector-inner:focus-within {
+  border-color: rgba(245, 200, 0, 0.55);
+  box-shadow: 0 0 0 3px rgba(245, 200, 0, 0.10);
+}
+.chat-model-selector-icon {
+  color: var(--felta-yellow);
+  flex-shrink: 0;
+}
+.chat-model-selector {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--txt-primary);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23F5C800' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+  padding-right: 20px;
+  width: 100%;
+}
+.chat-model-selector option {
+  background: #0d1438;
+  color: #EEF0F8;
+  font-weight: 600;
+  padding: 8px;
+}
+
+/* Light mode model selector overrides */
+.light-mode .chat-model-selector-wrap {
+  border-top: 1px solid rgba(184, 134, 11, 0.16);
+  background: rgba(234, 239, 249, 0.4);
+}
+.light-mode .chat-model-selector-inner {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(184, 134, 11, 0.28);
+}
+.light-mode .chat-model-selector-inner:focus-within {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.10);
+}
+.light-mode .chat-model-selector-icon {
+  color: var(--gold-600);
+}
+.light-mode .chat-model-selector {
+  color: #0D1B3E;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23b8860b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.light-mode .chat-model-selector option {
+  background: #FFFFFF;
+  color: #0D1B3E;
+}

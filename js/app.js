@@ -373,3 +373,60 @@ document.addEventListener('DOMContentLoaded', () => {
   App.init();
   ChatBot.init();
 });
+
+// =========================================================================
+// CHATBOT MODEL SWITCHER CODE
+// =========================================================================
+
+// This empty list holds your short history so you don't exhaust your tokens
+let chatbotHistory = []; 
+
+async function sendChatMessage() {
+    // This finds the input box where you type messages
+    const inputField = document.getElementById('chat-input-element');
+    
+    // This finds the new dropdown menu we are creating for your models
+    const modelSelector = document.getElementById('model-agent-selector');
+    
+    // This reads what you typed
+    const userText = inputField.value.trim();
+    
+    // This reads which model you picked in the dropdown (Defaults to flash if empty)
+    const chosenModel = modelSelector ? modelSelector.value : 'gemini-2.5-flash';
+    
+    if (!userText) return; // If you didn't type anything, do nothing.
+
+    // This puts your message on the screen right away
+    if (typeof appendMessageToPanel === 'function') {
+        appendMessageToPanel("user", userText);
+    }
+    
+    // This clears your input box so it's empty for your next message
+    inputField.value = ""; 
+
+    try {
+        // This talks directly to your backend server
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: userText,
+                model: chosenModel, // Sends the drop-down choice to the backend
+                history: chatbotHistory.slice(-6) // Only sends the last few messages to save credits
+            })
+        });
+
+        const data = await response.json();
+        
+        // This displays the AI's response on your screen
+        if (data.reply && typeof appendMessageToPanel === 'function') {
+            appendMessageToPanel("assistant", data.reply);
+            
+            // This saves the message to your short-term history memory
+            chatbotHistory.push({ role: "user", content: userText });
+            chatbotHistory.push({ role: "assistant", content: data.reply });
+        }
+    } catch (err) {
+        console.error("Chatbot ran into an error:", err);
+    }
+}
