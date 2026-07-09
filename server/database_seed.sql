@@ -219,23 +219,23 @@ INSERT INTO team_members (team_id, student_id) VALUES
 ('TEAM_0029','STU_0057'),('TEAM_0029','STU_0058'),
 ('TEAM_0030','STU_0059'),('TEAM_0030','STU_0060');
 
--- ── 7. Judging (15 records for qualified teams) ───────────────
-INSERT INTO judging (id, team_id, judge_name, category, criteria, score, comments, violations, final_score, ranking, status) VALUES
-('JDG_0001','TEAM_0001','Dr. Jose Reyes','RoboMission – Elementary','{"robotDesign":18,"programming":17,"missionPoints":55}',90,'Team performed well. Robot design is innovative.','None',90,1,'finalized'),
-('JDG_0002','TEAM_0002','Engr. Maria Santos','RoboMission – Junior','{"robotDesign":15,"programming":19,"missionPoints":52}',86,'Good programming approach with solid mission execution.','None',86,2,'finalized'),
-('JDG_0003','TEAM_0003','Prof. Carlos Bautista','RoboMission – Senior','{"robotDesign":16,"programming":14,"missionPoints":48}',78,'Solid performance overall.','None',78,3,'finalized'),
-('JDG_0004','TEAM_0005','Dr. Ana Cruz','Future Innovators','{"robotDesign":19,"programming":18,"missionPoints":57}',94,'Excellent innovation. Best project this year.','None',94,1,'finalized'),
-('JDG_0005','TEAM_0007','Engr. Roberto Torres','WeDo','{"robotDesign":17,"programming":16,"missionPoints":50}',83,'Great teamwork shown by elementary students.','None',83,1,'finalized'),
-('JDG_0006','TEAM_0009','Dr. Jose Reyes','RoboMission – Elementary','{"robotDesign":14,"programming":15,"missionPoints":45}',74,'Good effort for first-time participants.','None',74,4,'finalized'),
-('JDG_0007','TEAM_0010','Engr. Maria Santos','RoboMission – Junior','{"robotDesign":18,"programming":18,"missionPoints">58}',94,'Exceptional performance across all criteria.','None',94,1,'finalized'),
-('JDG_0008','TEAM_0013','Prof. Carlos Bautista','Future Innovators','{"robotDesign":20,"programming">19,"missionPoints":60}',99,'Perfect score in design. Outstanding innovation.','None',99,1,'finalized'),
-('JDG_0009','TEAM_0014','Dr. Ana Cruz','RoboSports','{"robotDesign":16,"programming":17,"missionPoints":51}',84,'Competitive play with good strategy.','None',84,1,'finalized'),
-('JDG_0010','TEAM_0015','Engr. Roberto Torres','WeDo','{"robotDesign":13,"programming":14,"missionPoints":42}',69,'Needs improvement in mission execution.','Minor penalty -5',64,2,'finalized'),
-('JDG_0011','TEAM_0017','Dr. Jose Reyes','RoboMission – Elementary','{"robotDesign":17,"programming":16,"missionPoints":53}',86,'Strong design and teamwork.','None',86,2,'finalized'),
-('JDG_0012','TEAM_0018','Engr. Maria Santos','RoboMission – Junior','{"robotDesign":15,"programming":18,"missionPoints">49}',82,'Good programming skills demonstrated.','None',82,3,'finalized'),
-('JDG_0013','TEAM_0021','Prof. Carlos Bautista','Future Innovators','{"robotDesign":18,"programming":17,"missionPoints":55}',90,'Innovative solution to the theme challenge.','None',90,2,'finalized'),
-('JDG_0014','TEAM_0022','Dr. Ana Cruz','RoboSports','{"robotDesign":14,"programming":15,"missionPoints":47}',76,'Decent performance in sports category.','None',76,2,'finalized'),
-('JDG_0015','TEAM_0025','Engr. Roberto Torres','RoboMission – Elementary','{"robotDesign">16,"programming":15,"missionPoints":50}',81,'Consistent mission performance.','None',81,3,'finalized');
+-- ── 7. Judges (Master Data) ───────────────────────────────────
+INSERT INTO judges (id, full_name, contact_number, gender, season, judging_category, status) VALUES
+('JDG_0001', 'Dr. Jose Reyes', '09171112222', 'Male', 'WRO 2024', 'RoboMission – Elementary', 'active'),
+('JDG_0002', 'Engr. Maria Santos', '09182223333', 'Female', 'WRO 2024', 'RoboMission – Junior', 'active'),
+('JDG_0003', 'Prof. Carlos Bautista', '09193334444', 'Male', 'WRO 2024', 'RoboMission – Senior', 'active'),
+('JDG_0004', 'Dr. Ana Cruz', '09204445555', 'Female', 'WRO 2024', 'Future Innovators', 'active'),
+('JDG_0005', 'Engr. Roberto Torres', '09215556666', 'Male', 'WRO 2024', 'WeDo', 'active'),
+('JDG_0006', 'Dr. Miguel Rivera', '09226667777', 'Male', 'WRO 2024', 'RoboSports', 'active'),
+('JDG_0007', 'Engr. Sofia Villanueva', '09237778888', 'Female', 'WRO 2024', 'Advanced Robotics', 'active'),
+('JDG_0008', 'Prof. Ricardo Go', '09248889999', 'Male', 'WRO 2025', 'Future Engineers', 'active'),
+('JDG_0009', 'Dr. Leni Ramos', '09259990000', 'Female', 'WRO 2025', 'RoboMission – Elementary', 'active'),
+('JDG_0010', 'Engr. Paulo Diaz', '09260001111', 'Male', 'WRO 2025', 'RoboMission – Junior', 'active'),
+('JDG_0011', 'Prof. Elena Marcos', '09271112222', 'Female', 'WRO 2025', 'RoboMission – Senior', 'active'),
+('JDG_0012', 'Dr. Vic Sotto', '09282223333', 'Male', 'WRO 2025', 'Future Innovators', 'active'),
+('JDG_0013', 'Engr. Pia Alonzo', '09293334444', 'Female', 'WRO 2025', 'WeDo', 'active'),
+('JDG_0014', 'Prof. Martin Nievera', '09304445555', 'Male', 'WRO 2025', 'RoboSports', 'active'),
+('JDG_0015', 'Dr. Lea Salonga', '09315556666', 'Female', 'WRO 2025', 'Advanced Robotics', 'active');
 
 -- ── 8. Awards (15 awards) ─────────────────────────────────────
 INSERT INTO awards (id, team_id, school_id, coach_id, category, award, year, event, has_trophy, has_medal, has_certificate, status) VALUES
@@ -323,7 +323,7 @@ UNION ALL SELECT 'Students', COUNT(*) FROM students
 UNION ALL SELECT 'Competitions', COUNT(*) FROM competitions
 UNION ALL SELECT 'Teams', COUNT(*) FROM teams
 UNION ALL SELECT 'Team Members', COUNT(*) FROM team_members
-UNION ALL SELECT 'Judging', COUNT(*) FROM judging
+UNION ALL SELECT 'Judges', COUNT(*) FROM judges
 UNION ALL SELECT 'Awards', COUNT(*) FROM awards
 UNION ALL SELECT 'Payments', COUNT(*) FROM payments
 UNION ALL SELECT 'Communications', COUNT(*) FROM communications

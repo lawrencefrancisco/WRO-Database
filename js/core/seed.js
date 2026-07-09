@@ -251,22 +251,17 @@ const Seeder = {
       teamIds.push(t.id);
     }
 
-    // ── 7. Judging Records ────────────────────────────────
-    const judgeNames = ['Dr. Jose Reyes','Engr. Maria Santos','Prof. Carlos Bautista','Dr. Ana Cruz','Engr. Roberto Torres'];
-    teamIds.slice(0, 30).forEach((teamId, i) => {
-      const score = Utils.randomInt(60, 100);
+    // ── 7. Judges (Master Data) ───────────────────────────
+    const judgeNames = ['Dr. Jose Reyes','Engr. Maria Santos','Prof. Carlos Bautista','Dr. Ana Cruz','Engr. Roberto Torres','Dr. Miguel Rivera','Engr. Sofia Villanueva','Prof. Ricardo Go','Dr. Leni Ramos','Engr. Paulo Diaz','Prof. Elena Marcos','Dr. Vic Sotto','Engr. Pia Alonzo','Prof. Martin Nievera','Dr. Lea Salonga'];
+    judgeNames.forEach((name, i) => {
       DB.insert('judging', {
-        id:         `JDG_${String(i+1).padStart(4,'0')}`,
-        teamId,
-        judgeName:  judgeNames[i % judgeNames.length],
-        category:   this.WRO_CATEGORIES[i % this.WRO_CATEGORIES.length],
-        criteria:   { robotDesign: Utils.randomInt(10,20), programming: Utils.randomInt(10,20), missionPoints: Utils.randomInt(30,60) },
-        score,
-        comments:   'Team performed well. Robot design is innovative.',
-        violations: Utils.randomChoice(['None','None','None','Minor penalty -5']),
-        finalScore: score,
-        ranking:    i + 1,
-        status:     'finalized',
+        id:              `JDG_${String(i+1).padStart(4,'0')}`,
+        fullName:        name,
+        contactNumber:   `0917${String(i+1).padStart(7,'0')}`,
+        gender:          i % 2 === 0 ? 'Male' : 'Female',
+        season:          this.SEASONS[i % this.SEASONS.length],
+        judgingCategory: this.WRO_CATEGORIES[i % this.WRO_CATEGORIES.length],
+        status:          'active',
       });
     });
 
