@@ -340,10 +340,10 @@ const Dashboard = {
 
   async _renderFinancial() {
     const payments = (await DB.getAll('payments')).filter(p => !p.isDeleted);
-    const totalFee = payments.reduce((s,p) => s + (p.registrationFee||0), 0);
-    const collected= payments.reduce((s,p) => s + (p.amountPaid||0), 0);
+    const totalFee = payments.reduce((s,p) => s + Utils.parseNumber(p.registrationFee), 0);
+    const collected= payments.reduce((s,p) => s + Utils.parseNumber(p.amountPaid), 0);
     const balance  = totalFee - collected;
-    const sponsors = payments.reduce((s,p) => s + (p.sponsorship||0), 0);
+    const sponsors = payments.reduce((s,p) => s + Utils.parseNumber(p.sponsorship), 0);
     const pct      = totalFee > 0 ? Math.round((collected/totalFee)*100) : 0;
     const el       = document.getElementById('financial-summary');
     if (!el) return;

@@ -25,15 +25,25 @@ const Utils = {
     } catch { return iso; }
   },
 
+  parseNumber(val) {
+    if (val == null || val === '') return 0;
+    if (typeof val === 'number') return val;
+    const clean = String(val).replace(/[^0-9.-]+/g, "");
+    const num = Number(clean);
+    return isNaN(num) ? 0 : num;
+  },
+
   formatCurrency(amount) {
-    if (amount == null) return '—';
+    if (amount == null || amount === '') return '—';
+    const num = this.parseNumber(amount);
+    if (isNaN(num)) return '—';
     return new Intl.NumberFormat('en-PH', {
       style: 'currency', currency: 'PHP', minimumFractionDigits: 2
-    }).format(amount);
+    }).format(num);
   },
 
   formatNumber(n) {
-    return new Intl.NumberFormat('en-PH').format(n || 0);
+    return new Intl.NumberFormat('en-PH').format(this.parseNumber(n));
   },
 
   /** Calculate age from birthday */

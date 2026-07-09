@@ -65,8 +65,8 @@ const Payments = {
     const paid      = all.filter(p => p.status === 'paid');
     const unpaid    = all.filter(p => p.status === 'unpaid');
     const partial   = all.filter(p => p.status === 'partial');
-    const totalFee  = all.reduce((s,p) => s + (p.registrationFee||0), 0);
-    const collected = all.reduce((s,p) => s + (p.amountPaid||0), 0);
+    const totalFee  = all.reduce((s,p) => s + Utils.parseNumber(p.registrationFee), 0);
+    const collected = all.reduce((s,p) => s + Utils.parseNumber(p.amountPaid), 0);
     const pct       = totalFee > 0 ? Math.round((collected/totalFee)*100) : 0;
 
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
