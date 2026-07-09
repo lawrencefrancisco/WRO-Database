@@ -18,19 +18,21 @@ const Users = {
     const all = (await DB.getAll('users')).filter(u => !u.isDeleted);
     document.getElementById('page-content').innerHTML = `
       <div class="page-view space-y-6">
-        <div class="flex justify-between items-center">
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            ${Object.entries(AUTH.ROLES).map(([role, info]) => {
-              const count = all.filter(u => u.role === role).length;
-              return `
-                <div class="kpi-card rounded-xl p-4">
-                  <div class="mb-2">${info.icon}</div>
-                  <div class="text-xl font-bold text-white">${count}</div>
-                  <div class="text-xs text-slate-400">${info.label}</div>
-                </div>`;
-            }).join('')}
-          </div>
-          <button onclick="Users.openForm()" class="btn-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold self-start">+ Add User</button>
+        <div class="flex justify-end">
+          <button onclick="Users.openForm()" class="btn-primary text-white px-5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
+            <span>+</span> Add User
+          </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          ${Object.entries(AUTH.ROLES).map(([role, info]) => {
+            const count = all.filter(u => u.role === role).length;
+            return `
+              <div class="kpi-card rounded-xl p-4">
+                <div class="mb-2">${info.icon}</div>
+                <div class="text-xl font-bold text-white">${count}</div>
+                <div class="text-xs text-slate-400 mt-1">${info.label}</div>
+              </div>`;
+          }).join('')}
         </div>
 
         <div class="glass rounded-2xl overflow-hidden">

@@ -132,8 +132,8 @@ const Payments = {
           <td class="text-sm text-green-400 font-medium">${Utils.formatCurrency(p.amountPaid)}</td>
           <td class="text-sm ${p.balance>0?'text-red-400':'text-green-400'} font-medium">${Utils.formatCurrency(p.balance)}</td>
           <td class="text-sm text-slate-400">${p.paymentMethod || '—'}</td>
-          <td class="text-sm font-mono text-slate-300">${p.orNumber || '—'}</td>
-          <td class="text-sm text-slate-400">${Utils.formatDate(p.paymentDate)}</td>
+          <td class="text-sm font-mono text-slate-300 whitespace-nowrap">${p.orNumber || '—'}</td>
+          <td class="text-sm text-slate-400 whitespace-nowrap">${Utils.formatDate(p.paymentDate)}</td>
           <td>${Utils.statusBadge(p.status)}</td>
           <td>
             <div class="flex gap-2">
@@ -346,9 +346,15 @@ const Delegation = {
     content.innerHTML = `
       <div class="page-view space-y-6">
         <div class="glass rounded-2xl p-6 border border-blue-500/20" style="background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.05));">
-          <div class="flex justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1d6fa4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
-          <h2 class="text-xl font-bold text-white">International Delegation Management</h2>
-          <p class="text-slate-400 text-sm mt-1">Only for teams qualified for international competition</p>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(29,111,164,0.15);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1d6fa4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </div>
+            <div>
+              <h2 class="text-xl font-bold text-white">International Delegation Management</h2>
+              <p class="text-slate-400 text-sm mt-1">Only for teams qualified for international competition</p>
+            </div>
+          </div>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           ${[
