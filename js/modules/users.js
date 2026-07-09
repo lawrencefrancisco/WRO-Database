@@ -136,7 +136,9 @@ const Users = {
   },
 
   async toggleActive(id, active) {
-    await DB.update('users', id, { isActive: active });
+    const u = await DB.getById('users', id);
+    if (!u) return;
+    await DB.update('users', id, { ...u, isActive: active });
     Toast.success(`User ${active ? 'activated' : 'deactivated'}.`);
     await this.render();
   },
