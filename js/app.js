@@ -199,9 +199,24 @@ const App = {
   },
 
   toggleSidebar() {
-    const sb = document.getElementById('sidebar');
-    sb.classList.toggle('collapsed');
-    sb.classList.toggle('mobile-open');
+    const sb      = document.getElementById('sidebar');
+    const main    = document.getElementById('main-content');
+    const overlay = document.getElementById('mobile-overlay');
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+      // Mobile: slide the sidebar in/out as an overlay
+      const isOpen = sb.classList.toggle('mobile-open');
+      if (overlay) {
+        overlay.classList.toggle('hidden', !isOpen);
+      }
+    } else {
+      // Desktop: collapse to icon-only strip
+      const isCollapsed = sb.classList.toggle('collapsed');
+      if (main) {
+        main.style.marginLeft = isCollapsed ? '68px' : '';
+      }
+    }
   },
 };
 

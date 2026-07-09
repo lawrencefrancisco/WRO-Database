@@ -531,3 +531,446 @@ input[type='checkbox'] { accent-color: var(--felta-yellow); }
   background: #FFFFFF;
   color: #0D1B3E;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN SYSTEM
+   Breakpoints: 320 · 375 · 425 · 640 · 768 · 1024 · 1280 · 1440
+   Strategy: additive — all existing rules are untouched above
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Global overflow guard ── */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ── Fluid page content padding ── */
+#page-content {
+  padding: clamp(12px, 3.5vw, 24px);
+  box-sizing: border-box;
+}
+
+/* ── Sidebar – full layout class (replaces inline width) ── */
+#sidebar {
+  width: 260px;
+  transition: width 0.3s var(--ease-in-out),
+              transform 0.3s var(--ease-in-out);
+}
+
+/* ── Main content – offset class (replaces inline margin-left) ── */
+#main-content {
+  margin-left: 260px;
+  min-height: 100vh;
+  transition: margin-left 0.3s var(--ease-in-out);
+  min-width: 0; /* prevents flex children from overflowing */
+}
+
+/* ── Fluid typography ── */
+#page-title {
+  font-size: clamp(0.9rem, 2.5vw, 1.125rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-card .text-2xl,
+.kpi-card [class*="text-2xl"] {
+  font-size: clamp(1.1rem, 2.8vw, 1.5rem);
+}
+
+/* ── Table cell compacting ── */
+.data-table th,
+.data-table td {
+  font-size: clamp(11px, 1.2vw, 13px);
+}
+
+/* ── Search/filter bars always wrap ── */
+.search-box {
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+/* ── Modal responsive ── */
+.modal-overlay {
+  padding: clamp(8px, 3vw, 24px);
+  align-items: flex-start;
+  padding-top: max(5vh, 20px);
+}
+.modal-box {
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* ── Toast position fix for mobile ── */
+#toast-container {
+  max-width: calc(100vw - 24px);
+}
+.toast {
+  min-width: min(280px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+}
+
+/* ══════════════════════════════
+   ≤ 1280px – Large Laptop
+   ══════════════════════════════ */
+@media (max-width: 1280px) {
+  #main-content {
+    margin-left: 260px;
+  }
+}
+
+/* ══════════════════════════════
+   ≤ 1024px – Laptop / Tablet Landscape
+   Sidebar collapses to icon-only (68px)
+   ══════════════════════════════ */
+@media (max-width: 1024px) {
+  #sidebar {
+    width: 68px;
+  }
+  #sidebar .nav-label,
+  #sidebar .sidebar-logo-text,
+  #sidebar .sidebar-section-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  /* Keep icon centred when labels are hidden */
+  #sidebar .nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #sidebar nav {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  #sidebar .nav-icon {
+    margin: 0 auto;
+  }
+  /* Logo area: just show icon */
+  #sidebar > div:first-child {
+    padding: 12px 8px;
+  }
+  /* User profile area: hide name/role */
+  #sidebar > div:last-child .nav-label {
+    display: none;
+  }
+  #sidebar > div:last-child {
+    padding: 10px 8px;
+    justify-content: center;
+  }
+  #sidebar > div:last-child .flex {
+    justify-content: center;
+  }
+
+  #main-content {
+    margin-left: 68px;
+  }
+}
+
+/* ══════════════════════════════
+   ≤ 768px – Tablet Portrait / Mobile
+   Sidebar becomes off-screen overlay
+   ══════════════════════════════ */
+@media (max-width: 768px) {
+  /* Sidebar slides off-screen by default */
+  #sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    z-index: 50;
+    width: 260px !important; /* full width when open */
+    transform: translateX(-100%);
+  }
+  /* When explicitly opened on mobile */
+  #sidebar.mobile-open {
+    transform: translateX(0);
+    /* Restore labels */
+  }
+  #sidebar.mobile-open .nav-label,
+  #sidebar.mobile-open .sidebar-logo-text,
+  #sidebar.mobile-open .sidebar-section-label {
+    opacity: 1 !important;
+    width: auto !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+  }
+  #sidebar.mobile-open .nav-item {
+    justify-content: flex-start;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  #sidebar.mobile-open > div:last-child .nav-label {
+    display: block;
+  }
+  #sidebar.mobile-open > div:last-child {
+    justify-content: flex-start;
+    padding: 14px;
+  }
+  #sidebar.mobile-open > div:last-child .flex {
+    justify-content: flex-start;
+  }
+  #sidebar.mobile-open > div:first-child {
+    padding: 16px;
+  }
+
+  /* Main content takes full width */
+  #main-content {
+    margin-left: 0 !important;
+  }
+
+  /* Topbar: compact */
+  #topbar {
+    padding-left: clamp(10px, 3vw, 16px);
+    padding-right: clamp(10px, 3vw, 16px);
+  }
+
+  /* Hide date on mobile */
+  #topbar .text-xs[style*="color:#5a6a8a"] {
+    display: none !important;
+  }
+
+  /* KPI grid: 2 columns on tablet */
+  .grid.grid-cols-2.md\\:grid-cols-4,
+  [class*="grid-cols-2"][class*="md:grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Table: compact cells */
+  .data-table th { padding: 10px 10px; }
+  .data-table td { padding: 10px 10px; }
+
+  /* Reduce modal padding */
+  .modal-box {
+    border-radius: 16px;
+  }
+
+  /* Footer: stack */
+  footer {
+    flex-direction: column !important;
+    gap: 4px;
+    text-align: center;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+}
+
+/* ══════════════════════════════
+   ≤ 640px – Large Mobile
+   ══════════════════════════════ */
+@media (max-width: 640px) {
+  /* Modal fills the screen more */
+  .modal-overlay {
+    padding: 8px;
+    padding-top: 8px;
+    align-items: flex-end;
+  }
+  .modal-box {
+    border-radius: 20px 20px 12px 12px;
+    max-height: 95vh;
+  }
+
+  /* Chat modal: near full-width */
+  .chat-modal {
+    width: calc(100vw - 16px);
+    right: 8px;
+    bottom: 8px;
+    max-height: 80vh;
+    border-radius: 16px;
+  }
+  .chat-head-btn {
+    bottom: 14px;
+    right: 14px;
+    width: 52px;
+    height: 52px;
+  }
+
+  /* Topbar: hide logout text, keep icon-like behaviour */
+  #topbar button[onclick*="logout"] {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  /* Page content padding: tighten */
+  #page-content {
+    padding: 12px;
+  }
+
+  /* Form grids: force single column */
+  .grid.md\\:grid-cols-2,
+  [class*="md:grid-cols-2"],
+  .grid.grid-cols-1.md\\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hide non-essential table columns */
+  .hide-mobile { display: none !important; }
+
+  /* KPI cards: still 2 cols at 640px */
+}
+
+/* ══════════════════════════════
+   ≤ 425px – Mobile (standard)
+   ══════════════════════════════ */
+@media (max-width: 425px) {
+  /* KPI cards: 1 column */
+  .grid.grid-cols-2,
+  .grid.grid-cols-2.md\\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Topbar: hide "Live" pulse badge text, keep dot */
+  #topbar .glass-light span.text-xs {
+    display: none;
+  }
+
+  /* Topbar: page title smaller */
+  #page-title {
+    font-size: 0.875rem;
+    max-width: 140px;
+  }
+
+  /* Table cells: really compact */
+  .data-table th { padding: 8px 8px; font-size: 10px; }
+  .data-table td { padding: 8px 8px; font-size: 12px; }
+
+  /* Buttons: shrink text slightly */
+  .btn-primary {
+    font-size: 13px;
+  }
+
+  /* Toast: full width */
+  .toast {
+    min-width: calc(100vw - 32px);
+  }
+}
+
+/* ══════════════════════════════
+   ≤ 375px – iPhone / Small Mobile
+   ══════════════════════════════ */
+@media (max-width: 375px) {
+  /* Login card: less padding */
+  .login-card .glass.rounded-2xl {
+    padding: clamp(16px, 5vw, 28px) clamp(14px, 4.5vw, 24px);
+  }
+  /* Login logo: smaller */
+  .login-card img.h-24 {
+    height: 64px !important;
+  }
+  /* Quick login: 1 column */
+  .login-card .grid.grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .login-card .col-span-2 {
+    grid-column: 1 !important;
+  }
+  /* Form inputs: standard size */
+  .form-input {
+    font-size: 14px;
+  }
+  /* KPI value text */
+  .kpi-card .text-2xl {
+    font-size: 1.1rem;
+  }
+  /* Page content: minimal padding */
+  #page-content {
+    padding: 10px;
+  }
+  /* Topbar: very compact */
+  #topbar {
+    padding-left: 8px;
+    padding-right: 8px;
+    gap: 6px;
+  }
+  #topbar .flex.items-center.gap-2.px-3 {
+    padding: 4px 6px;
+  }
+}
+
+/* ══════════════════════════════
+   ≤ 320px – Minimum size
+   ══════════════════════════════ */
+@media (max-width: 320px) {
+  /* Body: ensure no overflow */
+  body { font-size: 13px; }
+
+  /* Page content: minimal */
+  #page-content { padding: 8px; }
+
+  /* Login card */
+  .login-card .glass.rounded-2xl {
+    padding: 14px 12px;
+  }
+  .login-card img { height: 52px !important; }
+
+  /* Hide badge entirely in topbar */
+  #topbar .glass-light { display: none !important; }
+
+  /* Topbar: ultra compact */
+  #topbar {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  #page-title {
+    font-size: 0.8rem;
+    max-width: 100px;
+  }
+
+  /* Table: very tight */
+  .data-table th { padding: 6px; font-size: 9.5px; }
+  .data-table td { padding: 6px; font-size: 11px; }
+
+  /* Modals */
+  .modal-overlay { padding: 4px; }
+  .modal-box { border-radius: 14px; }
+}
+
+/* ══════════════════════════════
+   ≥ 1440px – Large Desktop
+   Max-width content container
+   ══════════════════════════════ */
+@media (min-width: 1440px) {
+  /* Prevent KPI cards and content from stretching too wide */
+  .page-view {
+    max-width: 1480px;
+  }
+  #page-content {
+    padding: 28px 32px;
+  }
+}
+
+/* ── Sidebar collapsed desktop state (existing .collapsed class) ── */
+#sidebar.collapsed {
+  width: 68px !important;
+}
+#sidebar.collapsed ~ #main-content,
+#sidebar.collapsed + * #main-content {
+  margin-left: 68px;
+}
+
+/* ── Utility: hide on mobile ── */
+@media (max-width: 768px) {
+  .md-hide { display: none !important; }
+}
+@media (min-width: 769px) {
+  .mobile-only { display: none !important; }
+}
+
+/* ── Flex-wrap for filter bars everywhere ── */
+.glass .flex.flex-wrap,
+.glass [class*="flex-wrap"] {
+  flex-wrap: wrap;
+}
+
+/* ── Overflow-x scroll wrapper for all tables ── */
+.glass .overflow-x-auto {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.glass .overflow-x-auto .data-table {
+  min-width: 540px; /* ensure table never collapses below readable width */
+}
+
