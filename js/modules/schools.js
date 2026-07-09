@@ -50,13 +50,14 @@ const Schools = {
                   <th>Type</th>
                   <th>Region</th>
                   <th>City</th>
+                  <th>School Head</th>
                   <th>Coordinator</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="schools-tbody">
-                <tr><td colspan="7" class="text-center py-8 text-slate-500">Loading...</td></tr>
+                <tr><td colspan="8" class="text-center py-8 text-slate-500">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -112,7 +113,7 @@ const Schools = {
     if (!tbody) return;
 
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
         <div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <div class="text-lg font-semibold text-slate-300 mt-2">No schools found</div>
         <div class="text-sm mt-1">Try adjusting your search or filters</div>
@@ -130,6 +131,7 @@ const Schools = {
         <td><span class="badge badge-blue">${s.schoolType || '—'}</span></td>
         <td class="text-xs text-slate-400">${(s.region || '').replace('– ','')}</td>
         <td class="text-sm">${s.city || '—'}</td>
+        <td class="text-sm text-slate-300">${s.schoolHead || '—'}</td>
         <td class="text-sm text-slate-300">${s.roboticsCoordinator || '—'}</td>
         <td>${Utils.statusBadge(s.status)}</td>
         <td>

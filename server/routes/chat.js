@@ -1,6 +1,6 @@
 ﻿const express = require('express');
-const router  = express.Router();
-const pool    = require('../db/pool');
+const router = express.Router();
+const pool = require('../db/pool');
 const { GoogleGenAI } = require('@google/genai');
 
 // ── Gemini client (uses your key from .env) ───────────────────
@@ -9,11 +9,11 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // ── Model fallback chain ──────────────────────────────────────
 // When a model is overloaded (503), Felix automatically tries the next one.
 const MODEL_FALLBACKS = {
-    'gemini-2.5-flash':                        ['gemini-2.5-flash',      'gemini-1.5-flash', 'gemini-1.5-flash-8b'],
-    'gemini-2.5-pro':                          ['gemini-2.5-pro',        'gemini-2.5-flash', 'gemini-1.5-pro'],
-    'gemini-2.5-flash-lite-preview-06-17':     ['gemini-2.5-flash-lite-preview-06-17', 'gemini-1.5-flash'],
-    'gemini-1.5-flash':                        ['gemini-1.5-flash',      'gemini-1.5-flash-8b'],
-    'gemini-1.5-pro':                          ['gemini-1.5-pro',        'gemini-1.5-flash'],
+    'gemini-2.5-flash': ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'],
+    'gemini-2.5-pro': ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'],
+    'gemini-2.5-flash-lite-preview-06-17': ['gemini-2.5-flash-lite-preview-06-17', 'gemini-1.5-flash'],
+    'gemini-1.5-flash': ['gemini-1.5-flash', 'gemini-1.5-flash-8b'],
+    'gemini-1.5-pro': ['gemini-1.5-pro', 'gemini-1.5-flash'],
 };
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 
@@ -23,7 +23,7 @@ You are Felix, a friendly and knowledgeable AI assistant for the WRO (World Robo
 
 Your role is to help administrators, coaches, judges, and staff answer questions about the WRO Philippines database. You have deep knowledge of the following data in the system:
 
-- **Schools**: School names, types (Private/Public/Sectarian), regions, provinces, cities, DepEd IDs, contact info, robotics coordinators, and their status.
+- **Schools**: School names, types (Private/Public/Sectarian), regions, provinces, cities, DepEd IDs, contact info, robotics coordinators, School head, and their status.
 - **Students**: Student names, grades, genders, school affiliations, birthdays, shirt sizes, and consent forms.
 - **Coaches**: Coach names, positions, schools, certifications, years of coaching experience.
 - **Teams**: Team names, categories (WRO categories), competition year, school affiliation, coach, and team members.
@@ -110,12 +110,12 @@ router.post('/', async (req, res) => {
         contents.push({ role: 'user', parts: [{ text: message.trim() }] });
 
         // Fetch real-time system data to inject into Felix's context
-        const [schools]      = await pool.execute('SELECT id, school_name, school_type, region, city, robotics_coordinator, status FROM schools WHERE is_deleted = 0');
-        const [coaches]      = await pool.execute('SELECT id, full_name, school_id, position, email, mobile, status FROM coaches WHERE is_deleted = 0');
-        const [students]     = await pool.execute('SELECT id, full_name, grade_level, school_id, gender, age, status FROM students WHERE is_deleted = 0');
-        const [teams]        = await pool.execute('SELECT id, team_name, category, coach_id, school_id, registration_status FROM teams WHERE is_deleted = 0');
+        const [schools] = await pool.execute('SELECT id, school_name, school_type, region, city, robotics_coordinator, status FROM schools WHERE is_deleted = 0');
+        const [coaches] = await pool.execute('SELECT id, full_name, school_id, position, email, mobile, status FROM coaches WHERE is_deleted = 0');
+        const [students] = await pool.execute('SELECT id, full_name, grade_level, school_id, gender, age, status FROM students WHERE is_deleted = 0');
+        const [teams] = await pool.execute('SELECT id, team_name, category, coach_id, school_id, registration_status FROM teams WHERE is_deleted = 0');
         const [competitions] = await pool.execute('SELECT id, name, season, date, venue, status FROM competitions WHERE is_deleted = 0');
-        const [payments]     = await pool.execute('SELECT id, team_id, registration_fee, amount_paid, status, payment_method FROM payments WHERE is_deleted = 0');
+        const [payments] = await pool.execute('SELECT id, team_id, registration_fee, amount_paid, status, payment_method FROM payments WHERE is_deleted = 0');
 
         const dynamicSystemPrompt = SYSTEM_PROMPT
             + '\n\nCRITICAL CONTEXT: Here is the LIVE, REAL-TIME data currently in the WRO Philippines database. '
