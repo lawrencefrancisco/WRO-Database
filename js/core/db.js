@@ -13,7 +13,7 @@ const TABLE_ROUTES = {
   students:       'students',
   teams:          'teams',
   competitions:   'competitions',
-  judging:        'judging',
+  judging:        'judging',   // judges master-data table (route stays /api/judging)
   awards:         'awards',
   payments:       'payments',
   communications: 'communications',
@@ -230,6 +230,8 @@ const DB = {
       qualification_status:   'qualificationStatus',
       judge_name:             'judgeName',
       final_score:            'finalScore',
+      judging_category:       'judgingCategory',
+      contact_number:         'contactNumber',
       team_id:                'teamId',
       school_id:              'schoolId',
       has_trophy:             'hasTrophy',

@@ -1,262 +1,432 @@
 // ============================================================
-// Module 6 – Judging & Scoring
+// Module 6 – Judges (Master Data Repository)
+// A centralized database of judges who participate in WRO
+// competitions. No scoring or evaluation features.
 // ============================================================
 
 const Judging = {
-  _page: 1, _perPage: 15, _search: '', _filterCategory: '',
+  _page: 1, _perPage: 15, _search: '', _filterSeason: '', _filterCategory: '',
 
   async render() {
     const content = document.getElementById('page-content');
+
+    const _icon = (d, color = 'currentColor') =>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
     content.innerHTML = `
       <div class="page-view space-y-6">
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="search-box flex-1 min-w-56">
-            <span class="search-icon" style="display:flex;align-items:center"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-            <input id="judging-search" type="text" class="form-input pl-10" placeholder="Search by team or judge..." oninput="Judging._onSearch(this.value)">
+
+        <!-- Page Header -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              ${_icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#D4A017')}
+              Judges
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Master data repository for WRO Philippines competition judges</p>
           </div>
-          <select id="judging-category" class="form-input w-auto" onchange="Judging._onFilter()">
-            <option value="">All Categories</option>
-            ${Seeder.WRO_CATEGORIES.map(c=>`<option>${c}</option>`).join('')}
-          </select>
-          ${AUTH.can('judging.write') ? `
-          <button onclick="Judging.openForm()" class="btn-primary text-white px-4 py-2 rounded-xl text-sm font-semibold">+ Add Score</button>` : ''}
-          <button onclick="Judging.exportCSV()" class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold transition flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export</button>
+          <div class="flex items-center gap-2 flex-wrap">
+            ${AUTH.can('judging.write') ? `
+            <button id="add-judge-btn" onclick="Judging.openForm()"
+              class="btn-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition">
+              ${_icon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>')}
+              Add Judge
+            </button>` : ''}
+            <button onclick="Judging.exportCSV()"
+              class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold transition flex items-center gap-2">
+              ${_icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>')}
+              Export
+            </button>
+          </div>
         </div>
 
-        <!-- Live Rankings Banner -->
-        <div class="glass rounded-2xl p-6 border border-indigo-500/20">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="pulse-dot"></div>
-            <h3 class="text-sm font-semibold text-white">Live Rankings – Top 10</h3>
+        <!-- KPI Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="judge-stats"></div>
+
+        <!-- Search & Filters -->
+        <div class="glass rounded-2xl p-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="search-box flex-1 min-w-56">
+              <span class="search-icon" style="display:flex;align-items:center">
+                ${_icon('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>')}
+              </span>
+              <input id="judge-search" type="text" class="form-input pl-10"
+                placeholder="Search by name or contact..." oninput="Judging._onSearch(this.value)">
+            </div>
+            <select id="judge-season" class="form-input w-auto" onchange="Judging._onFilter()">
+              <option value="">All Seasons</option>
+              ${Seeder.SEASONS.map(s => `<option>${s}</option>`).join('')}
+            </select>
+            <select id="judge-category" class="form-input w-auto" onchange="Judging._onFilter()">
+              <option value="">All Categories</option>
+              ${Seeder.WRO_CATEGORIES.map(c => `<option>${c}</option>`).join('')}
+            </select>
           </div>
-          <div id="rankings-list" class="space-y-2"></div>
         </div>
 
-        <!-- Score Records Table -->
+        <!-- Judges Table -->
         <div class="glass rounded-2xl overflow-hidden">
-          <div class="p-4 border-b border-slate-700/50">
-            <h3 class="text-sm font-semibold text-slate-300">Score Records</h3>
+          <div class="p-4 border-b border-slate-700/50 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+              ${_icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#a89060')}
+              Judge Records
+            </h3>
+            <span id="judge-count" class="text-slate-500 text-xs"></span>
           </div>
           <div class="overflow-x-auto">
             <table class="data-table">
               <thead>
-                <tr><th>Team</th><th>Judge</th><th>Category</th><th>Design</th><th>Programming</th><th>Mission</th><th>Final Score</th><th>Rank</th><th>Status</th><th>Actions</th></tr>
+                <tr>
+                  <th>Judge</th>
+                  <th>Gender</th>
+                  <th>Contact Number</th>
+                  <th>Season</th>
+                  <th>Judging Category</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
               </thead>
-              <tbody id="judging-tbody"></tbody>
+              <tbody id="judges-tbody"></tbody>
             </table>
           </div>
           <div class="flex items-center justify-between p-4 border-t border-slate-700/50">
-            <span id="judging-count" class="text-slate-400 text-sm"></span>
-            <div id="judging-pagination" class="flex gap-1"></div>
+            <span class="text-slate-400 text-sm" id="judge-count-bottom"></span>
+            <div id="judges-pagination" class="flex gap-1"></div>
           </div>
         </div>
+
       </div>`;
-    await this._renderRankings();
+
+    await this._renderStats();
     await this._loadTable();
   },
 
-  async _renderRankings() {
-    const _teamsMap = await DB.getLookup('teams');
-    const all    = (await DB.getAll('judging')).filter(j => !j.isDeleted && j.finalScore != null);
-    const sorted = all.sort((a,b) => (b.finalScore||0) - (a.finalScore||0)).slice(0,10);
-    const el     = document.getElementById('rankings-list');
+  // ── KPI Cards ──────────────────────────────────────────────
+  async _renderStats() {
+    const all    = (await DB.getAll('judging')).filter(j => !j.isDeleted && !j.is_deleted);
+    const active = all.filter(j => (j.status || j.status) === 'active').length;
+    const male   = all.filter(j => j.gender === 'Male').length;
+    const female = all.filter(j => j.gender === 'Female').length;
+
+    const _si = (d, c) => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
+    const cards = [
+      { label: 'Total Judges',  value: all.length, icon: _si('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#D4A017'),   color: '#D4A017' },
+      { label: 'Active',        value: active,      icon: _si('<polyline points="20 6 9 17 4 12"/>',                                   '#2dc653'),   color: '#2dc653' },
+      { label: 'Male',          value: male,        icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#1d6fa4'), color: '#1d6fa4' },
+      { label: 'Female',        value: female,      icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#e91e8c'), color: '#e91e8c' },
+    ];
+
+    const el = document.getElementById('judge-stats');
     if (!el) return;
-    if (sorted.length === 0) { el.innerHTML = '<p class="text-slate-500 text-sm">No scores recorded yet.</p>'; return; }
-    const rankColors = ['#D4A017','#a89060','#cd7f32'];
-    const rankLabels = ['1st','2nd','3rd'];
-    el.innerHTML = sorted.map((j, idx) => {
-      const team = _teamsMap[j.teamId];
-      const rankEl = idx < 3
-        ? `<span style="color:${rankColors[idx]};font-weight:700;font-size:13px;width:32px;text-align:center;display:inline-block">${rankLabels[idx]}</span>`
-        : `<span style="color:#5a6a8a;font-size:13px;width:32px;text-align:center;display:inline-block">${idx+1}.</span>`;
-      const barW  = Math.round(((j.finalScore||0)/100)*100);
-      return `
-        <div class="flex items-center gap-3">
-          ${rankEl}
-          <div class="flex-1">
-            <div class="flex justify-between text-sm mb-1">
-              <span class="text-white font-medium">${team?.teamName || j.teamId}</span>
-              <span class="text-indigo-400 font-bold">${j.finalScore} pts</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width:${barW}%"></div>
-            </div>
-          </div>
-        </div>`;
-    }).join('');
+    el.innerHTML = cards.map(k => `
+      <div class="kpi-card rounded-xl p-4">
+        <div class="mb-2" style="color:${k.color}">${k.icon}</div>
+        <div class="text-2xl font-bold text-white">${k.value}</div>
+        <div class="text-xs text-slate-400 mt-1">${k.label}</div>
+      </div>`).join('');
   },
 
+  // ── Data Retrieval ─────────────────────────────────────────
   async _getData() {
-    let rows = (await DB.getAll('judging')).filter(r => !r.isDeleted);
+    let rows = (await DB.getAll('judging')).filter(r => !r.isDeleted && !r.is_deleted);
+
     if (this._search) {
       const q = this._search.toLowerCase();
-      const _teamsMap = await DB.getLookup('teams');
-      rows = rows.filter(r => {
-        const team = _teamsMap[r.teamId];
-        return team?.teamName?.toLowerCase().includes(q) || r.judgeName?.toLowerCase().includes(q);
-      });
+      rows = rows.filter(r =>
+        (r.fullName  || r.full_name  || '').toLowerCase().includes(q) ||
+        (r.contactNumber || r.contact_number || '').toLowerCase().includes(q)
+      );
     }
-    if (this._filterCategory) rows = rows.filter(r => r.category === this._filterCategory);
-    return rows.sort((a,b) => (b.finalScore||0)-(a.finalScore||0));
+    if (this._filterSeason) {
+      rows = rows.filter(r => r.season === this._filterSeason);
+    }
+    if (this._filterCategory) {
+      rows = rows.filter(r =>
+        (r.judgingCategory || r.judging_category) === this._filterCategory
+      );
+    }
+
+    return rows.sort((a, b) => {
+      const nameA = (a.fullName || a.full_name || '').toLowerCase();
+      const nameB = (b.fullName || b.full_name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
   },
 
+  // ── Table Render ───────────────────────────────────────────
   async _loadTable() {
-    const _teamsMap = await DB.getLookup('teams');
     const rows  = await this._getData();
     const start = (this._page - 1) * this._perPage;
     const page  = rows.slice(start, start + this._perPage);
-    const tbody = document.getElementById('judging-tbody');
+    const tbody = document.getElementById('judges-tbody');
     if (!tbody) return;
+
+    const genderBadge = (g) => {
+      const colors = { Male: '#1d6fa4', Female: '#e91e8c', Other: '#8338ec' };
+      const color  = colors[g] || '#5a6a8a';
+      return g ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:${color}20;color:${color}">${g}</span>` : '<span class="text-slate-600">—</span>';
+    };
+
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div class="text-slate-300 text-lg font-semibold mt-2">No scores yet</div></div></td></tr>`;
+      tbody.innerHTML = `
+        <tr><td colspan="7">
+          <div class="empty-state">
+            <div style="opacity:0.3;display:flex;justify-content:center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div class="text-lg font-semibold text-slate-300 mt-2">No judges found</div>
+            <p class="text-sm text-slate-500 mt-1">Click "Add Judge" to register a new judge.</p>
+          </div>
+        </td></tr>`;
+    } else {
+      tbody.innerHTML = page.map(j => {
+        const name     = j.fullName     || j.full_name     || '—';
+        const contact  = j.contactNumber|| j.contact_number|| '—';
+        const category = j.judgingCategory || j.judging_category || '—';
+        const season   = j.season || '—';
+        const initial  = name.charAt(0).toUpperCase();
+        const statusBadge = (j.status === 'active')
+          ? `<span class="badge" style="background:rgba(45,198,83,0.15);color:#2dc653;">Active</span>`
+          : `<span class="badge" style="background:rgba(90,106,138,0.2);color:#5a6a8a;">Inactive</span>`;
+
+        return `
+          <tr class="table-row">
+            <td>
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                  style="background:linear-gradient(135deg,#D4A017,#8B6914);">
+                  ${initial}
+                </div>
+                <div>
+                  <div class="font-semibold text-white text-sm">${name}</div>
+                  <div class="text-xs text-slate-500">Judge</div>
+                </div>
+              </div>
+            </td>
+            <td>${genderBadge(j.gender)}</td>
+            <td class="text-sm text-slate-300">${contact}</td>
+            <td>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:rgba(212,160,23,0.12);color:#D4A017;">
+                ${season}
+              </span>
+            </td>
+            <td class="text-sm text-slate-400 max-w-48 truncate" title="${category}">${category}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <div class="flex gap-2">
+                ${AUTH.can('judging.write') ? `
+                <button onclick="Judging.openForm('${j.id}')"
+                  title="Edit Judge"
+                  class="p-1.5 rounded-lg text-xs transition flex items-center"
+                  style="background:rgba(212,160,23,0.12);color:#D4A017;"
+                  onmouseover="this.style.background='rgba(212,160,23,0.25)'"
+                  onmouseout="this.style.background='rgba(212,160,23,0.12)'">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button onclick="Judging._confirmDelete('${j.id}', '${name.replace(/'/g, "\\'")}')"
+                  title="Remove Judge"
+                  class="p-1.5 rounded-lg text-xs transition flex items-center"
+                  style="background:rgba(230,57,70,0.12);color:#e63946;"
+                  onmouseover="this.style.background='rgba(230,57,70,0.25)'"
+                  onmouseout="this.style.background='rgba(230,57,70,0.12)'">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>` : ''}
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    const total = rows.length;
+    const countEl = document.getElementById('judge-count');
+    const countBotEl = document.getElementById('judge-count-bottom');
+    if (countEl)    countEl.textContent    = `${total} judge${total !== 1 ? 's' : ''}`;
+    if (countBotEl) countBotEl.textContent = `Showing ${Math.min(start + 1, total)}–${Math.min(start + this._perPage, total)} of ${total}`;
+
+    Utils.renderPagination('judges-pagination', this._page, Math.ceil(total / this._perPage), 'Judging._goPage');
+  },
+
+  // ── Pagination & Filters ───────────────────────────────────
+  async _goPage(p) { Judging._page = p; await Judging._loadTable(); },
+  _onSearch: Utils.debounce(async function(v) {
+    Judging._search = v;
+    Judging._page   = 1;
+    await Judging._loadTable();
+  }, 300),
+  async _onFilter() {
+    this._filterSeason   = document.getElementById('judge-season')?.value   || '';
+    this._filterCategory = document.getElementById('judge-category')?.value || '';
+    this._page = 1;
+    await this._loadTable();
+  },
+
+  // ── Add / Edit Form ────────────────────────────────────────
+  async openForm(id = null) {
+    const j = id ? await DB.getById('judging', id) : null;
+
+    const seasonOptions = Seeder.SEASONS.map(s =>
+      `<option ${(j?.season === s) ? 'selected' : ''}>${s}</option>`
+    ).join('');
+
+    const categoryOptions = Seeder.WRO_CATEGORIES.map(c => {
+      const cat = j?.judgingCategory || j?.judging_category;
+      return `<option ${cat === c ? 'selected' : ''}>${c}</option>`;
+    }).join('');
+
+    const name    = j?.fullName    || j?.full_name    || '';
+    const contact = j?.contactNumber || j?.contact_number || '';
+
+    Modal.show(id ? 'Edit Judge' : 'Add Judge', `
+      <form id="judge-form" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <!-- Full Name -->
+        <div class="md:col-span-2">
+          <label class="form-label">Full Name <span style="color:#e63946">*</span></label>
+          <input class="form-input" name="fullName" value="${name}"
+            placeholder="e.g. Maria Santos" required>
+        </div>
+
+        <!-- Contact Number -->
+        <div>
+          <label class="form-label">Contact Number</label>
+          <input class="form-input" name="contactNumber" value="${contact}"
+            placeholder="e.g. 09171234567">
+        </div>
+
+        <!-- Gender -->
+        <div>
+          <label class="form-label">Gender</label>
+          <select class="form-input" name="gender">
+            <option value="">— Select Gender —</option>
+            ${['Male','Female','Other'].map(g =>
+              `<option ${j?.gender === g ? 'selected' : ''}>${g}</option>`
+            ).join('')}
+          </select>
+        </div>
+
+        <!-- Season -->
+        <div>
+          <label class="form-label">Season</label>
+          <select class="form-input" name="season">
+            <option value="">— Select Season —</option>
+            ${seasonOptions}
+          </select>
+        </div>
+
+        <!-- Judging Category -->
+        <div>
+          <label class="form-label">Judging Category</label>
+          <select class="form-input" name="judgingCategory">
+            <option value="">— Select Category —</option>
+            ${categoryOptions}
+          </select>
+        </div>
+
+        <!-- Status -->
+        <div class="md:col-span-2">
+          <label class="form-label">Status</label>
+          <select class="form-input" name="status">
+            <option ${(!j || j.status === 'active') ? 'selected' : ''}>active</option>
+            <option ${j?.status === 'inactive' ? 'selected' : ''}>inactive</option>
+          </select>
+        </div>
+
+      </form>`,
+      `<button onclick="Modal.close()"
+         class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">
+         Cancel
+       </button>
+       <button onclick="Judging._save('${id || ''}')"
+         class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
+         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+         ${id ? 'Save Changes' : 'Add Judge'}
+       </button>`,
+      'max-w-2xl'
+    );
+  },
+
+  // ── Save Judge ─────────────────────────────────────────────
+  async _save(id) {
+    const form = document.getElementById('judge-form');
+    if (!form) return;
+    const raw = Object.fromEntries(new FormData(form));
+
+    if (!raw.fullName?.trim()) {
+      Toast.error('Full name is required.');
       return;
     }
-    const rankColors2 = ['#D4A017','#a89060','#cd7f32'];
-    const rankLabels2 = ['1st','2nd','3rd'];
-    tbody.innerHTML = page.map((j,idx) => {
-      const team = _teamsMap[j.teamId];
-      const rankBadge = idx < 3
-        ? `<span style="color:${rankColors2[idx]};font-weight:700">${rankLabels2[idx]}</span>`
-        : `<span style="color:#5a6a8a">#${j.ranking || idx+1+start}</span>`;
-      return `
-        <tr class="table-row">
-          <td>
-            <div class="font-semibold text-white text-sm">${team?.teamName || j.teamId}</div>
-            <div class="text-xs text-slate-500">${team?.category || ''}</div>
-          </td>
-          <td class="text-sm text-slate-300">${j.judgeName}</td>
-          <td class="text-xs text-slate-400">${j.category}</td>
-          <td class="text-center text-white font-medium">${j.criteria?.robotDesign ?? '—'}</td>
-          <td class="text-center text-white font-medium">${j.criteria?.programming ?? '—'}</td>
-          <td class="text-center text-white font-medium">${j.criteria?.missionPoints ?? '—'}</td>
-          <td class="text-center">
-            <span class="text-xl font-bold ${j.finalScore >= 90 ? 'text-yellow-400' : j.finalScore >= 75 ? 'text-green-400' : 'text-slate-300'}">
-              ${j.finalScore ?? '—'}
-            </span>
-          </td>
-          <td class="text-center text-lg">${rankBadge}</td>
-          <td>${Utils.statusBadge(j.status)}</td>
-          <td>
-            <div class="flex gap-2">
-              ${AUTH.can('judging.write') ? `
-          <button onclick="Judging.openForm('${j.id}')" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/></svg></button>
-              ` : ''}
-            </div>
-          </td>
-        </tr>`;
-    }).join('');
-    const total = rows.length;
-    document.getElementById('judging-count').textContent = `${total} score records`;
-    Utils.renderPagination('judging-pagination', this._page, Math.ceil(total/this._perPage), 'Judging._goPage');
-  },
 
-  async _goPage(p) { Judging._page = p; await Judging._loadTable(); },
-  _onSearch: Utils.debounce(async function(v) { Judging._search = v; Judging._page = 1; await Judging._loadTable(); }, 300),
-  async _onFilter() { this._filterCategory = document.getElementById('judging-category')?.value||''; this._page=1; await this._loadTable(); },
-
-  async openForm(id = null) {
-    const j     = id ? await DB.getById('judging', id) : null;
-    const teams = (await DB.getAll('teams')).filter(t => !t.isDeleted);
-    Modal.show(id ? 'Edit Score' : 'Submit Score', `
-      <form id="judging-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="md:col-span-2"><label class="form-label">Team *</label>
-          <select class="form-input" name="teamId" required>
-            <option value="">Select Team</option>
-            ${teams.map(t=>`<option value="${t.id}" ${j?.teamId===t.id?'selected':''}>${t.teamName} (${t.season})</option>`).join('')}
-          </select>
-        </div>
-        <div><label class="form-label">Judge Name *</label>
-          <input class="form-input" name="judgeName" value="${j?.judgeName||AUTH.currentUser()?.name||''}" required>
-        </div>
-        <div><label class="form-label">Category</label>
-          <select class="form-input" name="category">
-            ${Seeder.WRO_CATEGORIES.map(c=>`<option ${j?.category===c?'selected':''}>${c}</option>`).join('')}
-          </select>
-        </div>
-
-        <div class="md:col-span-2">
-          <div class="text-xs text-slate-400 font-semibold uppercase mb-3">Scoring Criteria</div>
-          <div class="grid grid-cols-3 gap-4">
-            <div>
-              <label class="form-label">Robot Design (0–20)</label>
-              <input class="form-input" type="number" name="robotDesign" min="0" max="20" value="${j?.criteria?.robotDesign||0}" oninput="Judging._calcTotal()">
-            </div>
-            <div>
-              <label class="form-label">Programming (0–20)</label>
-              <input class="form-input" type="number" name="programming" min="0" max="20" value="${j?.criteria?.programming||0}" oninput="Judging._calcTotal()">
-            </div>
-            <div>
-              <label class="form-label">Mission Points (0–60)</label>
-              <input class="form-input" type="number" name="missionPoints" min="0" max="60" value="${j?.criteria?.missionPoints||0}" oninput="Judging._calcTotal()">
-            </div>
-          </div>
-        </div>
-        <div class="md:col-span-2">
-          <div class="glass-light rounded-xl p-4 text-center">
-            <div class="text-sm text-slate-400 mb-1">Total Score</div>
-            <div id="total-score-display" class="text-4xl font-black gradient-text">0</div>
-            <div class="text-xs text-slate-500">out of 100</div>
-          </div>
-        </div>
-        <div class="md:col-span-2"><label class="form-label">Comments</label>
-          <textarea class="form-input" name="comments" rows="3">${j?.comments||''}</textarea>
-        </div>
-        <div><label class="form-label">Violations</label>
-          <input class="form-input" name="violations" value="${j?.violations||'None'}">
-        </div>
-        <div><label class="form-label">Status</label>
-          <select class="form-input" name="status">
-            ${['draft','submitted','finalized'].map(s=>`<option ${j?.status===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-      </form>`,
-      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">Cancel</button>
-       <button onclick="Judging._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Submit Score</button>`,
-      'max-w-3xl'
-    );
-    setTimeout(() => Judging._calcTotal(), 100);
-  },
-
-  _calcTotal() {
-    const d = parseInt(document.querySelector('[name="robotDesign"]')?.value||0);
-    const p = parseInt(document.querySelector('[name="programming"]')?.value||0);
-    const m = parseInt(document.querySelector('[name="missionPoints"]')?.value||0);
-    const total = d + p + m;
-    const el = document.getElementById('total-score-display');
-    if (el) el.textContent = total;
-  },
-
-  async _save(id) {
-    const form = document.getElementById('judging-form');
-    const raw  = Object.fromEntries(new FormData(form));
     const data = {
-      teamId:    raw.teamId,
-      judgeName: raw.judgeName,
-      category:  raw.category,
-      criteria:  { robotDesign: +raw.robotDesign, programming: +raw.programming, missionPoints: +raw.missionPoints },
-      score:     +raw.robotDesign + +raw.programming + +raw.missionPoints,
-      finalScore:+raw.robotDesign + +raw.programming + +raw.missionPoints,
-      comments:  raw.comments,
-      violations:raw.violations,
-      status:    raw.status,
+      fullName:        raw.fullName.trim(),
+      contactNumber:   raw.contactNumber || null,
+      gender:          raw.gender        || null,
+      season:          raw.season        || null,
+      judgingCategory: raw.judgingCategory || null,
+      status:          raw.status || 'active',
     };
-    if (!data.teamId) { Toast.error('Team is required.'); return; }
-    if (id) { await DB.update('judging', id, data); Toast.success('Score updated!'); }
-    else    { await DB.insert('judging', data);     Toast.success('Score submitted!'); }
-    Modal.close(); await this._renderRankings(); await this._loadTable();
+
+    try {
+      if (id) {
+        await DB.update('judging', id, data);
+        Toast.success('Judge updated successfully!');
+      } else {
+        await DB.insert('judging', data);
+        Toast.success('Judge added successfully!');
+      }
+      Modal.close();
+      await this._renderStats();
+      await this._loadTable();
+    } catch (err) {
+      Toast.error('Failed to save judge. Please try again.');
+      console.error('[Judging] Save error:', err);
+    }
   },
 
-  async exportCSV() {
-    const _teamsMap = await DB.getLookup('teams');
-    const rows = await this._getData();
-    Utils.downloadCSV('WRO_Scores.csv',
-      ['ID','Team','Judge','Category','Robot Design','Programming','Mission Points','Final Score','Ranking','Violations','Status'],
-      rows.map(j => {
-        const t = _teamsMap[j.teamId];
-        return [j.id,t?.teamName||'',j.judgeName,j.category,j.criteria?.robotDesign,j.criteria?.programming,j.criteria?.missionPoints,j.finalScore,j.ranking,j.violations,j.status];
-      })
+  // ── Delete Confirmation ────────────────────────────────────
+  _confirmDelete(id, name) {
+    Modal.show('Remove Judge', `
+      <div class="text-center py-4">
+        <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+          style="background:rgba(230,57,70,0.12);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </div>
+        <p class="text-white font-semibold text-base">Remove <span style="color:#D4A017">${name}</span>?</p>
+        <p class="text-slate-400 text-sm mt-2">This judge will be removed from the database. This action can be reviewed in the audit log.</p>
+      </div>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">Cancel</button>
+       <button onclick="Judging._delete('${id}')" class="px-5 py-2 rounded-xl text-white text-sm font-semibold" style="background:#e63946;">Remove Judge</button>`,
+      'max-w-md'
     );
-    Toast.success('Scores exported!');
+  },
+
+  async _delete(id) {
+    await DB.delete('judging', id);
+    Toast.success('Judge removed.');
+    Modal.close();
+    await this._renderStats();
+    await this._loadTable();
+  },
+
+  // ── CSV Export ─────────────────────────────────────────────
+  async exportCSV() {
+    const rows = await this._getData();
+    Utils.downloadCSV('WRO_Judges.csv',
+      ['ID', 'Full Name', 'Gender', 'Contact Number', 'Season', 'Judging Category', 'Status', 'Created At'],
+      rows.map(j => [
+        j.id,
+        j.fullName    || j.full_name     || '',
+        j.gender      || '',
+        j.contactNumber || j.contact_number || '',
+        j.season      || '',
+        j.judgingCategory || j.judging_category || '',
+        j.status      || '',
+        j.createdAt   || j.created_at   || '',
+      ])
+    );
+    Toast.success('Judges exported to CSV!');
   },
 };
 

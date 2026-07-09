@@ -188,28 +188,27 @@ CREATE TABLE team_members (
   CONSTRAINT fk_tm_student FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ── Judging ───────────────────────────────────────────────────
+-- ── Judges (Master Data) ──────────────────────────────────────
 DROP TABLE IF EXISTS judging;
-CREATE TABLE judging (
-  id          VARCHAR(60)   NOT NULL,
-  team_id     VARCHAR(60)   DEFAULT NULL,
-  judge_name  VARCHAR(200)  DEFAULT NULL,
-  category    VARCHAR(200)  DEFAULT NULL,
-  criteria    JSON          DEFAULT NULL COMMENT '{"robotDesign":0,"programming":0,"missionPoints":0}',
-  score       INT           DEFAULT 0,
-  comments    TEXT          DEFAULT NULL,
-  violations  VARCHAR(200)  DEFAULT 'None',
-  final_score INT           DEFAULT 0,
-  ranking     INT           DEFAULT NULL,
-  status      ENUM('draft','submitted','finalized') DEFAULT 'draft',
-  is_deleted  TINYINT(1)    NOT NULL DEFAULT 0,
-  deleted_at  DATETIME      DEFAULT NULL,
-  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+DROP TABLE IF EXISTS judges;
+CREATE TABLE judges (
+  id                VARCHAR(60)   NOT NULL,
+  full_name         VARCHAR(200)  NOT NULL,
+  contact_number    VARCHAR(50)   DEFAULT NULL,
+  gender            ENUM('Male','Female','Other') DEFAULT NULL,
+  season            VARCHAR(50)   DEFAULT NULL,
+  judging_category  VARCHAR(200)  DEFAULT NULL,
+  status            ENUM('active','inactive') NOT NULL DEFAULT 'active',
+  is_deleted        TINYINT(1)    NOT NULL DEFAULT 0,
+  deleted_at        DATETIME      DEFAULT NULL,
+  created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY idx_team (team_id),
-  KEY idx_final_score (final_score),
-  CONSTRAINT fk_judging_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE SET NULL
+  KEY idx_season   (season),
+  KEY idx_category (judging_category(100)),
+  KEY idx_status   (status),
+  KEY idx_gender   (gender),
+  KEY idx_name     (full_name(100))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Awards ────────────────────────────────────────────────────

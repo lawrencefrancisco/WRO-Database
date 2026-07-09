@@ -88,7 +88,7 @@ const App = {
       {
         label: 'Operations',
         items: [
-          { route: 'judging',        icon: ICONS.judging,        label: 'Judging',       perm: 'judging.read' },
+          { route: 'judging',        icon: ICONS.judging,        label: 'Judges',        perm: 'judging.read' },
           { route: 'awards',         icon: ICONS.awards,         label: 'Awards',        perm: 'awards.read' },
           { route: 'payments',       icon: ICONS.payments,       label: 'Payments',      perm: 'payments.read' },
           { route: 'communications', icon: ICONS.communications, label: 'Communications',perm: 'communications.read' },
