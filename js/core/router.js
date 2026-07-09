@@ -25,6 +25,14 @@ const Router = {
       el.classList.toggle('active', el.dataset.route === name);
     });
 
+    // Auto-close mobile sidebar drawer on navigation
+    const sb = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    if (sb && sb.classList.contains('mobile-open')) {
+      sb.classList.remove('mobile-open');
+      if (overlay) overlay.classList.add('hidden');
+    }
+
     // Update page title
     const titleEl = document.getElementById('page-title');
     const subtitleEl = document.getElementById('page-subtitle');

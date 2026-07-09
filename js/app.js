@@ -200,7 +200,6 @@ const App = {
 
   toggleSidebar() {
     const sb      = document.getElementById('sidebar');
-    const main    = document.getElementById('main-content');
     const overlay = document.getElementById('mobile-overlay');
     const isMobile = window.innerWidth <= 768;
 
@@ -212,10 +211,7 @@ const App = {
       }
     } else {
       // Desktop: collapse to icon-only strip
-      const isCollapsed = sb.classList.toggle('collapsed');
-      if (main) {
-        main.style.marginLeft = isCollapsed ? '68px' : '';
-      }
+      sb.classList.toggle('collapsed');
     }
   },
 };

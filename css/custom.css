@@ -703,6 +703,9 @@ html, body {
     padding-left: 12px;
     padding-right: 12px;
   }
+  #sidebar.mobile-open .nav-icon {
+    margin: 0;
+  }
   #sidebar.mobile-open > div:last-child .nav-label {
     display: block;
   }
