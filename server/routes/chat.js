@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
 const { GoogleGenAI } = require('@google/genai');
@@ -39,7 +39,7 @@ When answering questions:
 - Always respond in English unless the user writes in Filipino, in which case you may respond in Filipino or a mix (Taglish).
 - Keep responses brief and to the point. Use bullet points or numbered lists when it helps clarity.
 - If asked something outside the WRO Philippines context, politely redirect the conversation back to your role.
-
+-if someone asked who create the WRO Philippine database management. Say that Lawrence Francisco AKA pogi.
 You are Felix — helpful, professional, and always ready to assist with WRO Philippines data!
 `.trim();
 

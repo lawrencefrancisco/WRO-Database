@@ -176,13 +176,16 @@
 
   <!-- ── AI Chatbot Chathead + Modal ──────────────────────────── -->
 
-  <!-- Floating Chathead Button -->
-  <button id="chat-head-btn" class="chat-head-btn" onclick="ChatBot.open()" title="Chat with Felix – WRO Assistant" aria-label="Open AI Chat Assistant">
-    <span class="chat-head-icon" style="width: 100%; height: 100%; border-radius: 50%; overflow: hidden;">
-      <img src="assets/image/felix-profile.png" alt="Felix Profile" style="width: 100%; height: 100%; object-fit: cover;">
-    </span>
-    <span class="chat-head-ping"></span>
-  </button>
+  <!-- Floating Chathead Wrapper -->
+  <div id="chat-head-wrapper" class="chat-head-wrapper">
+    <div class="chat-head-tooltip">Ask Felix! ✨</div>
+    <button id="chat-head-btn" class="chat-head-btn" onclick="ChatBot.open()" title="Chat with Felix – WRO Assistant" aria-label="Open AI Chat Assistant">
+      <span class="chat-head-icon">
+        <img src="assets/image/felix-profile.png" alt="Felix Profile">
+      </span>
+      <span class="chat-head-ping"></span>
+    </button>
+  </div>
 
   <!-- Chat Modal -->
   <div id="chat-modal" class="chat-modal" aria-hidden="true" role="dialog" aria-label="Felix AI Assistant">
