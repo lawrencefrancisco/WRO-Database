@@ -56,10 +56,16 @@ html { scroll-behavior: smooth; }
 body { background: var(--bg-base); color: var(--txt-primary); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 ::selection { background: rgba(245,200,0,0.28); color: #fff; }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-surface); }
-::-webkit-scrollbar-thumb { background: var(--felta-yellow-d); border-radius: 999px; }
+::-webkit-scrollbar-thumb { background: var(--felta-yellow-d); border-radius: 999px; border: 2px solid var(--bg-surface); }
 ::-webkit-scrollbar-thumb:hover { background: var(--felta-yellow); }
+
+/* Cross-browser standard scrollbar styling (Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--felta-yellow-d) var(--bg-surface);
+}
 
 /* ══ GLASSMORPHISM ══ */
 .glass {
