@@ -5,8 +5,8 @@
 // ============================================================
 
 const express = require('express');
-const router  = express.Router();
-const pool    = require('../db/pool');
+const router = express.Router();
+const pool = require('../db/pool');
 const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
@@ -14,7 +14,7 @@ router.use(authMiddleware);
 // ── GET /api/judging – list all judges ────────────────────────
 router.get('/', async (req, res) => {
   try {
-    let sql    = 'SELECT * FROM judges WHERE is_deleted = 0';
+    let sql = 'SELECT * FROM judges WHERE is_deleted = 0';
     const params = [];
 
     if (req.query.season) {
@@ -51,19 +51,19 @@ router.get('/:id', async (req, res) => {
 // ── POST /api/judging – create a judge ───────────────────────
 router.post('/', async (req, res) => {
   try {
-    const d  = req.body;
+    const d = req.body;
     const id = d.id || `JDG_${Date.now()}`;
 
     if (!d.fullName && !d.full_name) {
       return res.status(400).json({ success: false, error: 'Full name is required.' });
     }
 
-    const fullName        = d.fullName        || d.full_name        || null;
-    const contactNumber   = d.contactNumber   || d.contact_number   || null;
-    const gender          = d.gender          || null;
-    const season          = d.season          || null;
+    const fullName = d.fullName || d.full_name || null;
+    const contactNumber = d.contactNumber || d.contact_number || null;
+    const gender = d.gender || null;
+    const season = d.season || null;
     const judgingCategory = d.judgingCategory || d.judging_category || null;
-    const status          = d.status          || 'active';
+    const status = d.status || 'active';
 
     await pool.execute(
       `INSERT INTO judges
@@ -85,12 +85,12 @@ router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
 
-    const fullName        = d.fullName        || d.full_name        || null;
-    const contactNumber   = d.contactNumber   || d.contact_number   || null;
-    const gender          = d.gender          || null;
-    const season          = d.season          || null;
+    const fullName = d.fullName || d.full_name || null;
+    const contactNumber = d.contactNumber || d.contact_number || null;
+    const gender = d.gender || null;
+    const season = d.season || null;
     const judgingCategory = d.judgingCategory || d.judging_category || null;
-    const status          = d.status          || 'active';
+    const status = d.status || 'active';
 
     await pool.execute(
       `UPDATE judges
@@ -132,7 +132,7 @@ router.get('/:id/assignments', async (req, res) => {
       'SELECT season, category FROM judge_assignments WHERE judge_id = ? ORDER BY season, category',
       [req.params.id]
     );
-    const seasons    = [...new Set(rows.map(r => r.season))];
+    const seasons = [...new Set(rows.map(r => r.season))];
     const categories = [...new Set(rows.map(r => r.category))];
     res.json({ seasons, categories });
   } catch (err) {
@@ -206,7 +206,7 @@ router.put('/:id/assignments', async (req, res) => {
     // Bulk-insert new pairs (if any)
     if (pairs.length > 0) {
       const placeholders = pairs.map(() => '(?, ?, ?)').join(', ');
-      const flat         = pairs.flat();
+      const flat = pairs.flat();
       await conn.execute(
         `INSERT INTO judge_assignments (judge_id, season, category) VALUES ${placeholders}`,
         flat

@@ -9,7 +9,7 @@ const Judging = {
 
   async render() {
     const content = document.getElementById('page-content');
-    const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
+    const dbSeasons = (await DB.getAll('seasons')).sort((a, b) => (b.year || 0) - (a.year || 0));
 
     const _icon = (d, color = 'currentColor') =>
       `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -102,18 +102,18 @@ const Judging = {
 
   // ── KPI Cards ──────────────────────────────────────────────
   async _renderStats() {
-    const all    = (await DB.getAll('judging')).filter(j => !j.isDeleted && !j.is_deleted);
+    const all = (await DB.getAll('judging')).filter(j => !j.isDeleted && !j.is_deleted);
     const active = all.filter(j => (j.status || j.status) === 'active').length;
-    const male   = all.filter(j => j.gender === 'Male').length;
+    const male = all.filter(j => j.gender === 'Male').length;
     const female = all.filter(j => j.gender === 'Female').length;
 
     const _si = (d, c) => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
     const cards = [
-      { label: 'Total Judges',  value: all.length, icon: _si('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#D4A017'),   color: '#D4A017' },
-      { label: 'Active',        value: active,      icon: _si('<polyline points="20 6 9 17 4 12"/>',                                   '#2dc653'),   color: '#2dc653' },
-      { label: 'Male',          value: male,        icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#1d6fa4'), color: '#1d6fa4' },
-      { label: 'Female',        value: female,      icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#e91e8c'), color: '#e91e8c' },
+      { label: 'Total Judges', value: all.length, icon: _si('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#D4A017'), color: '#D4A017' },
+      { label: 'Active', value: active, icon: _si('<polyline points="20 6 9 17 4 12"/>', '#2dc653'), color: '#2dc653' },
+      { label: 'Male', value: male, icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#1d6fa4'), color: '#1d6fa4' },
+      { label: 'Female', value: female, icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#e91e8c'), color: '#e91e8c' },
     ];
 
     const el = document.getElementById('judge-stats');
@@ -133,7 +133,7 @@ const Judging = {
     if (this._search) {
       const q = this._search.toLowerCase();
       rows = rows.filter(r =>
-        (r.fullName  || r.full_name  || '').toLowerCase().includes(q) ||
+        (r.fullName || r.full_name || '').toLowerCase().includes(q) ||
         (r.contactNumber || r.contact_number || '').toLowerCase().includes(q)
       );
     }
@@ -155,15 +155,15 @@ const Judging = {
 
   // ── Table Render ───────────────────────────────────────────
   async _loadTable() {
-    const rows  = await this._getData();
+    const rows = await this._getData();
     const start = (this._page - 1) * this._perPage;
-    const page  = rows.slice(start, start + this._perPage);
+    const page = rows.slice(start, start + this._perPage);
     const tbody = document.getElementById('judges-tbody');
     if (!tbody) return;
 
     const genderBadge = (g) => {
       const colors = { Male: '#1d6fa4', Female: '#e91e8c', Other: '#8338ec' };
-      const color  = colors[g] || '#5a6a8a';
+      const color = colors[g] || '#5a6a8a';
       return g ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:${color}20;color:${color}">${g}</span>` : '<span class="text-slate-600">—</span>';
     };
 
@@ -182,11 +182,11 @@ const Judging = {
         </td></tr>`;
     } else {
       tbody.innerHTML = page.map(j => {
-        const name     = j.fullName     || j.full_name     || '—';
-        const contact  = j.contactNumber|| j.contact_number|| '—';
+        const name = j.fullName || j.full_name || '—';
+        const contact = j.contactNumber || j.contact_number || '—';
         const category = j.judgingCategory || j.judging_category || '—';
-        const season   = j.season || '—';
-        const initial  = name.charAt(0).toUpperCase();
+        const season = j.season || '—';
+        const initial = name.charAt(0).toUpperCase();
         const statusBadge = (j.status === 'active')
           ? `<span class="badge" style="background:rgba(45,198,83,0.15);color:#2dc653;">Active</span>`
           : `<span class="badge" style="background:rgba(90,106,138,0.2);color:#5a6a8a;">Inactive</span>`;
@@ -244,7 +244,7 @@ const Judging = {
     const total = rows.length;
     const countEl = document.getElementById('judge-count');
     const countBotEl = document.getElementById('judge-count-bottom');
-    if (countEl)    countEl.textContent    = `${total} judge${total !== 1 ? 's' : ''}`;
+    if (countEl) countEl.textContent = `${total} judge${total !== 1 ? 's' : ''}`;
     if (countBotEl) countBotEl.textContent = `Showing ${Math.min(start + 1, total)}–${Math.min(start + this._perPage, total)} of ${total}`;
 
     Utils.renderPagination('judges-pagination', this._page, Math.ceil(total / this._perPage), 'Judging._goPage');
@@ -252,13 +252,13 @@ const Judging = {
 
   // ── Pagination & Filters ───────────────────────────────────
   async _goPage(p) { Judging._page = p; await Judging._loadTable(); },
-  _onSearch: Utils.debounce(async function(v) {
+  _onSearch: Utils.debounce(async function (v) {
     Judging._search = v;
-    Judging._page   = 1;
+    Judging._page = 1;
     await Judging._loadTable();
   }, 300),
   async _onFilter() {
-    this._filterSeason   = document.getElementById('judge-season')?.value   || '';
+    this._filterSeason = document.getElementById('judge-season')?.value || '';
     this._filterCategory = document.getElementById('judge-category')?.value || '';
     this._page = 1;
     await this._loadTable();
@@ -277,7 +277,7 @@ const Judging = {
       return `<option ${cat === c ? 'selected' : ''}>${c}</option>`;
     }).join('');
 
-    const name    = j?.fullName    || j?.full_name    || '';
+    const name = j?.fullName || j?.full_name || '';
     const contact = j?.contactNumber || j?.contact_number || '';
 
     Modal.show(id ? 'Edit Judge' : 'Add Judge', `
@@ -302,9 +302,9 @@ const Judging = {
           <label class="form-label">Gender</label>
           <select class="form-input" name="gender">
             <option value="">— Select Gender —</option>
-            ${['Male','Female','Other'].map(g =>
-              `<option ${j?.gender === g ? 'selected' : ''}>${g}</option>`
-            ).join('')}
+            ${['Male', 'Female', 'Other'].map(g =>
+      `<option ${j?.gender === g ? 'selected' : ''}>${g}</option>`
+    ).join('')}
           </select>
         </div>
 
@@ -361,12 +361,12 @@ const Judging = {
     }
 
     const data = {
-      fullName:        raw.fullName.trim(),
-      contactNumber:   raw.contactNumber || null,
-      gender:          raw.gender        || null,
-      season:          raw.season        || null,
+      fullName: raw.fullName.trim(),
+      contactNumber: raw.contactNumber || null,
+      gender: raw.gender || null,
+      season: raw.season || null,
       judgingCategory: raw.judgingCategory || null,
-      status:          raw.status || 'active',
+      status: raw.status || 'active',
     };
 
     try {
@@ -424,17 +424,17 @@ const Judging = {
     );
 
     // Fetch existing assignments for this judge
-    let savedSeasons    = [];
+    let savedSeasons = [];
     let savedCategories = [];
     try {
       const res = await DB._request('GET', `/judging/${judgeId}/assignments`);
       if (res && !res.error) {
-        savedSeasons    = res.seasons    || [];
+        savedSeasons = res.seasons || [];
         savedCategories = res.categories || [];
       }
     } catch (_) { /* silently ignore – start with empty selection */ }
 
-    const allSeasons    = Seeder.SEASONS;
+    const allSeasons = Seeder.SEASONS;
     const allCategories = Seeder.WRO_CATEGORIES;
 
     // Build chip HTML for a list of values
@@ -447,13 +447,12 @@ const Judging = {
             data-value="${item.replace(/"/g, '&quot;')}"
             onclick="Judging._toggleChip(this)"
             class="assignment-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
-            style="${
-              isSelected
-                ? groupId === 'season'
-                    ? 'background:rgba(212,160,23,0.22);color:#D4A017;border-color:rgba(212,160,23,0.55);'
-                    : 'background:rgba(30,158,191,0.22);color:#1E9EBF;border-color:rgba(30,158,191,0.55);'
-                : 'background:rgba(255,255,255,0.04);color:#6B7494;border-color:rgba(255,255,255,0.10);'
-            }"
+            style="${isSelected
+            ? groupId === 'season'
+              ? 'background:rgba(212,160,23,0.22);color:#D4A017;border-color:rgba(212,160,23,0.55);'
+              : 'background:rgba(30,158,191,0.22);color:#1E9EBF;border-color:rgba(30,158,191,0.55);'
+            : 'background:rgba(255,255,255,0.04);color:#6B7494;border-color:rgba(255,255,255,0.10);'
+          }"
             aria-pressed="${isSelected}">${item}</button>`;
       }).join('');
 
@@ -518,7 +517,7 @@ const Judging = {
     // Replace modal content in-place (avoids the flash of a second overlay)
     const overlayBox = document.querySelector('#modal-overlay .modal-box');
     if (overlayBox) {
-      overlayBox.querySelector('.flex-1').innerHTML  = bodyHTML;
+      overlayBox.querySelector('.flex-1').innerHTML = bodyHTML;
       const existingFooter = overlayBox.querySelector('.p-6.border-t');
       if (existingFooter) {
         existingFooter.innerHTML = footerHTML;
@@ -536,9 +535,9 @@ const Judging = {
 
   // Toggle a chip's selected state
   _toggleChip(btn) {
-    const group      = btn.dataset.group;
+    const group = btn.dataset.group;
     const isSelected = btn.getAttribute('aria-pressed') === 'true';
-    const nextState  = !isSelected;
+    const nextState = !isSelected;
 
     const activeStyle = group === 'season'
       ? 'background:rgba(212,160,23,0.22);color:#D4A017;border-color:rgba(212,160,23,0.55);'
@@ -574,7 +573,7 @@ const Judging = {
         document.querySelectorAll(`[data-group="${group}"][aria-pressed="true"]`)
       ).map(b => b.dataset.value);
 
-    const seasons    = getSelected('season');
+    const seasons = getSelected('season');
     const categories = getSelected('category');
 
     if (seasons.length === 0 && categories.length === 0) {
@@ -619,13 +618,13 @@ const Judging = {
       ['ID', 'Full Name', 'Gender', 'Contact Number', 'Season', 'Judging Category', 'Status', 'Created At'],
       rows.map(j => [
         j.id,
-        j.fullName    || j.full_name     || '',
-        j.gender      || '',
+        j.fullName || j.full_name || '',
+        j.gender || '',
         j.contactNumber || j.contact_number || '',
-        j.season      || '',
+        j.season || '',
         j.judgingCategory || j.judging_category || '',
-        j.status      || '',
-        j.createdAt   || j.created_at   || '',
+        j.status || '',
+        j.createdAt || j.created_at || '',
       ])
     );
     Toast.success('Judges exported to CSV!');
