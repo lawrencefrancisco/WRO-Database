@@ -2,6 +2,181 @@
 // WRO Philippines DBMS – Main Application Controller
 // ============================================================
 
+// ─────────────────────────────────────────────────────────────
+// SidebarManager – centralised hamburger menu logic
+// Handles: mobile open/close, scroll lock, ARIA, focus trapping
+//          desktop collapse, and body-class-driven margin shift
+// ─────────────────────────────────────────────────────────────
+const SidebarManager = {
+  _mobileOpen: false,
+  _collapsed:  false,
+
+  // ── Getters ──────────────────────────────────────────────────
+  isOpen()      { return this._mobileOpen; },
+  isCollapsed() { return this._collapsed; },
+
+  // ── Mobile: open ─────────────────────────────────────────────
+  open() {
+    const sb      = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    const toggle  = document.getElementById('sidebar-toggle');
+    if (!sb || this._mobileOpen) return;
+
+    this._mobileOpen = true;
+
+    // Show sidebar
+    sb.classList.add('mobile-open');
+    sb.removeAttribute('aria-hidden');
+
+    // Show overlay (CSS transition via class)
+    if (overlay) {
+      overlay.classList.remove('hidden');
+      // Force reflow so the opacity transition fires
+      void overlay.offsetWidth;
+      overlay.classList.add('overlay-visible');
+    }
+
+    // ARIA on toggle button
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+
+    // Body scroll lock
+    document.body.classList.add('sidebar-open');
+
+    // Move focus to first focusable element inside sidebar
+    const firstFocusable = sb.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (firstFocusable) firstFocusable.focus();
+
+    // Trap focus within sidebar while it's open
+    this._trapFocus(sb);
+  },
+
+  // ── Mobile: close ────────────────────────────────────────────
+  close() {
+    const sb      = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    const toggle  = document.getElementById('sidebar-toggle');
+    if (!sb || !this._mobileOpen) return;
+
+    this._mobileOpen = false;
+
+    // Hide sidebar
+    sb.classList.remove('mobile-open');
+    sb.setAttribute('aria-hidden', 'true');
+
+    // Fade out overlay then hide it
+    if (overlay) {
+      overlay.classList.remove('overlay-visible');
+      // Wait for CSS transition to finish before hiding from DOM
+      const onTransitionEnd = () => {
+        overlay.classList.add('hidden');
+        overlay.removeEventListener('transitionend', onTransitionEnd);
+      };
+      overlay.addEventListener('transitionend', onTransitionEnd);
+    }
+
+    // ARIA on toggle button
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+
+    // Remove body scroll lock
+    document.body.classList.remove('sidebar-open');
+
+    // Release focus trap
+    this._releaseTrap();
+
+    // Return focus to the toggle button
+    if (toggle) toggle.focus();
+  },
+
+  // ── Mobile: toggle ───────────────────────────────────────────
+  toggle() {
+    this._mobileOpen ? this.close() : this.open();
+  },
+
+  // ── Desktop: collapse/expand icon-only strip ─────────────────
+  toggleCollapse() {
+    const sb = document.getElementById('sidebar');
+    if (!sb) return;
+    this._collapsed = !this._collapsed;
+    sb.classList.toggle('collapsed', this._collapsed);
+    // Body class drives the CSS sibling #main-content margin
+    document.body.classList.toggle('sidebar-collapsed', this._collapsed);
+  },
+
+  // ── Close sidebar when a nav link is clicked on mobile ───────
+  onNavClick() {
+    if (window.innerWidth <= 768 && this._mobileOpen) {
+      this.close();
+    }
+  },
+
+  // ── Focus trapping ───────────────────────────────────────────
+  _boundKeydown: null,
+  _trapFocus(container) {
+    const focusable = () => Array.from(
+      container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    ).filter(el => !el.disabled && el.offsetParent !== null);
+
+    this._boundKeydown = (e) => {
+      if (e.key !== 'Tab') return;
+      const els   = focusable();
+      const first = els[0];
+      const last  = els[els.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last)  { e.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', this._boundKeydown);
+  },
+  _releaseTrap() {
+    if (this._boundKeydown) {
+      document.removeEventListener('keydown', this._boundKeydown);
+      this._boundKeydown = null;
+    }
+  },
+
+  // ── Initialise after sidebar & topbar are rendered ───────────
+  init() {
+    const overlay = document.getElementById('mobile-overlay');
+    const sb      = document.getElementById('sidebar');
+
+    // Set initial ARIA state
+    if (sb) sb.setAttribute('aria-hidden', 'true');
+
+    // Overlay click closes sidebar (replaces inline onclick)
+    if (overlay) {
+      // Remove the old inline handler if present
+      overlay.removeAttribute('onclick');
+      overlay.addEventListener('click', () => this.close());
+    }
+
+    // Close sidebar on nav item click (mobile UX)
+    if (sb) {
+      sb.addEventListener('click', (e) => {
+        const navItem = e.target.closest('[data-route]');
+        if (navItem) this.onNavClick();
+      });
+    }
+
+    // Handle resize: if user rotates device to desktop, clean up mobile state
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768 && this._mobileOpen) {
+        // Silently clean up without animating
+        this._mobileOpen = false;
+        if (sb)      { sb.classList.remove('mobile-open'); sb.setAttribute('aria-hidden', 'true'); }
+        if (overlay) { overlay.classList.remove('overlay-visible'); overlay.classList.add('hidden'); }
+        document.body.classList.remove('sidebar-open');
+        this._releaseTrap();
+        const toggle = document.getElementById('sidebar-toggle');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  },
+};
+
+window.SidebarManager = SidebarManager;
+
 const App = {
 
   init() {
@@ -31,12 +206,22 @@ const App = {
     this._renderSidebar();
     this._renderTopbar();
 
+    // Initialise sidebar manager AFTER both elements are in the DOM
+    SidebarManager.init();
+
     // Navigate to dashboard
     Router.navigate('dashboard');
 
-    // Keyboard shortcut: / to focus search
+    // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') Modal.close();
+      if (e.key === 'Escape') {
+        // Close mobile sidebar first; fall through to modal if sidebar is not open
+        if (SidebarManager.isOpen()) {
+          SidebarManager.close();
+        } else {
+          Modal.close();
+        }
+      }
     });
   },
 
@@ -113,13 +298,14 @@ const App = {
       });
       if (visibleItems.length === 0) return '';
       return `
-        <div class="mb-4">
-          <div class="sidebar-section-label text-xs font-bold text-slate-600 uppercase tracking-widest px-3 mb-1">${group.label}</div>
+        <div class="mb-4" role="group" aria-label="${group.label}">
+          <div class="sidebar-section-label text-xs font-bold text-slate-600 uppercase tracking-widest px-3 mb-1" aria-hidden="true">${group.label}</div>
           ${visibleItems.map(item => `
             <button data-route="${item.route}"
               onclick="Router.navigate('${item.route}')"
+              aria-label="Navigate to ${item.label}"
               class="nav-item w-full flex items-center gap-3 px-3 py-2.5 mb-0.5 text-left">
-              <span class="nav-icon w-5 flex items-center justify-center text-slate-400">${item.icon}</span>
+              <span class="nav-icon w-5 flex items-center justify-center text-slate-400" aria-hidden="true">${item.icon}</span>
               <span class="nav-label text-sm font-medium text-slate-300">${item.label}</span>
             </button>`).join('')}
         </div>`;
@@ -129,19 +315,19 @@ const App = {
       <!-- Logo -->
       <div style="padding:16px;border-bottom:1px solid rgba(212,160,23,0.2);">
         <div class="flex items-center gap-3">
-          <img id="sidebar-logo" src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines"
+          <img id="sidebar-logo" src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines logo"
             class="sidebar-logo-text js-theme-logo h-12 object-contain"
             style="filter:drop-shadow(0 1px 6px rgba(212,160,23,0.35));max-width:180px;">
           <div class="sidebar-logo-text" style="white-space:nowrap;">
-            <div style="font-size:10px;font-weight:700;color:#a89060;letter-spacing:0.4px;">DATABASE SYSTEM</div>
+            <div style="font-size:10px;font-weight:700;color:#a89060;letter-spacing:0.4px;" aria-hidden="true">DATABASE SYSTEM</div>
           </div>
         </div>
         <!-- WRO Rainbow Bar -->
-        <div class="wro-rainbow-bar rounded-full mt-3"></div>
+        <div class="wro-rainbow-bar rounded-full mt-3" role="presentation"></div>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 overflow-y-auto p-3 space-y-1" style="scrollbar-width:thin;">
+      <nav role="navigation" aria-label="Main navigation" class="flex-1 overflow-y-auto p-3 space-y-1" style="scrollbar-width:thin;">
         ${navHTML}
       </nav>
 
@@ -149,14 +335,14 @@ const App = {
       <div style="padding:14px;border-top:1px solid rgba(212,160,23,0.2);">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-            style="background:linear-gradient(135deg,#D4A017,#8B6914);">
+            style="background:linear-gradient(135deg,#D4A017,#8B6914);" aria-hidden="true">
             ${(user?.name||'?').charAt(0)}
           </div>
           <div class="nav-label flex-1 overflow-hidden">
             <div class="text-sm font-semibold truncate" style="color:#f0e9d2;">${user?.name}</div>
             <div class="text-xs" style="color:#a89060;">${ri.label}</div>
           </div>
-          <button onclick="AUTH.logout()" title="Logout" class="nav-label transition" style="color:#5a6a8a;background:none;border:none;cursor:pointer;display:flex;align-items:center;" onmouseover="this.style.color='#e63946'" onmouseout="this.style.color='#5a6a8a'">${ICONS.logout}</button>
+          <button onclick="AUTH.logout()" title="Log out" aria-label="Log out" class="nav-label transition" style="color:#5a6a8a;background:none;border:none;cursor:pointer;display:flex;align-items:center;" onmouseover="this.style.color='#e63946'" onmouseout="this.style.color='#5a6a8a'">${ICONS.logout}</button>
         </div>
       </div>`;
   },
@@ -166,10 +352,13 @@ const App = {
     if (!topbar) return;
     topbar.innerHTML = `
       <div class="flex items-center gap-3 flex-1">
-        <!-- Mobile toggle -->
-        <button id="sidebar-toggle" onclick="App.toggleSidebar()"
+        <!-- Mobile hamburger toggle -->
+        <button id="sidebar-toggle"
+          aria-label="Toggle navigation menu"
+          aria-controls="sidebar"
+          aria-expanded="false"
           class="p-2 rounded-xl transition" style="color:#a89060;background:rgba(212,160,23,0.08);display:flex;align-items:center;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <!-- Page Title -->
         <div class="flex items-center gap-2">
@@ -178,40 +367,36 @@ const App = {
       </div>
       <div class="flex items-center gap-3">
         <p id="page-subtitle" class="text-xs hidden md:block" style="color:#5a6a8a;"></p>
-        
-        <button onclick="ThemeManager.toggle()" id="theme-toggle-icon" class="p-2 rounded-xl transition hover:bg-slate-700/50" style="color:#a89060; display:flex; align-items:center;" title="Toggle Light/Dark Mode">
+
+        <button onclick="ThemeManager.toggle()" id="theme-toggle-icon" class="p-2 rounded-xl transition hover:bg-slate-700/50" style="color:#a89060; display:flex; align-items:center;" title="Toggle Light/Dark Mode" aria-label="Toggle light/dark mode">
           <!-- Default sun icon (handled by ThemeManager) -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         </button>
 
-        <div class="flex items-center gap-2 px-3 py-1.5 glass-light rounded-xl">
-          <div class="pulse-dot"></div>
+        <div class="flex items-center gap-2 px-3 py-1.5 glass-light rounded-xl" aria-live="polite" aria-label="System status: online">
+          <div class="pulse-dot" aria-hidden="true"></div>
           <span class="text-xs font-medium" style="color:#D4A017;">Live</span>
         </div>
         <div class="text-xs hidden md:block" style="color:#5a6a8a;">${new Date().toLocaleDateString('en-PH')}</div>
         <button onclick="AUTH.logout()" class="px-3 py-1.5 rounded-xl text-xs font-medium transition"
-          style="background:rgba(230,57,70,0.12);color:#e63946;border:1px solid rgba(230,57,70,0.2);">
+          style="background:rgba(230,57,70,0.12);color:#e63946;border:1px solid rgba(230,57,70,0.2);"
+          aria-label="Log out">
           Logout
         </button>
       </div>`;
+    // Attach toggle handler AFTER DOM is in place
+    document.getElementById('sidebar-toggle')?.addEventListener('click', () => App.toggleSidebar());
     // Update theme icon after render
     ThemeManager.updateIcon();
   },
 
   toggleSidebar() {
-    const sb      = document.getElementById('sidebar');
-    const overlay = document.getElementById('mobile-overlay');
+    // Use 768px as the breakpoint (matches CSS max-width: 768px)
     const isMobile = window.innerWidth <= 768;
-
     if (isMobile) {
-      // Mobile: slide the sidebar in/out as an overlay
-      const isOpen = sb.classList.toggle('mobile-open');
-      if (overlay) {
-        overlay.classList.toggle('hidden', !isOpen);
-      }
+      SidebarManager.toggle();
     } else {
-      // Desktop: collapse to icon-only strip
-      sb.classList.toggle('collapsed');
+      SidebarManager.toggleCollapse();
     }
   },
 };

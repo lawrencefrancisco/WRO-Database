@@ -160,14 +160,25 @@ input[type='checkbox'] { accent-color: var(--felta-yellow); }
 
 /* ══ SIDEBAR ══ */
 #sidebar {
-  transition: width 0.3s var(--ease-in-out), transform 0.3s var(--ease-in-out);
+  transition: width 0.3s var(--ease-in-out), transform 0.32s var(--ease-in-out);
   background: rgba(9, 14, 40, 0.99) !important;
   border-right: 1px solid var(--border-primary) !important;
   box-shadow: 4px 0 40px rgba(0,0,0,0.45);
+  will-change: transform, width;
 }
 #sidebar.collapsed { width: 68px; }
 #sidebar.collapsed .nav-label, #sidebar.collapsed .sidebar-logo-text, #sidebar.collapsed .sidebar-section-label { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
 #sidebar .nav-label, #sidebar .sidebar-logo-text, #sidebar .sidebar-section-label { transition: opacity 0.2s, width 0.2s; }
+
+/* ── Sidebar: focus-visible ring for keyboard nav ── */
+#sidebar .nav-item:focus-visible {
+  outline: 2px solid var(--felta-yellow);
+  outline-offset: -2px;
+}
+#sidebar-toggle:focus-visible {
+  outline: 2px solid var(--felta-yellow);
+  outline-offset: 2px;
+}
 
 .nav-item { position: relative; transition: all 0.18s var(--ease-in-out); border-radius: 10px; border-left: 3px solid transparent; }
 .nav-item:hover { background: var(--bg-hover); border-left-color: rgba(245,200,0,0.3); }
@@ -252,7 +263,14 @@ input[type='checkbox'] { accent-color: var(--felta-yellow); }
 #ph-map { border-radius: 12px; overflow: hidden; z-index: 0; }
 .leaflet-container { background: var(--bg-surface) !important; }
 @media print { #sidebar, #topbar, .no-print { display: none !important; } }
-@media (max-width: 768px) { #sidebar { position: fixed; z-index: 50; transform: translateX(-100%); } #sidebar.mobile-open { transform: translateX(0); } #main-content { margin-left: 0 !important; } }
+
+/* Body scroll-lock while mobile sidebar is open */
+body.sidebar-open {
+  overflow: hidden;
+  height: 100%;
+  /* Prevent iOS Safari rubber-band scroll reaching the content behind overlay */
+  touch-action: none;
+}
 
 /* ════════════════════════════════════════════
    LIGHT MODE
@@ -725,15 +743,37 @@ html, body {
     left: 0;
     top: 0;
     height: 100%;
+    /* z-index 50 keeps sidebar above topbar (z-30) and overlay (z-40) */
     z-index: 50;
     width: 260px !important; /* full width when open */
     transform: translateX(-100%);
+    /* Ensure nav labels are always visible at mobile widths */
+    visibility: visible;
   }
+
+  /* Mobile overlay – sits between topbar and sidebar */
+  #mobile-overlay {
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.60);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  #mobile-overlay.overlay-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
   /* When explicitly opened on mobile */
   #sidebar.mobile-open {
     transform: translateX(0);
-    /* Restore labels */
+    box-shadow: 8px 0 48px rgba(0,0,0,0.65);
   }
+  /* Restore all label text inside open sidebar */
   #sidebar.mobile-open .nav-label,
   #sidebar.mobile-open .sidebar-logo-text,
   #sidebar.mobile-open .sidebar-section-label {
@@ -743,25 +783,25 @@ html, body {
     pointer-events: auto !important;
   }
   #sidebar.mobile-open .nav-item {
-    justify-content: flex-start;
-    padding-left: 12px;
-    padding-right: 12px;
+    justify-content: flex-start !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
   #sidebar.mobile-open .nav-icon {
-    margin: 0;
+    margin: 0 !important;
   }
   #sidebar.mobile-open > div:last-child .nav-label {
-    display: block;
+    display: block !important;
   }
   #sidebar.mobile-open > div:last-child {
-    justify-content: flex-start;
-    padding: 14px;
+    justify-content: flex-start !important;
+    padding: 14px !important;
   }
   #sidebar.mobile-open > div:last-child .flex {
-    justify-content: flex-start;
+    justify-content: flex-start !important;
   }
   #sidebar.mobile-open > div:first-child {
-    padding: 16px;
+    padding: 16px !important;
   }
 
   /* Main content takes full width */
@@ -769,10 +809,11 @@ html, body {
     margin-left: 0 !important;
   }
 
-  /* Topbar: compact */
+  /* Topbar: compact; keep z-index lower than sidebar */
   #topbar {
     padding-left: clamp(10px, 3vw, 16px);
     padding-right: clamp(10px, 3vw, 16px);
+    z-index: 30;
   }
 
   /* Hide date on mobile */
@@ -989,13 +1030,13 @@ html, body {
   }
 }
 
-/* ── Sidebar collapsed desktop state (existing .collapsed class) ── */
+/* ── Sidebar collapsed desktop state ── */
 #sidebar.collapsed {
   width: 68px !important;
 }
-#sidebar.collapsed ~ #main-content,
-#sidebar.collapsed + * #main-content {
-  margin-left: 68px;
+/* Drive main-content offset via a body class set by JS */
+body.sidebar-collapsed #main-content {
+  margin-left: 68px !important;
 }
 
 /* ── Utility: hide on mobile ── */
