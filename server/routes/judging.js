@@ -125,4 +125,104 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ── GET /api/judging/:id/assignments – fetch saved assignments ─
+router.get('/:id/assignments', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT season, category FROM judge_assignments WHERE judge_id = ? ORDER BY season, category',
+      [req.params.id]
+    );
+    const seasons    = [...new Set(rows.map(r => r.season))];
+    const categories = [...new Set(rows.map(r => r.category))];
+    res.json({ seasons, categories });
+  } catch (err) {
+    console.error('[Judges] GET assignments error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── PUT /api/judging/:id/assignments – replace all assignments ─
+// Body: { seasons: string[], categories: string[] }
+// Strategy: full replace — DELETE then bulk INSERT within a transaction.
+// Validates every value against the canonical lists kept on the server.
+const VALID_SEASONS = [
+  'WRO 2022', 'WRO 2023', 'WRO 2024', 'WRO 2025',
+];
+const VALID_CATEGORIES = [
+  'RoboMission – Elementary', 'RoboMission – Junior', 'RoboMission – Senior',
+  'Future Engineers', 'Future Innovators',
+  'RoboSports', 'WeDo', 'Advanced Robotics',
+];
+
+router.put('/:id/assignments', async (req, res) => {
+  const judgeId = req.params.id;
+  const { seasons = [], categories = [] } = req.body;
+
+  // --- Validate judge exists ---
+  const [jRows] = await pool.execute(
+    'SELECT id FROM judges WHERE id = ? AND is_deleted = 0',
+    [judgeId]
+  );
+  if (!jRows[0]) {
+    return res.status(404).json({ success: false, error: 'Judge not found.' });
+  }
+
+  // --- Validate season values ---
+  const badSeasons = seasons.filter(s => !VALID_SEASONS.includes(s));
+  if (badSeasons.length) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid season(s): ${badSeasons.join(', ')}`,
+    });
+  }
+
+  // --- Validate category values ---
+  const badCats = categories.filter(c => !VALID_CATEGORIES.includes(c));
+  if (badCats.length) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid category(ies): ${badCats.join(', ')}`,
+    });
+  }
+
+  // --- Build cartesian pairs: every season × every category ---
+  const pairs = [];
+  for (const season of seasons) {
+    for (const category of categories) {
+      pairs.push([judgeId, season, category]);
+    }
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Remove existing assignments for this judge
+    await conn.execute(
+      'DELETE FROM judge_assignments WHERE judge_id = ?',
+      [judgeId]
+    );
+
+    // Bulk-insert new pairs (if any)
+    if (pairs.length > 0) {
+      const placeholders = pairs.map(() => '(?, ?, ?)').join(', ');
+      const flat         = pairs.flat();
+      await conn.execute(
+        `INSERT INTO judge_assignments (judge_id, season, category) VALUES ${placeholders}`,
+        flat
+      );
+    }
+
+    await conn.commit();
+    res.json({ success: true, assigned: pairs.length });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[Judges] PUT assignments error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 module.exports = router;
+
