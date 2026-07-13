@@ -9,6 +9,7 @@ const Judging = {
 
   async render() {
     const content = document.getElementById('page-content');
+    const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
 
     const _icon = (d, color = 'currentColor') =>
       `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -55,7 +56,7 @@ const Judging = {
             </div>
             <select id="judge-season" class="form-input w-auto" onchange="Judging._onFilter()">
               <option value="">All Seasons</option>
-              ${Seeder.SEASONS.map(s => `<option>${s}</option>`).join('')}
+              ${dbSeasons.map(s => `<option>${s.name}</option>`).join('')}
             </select>
             <select id="judge-category" class="form-input w-auto" onchange="Judging._onFilter()">
               <option value="">All Categories</option>

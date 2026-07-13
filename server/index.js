@@ -28,6 +28,7 @@ app.use('/api/coaches',        require('./routes/coaches'));
 app.use('/api/students',       require('./routes/students'));
 app.use('/api/teams',          require('./routes/teams'));
 app.use('/api/competitions',   require('./routes/competitions'));
+app.use('/api/seasons',        require('./routes/seasons'));
 app.use('/api/judging',        require('./routes/judging'));
 app.use('/api/awards',         require('./routes/awards'));
 app.use('/api/payments',       require('./routes/payments'));

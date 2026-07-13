@@ -13,6 +13,7 @@ const TABLE_ROUTES = {
   students:       'students',
   teams:          'teams',
   competitions:   'competitions',
+  seasons:        'seasons',
   judging:        'judging',   // judges master-data table (route stays /api/judging)
   awards:         'awards',
   payments:       'payments',

@@ -336,16 +336,40 @@ const Modal = {
     if (overlay) overlay.remove();
   },
 
+  // Internal registry so async callbacks are never serialized to strings
+  _confirmCb: null,
+  _cancelCb:  null,
+
+  _triggerConfirm() {
+    const cb = Modal._confirmCb;
+    Modal._confirmCb = null;
+    Modal._cancelCb  = null;
+    Modal.close();
+    if (typeof cb === 'function') cb();
+  },
+
+  _triggerCancel() {
+    const cb = Modal._cancelCb;
+    Modal._confirmCb = null;
+    Modal._cancelCb  = null;
+    Modal.close();
+    if (typeof cb === 'function') cb();
+  },
+
   confirm(message, onConfirm, onCancel) {
+    // Store callbacks in the registry — never serialized to strings
+    Modal._confirmCb = onConfirm || null;
+    Modal._cancelCb  = onCancel  || null;
+
     this.show(
       'Confirm Action',
       `<div class="flex flex-col items-center text-center gap-4 py-4">
         <div class="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center"><svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg></div>
         <p class="text-slate-300 text-base">${message}</p>
       </div>`,
-      `<button onclick="Modal.close();${onCancel ? `(${onCancel})()` : ''}"
+      `<button onclick="Modal._triggerCancel()"
          class="px-5 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition">Cancel</button>
-       <button onclick="Modal.close();(${onConfirm})()"
+       <button onclick="Modal._triggerConfirm()"
          class="px-5 py-2 rounded-lg btn-danger text-white text-sm font-medium">Confirm Delete</button>`,
       'max-w-md'
     );

@@ -6,7 +6,8 @@ const Teams = {
   _page: 1, _perPage: 15, _search: '', _filterSeason: '', _filterCategory: '', _filterStatus: '',
 
   async render() {
-    const seasons = [...new Set((await DB.getAll('teams')).map(t => t.season).filter(Boolean))].sort().reverse();
+    const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
+    const dbSeasonNames = dbSeasons.map(s => s.name);
     const content = document.getElementById('page-content');
     content.innerHTML = `
       <div class="page-view space-y-6">
@@ -17,8 +18,7 @@ const Teams = {
           </div>
           <select id="team-season" class="form-input w-auto" onchange="Teams._onFilter()">
             <option value="">All Seasons</option>
-            ${seasons.map(s=>`<option>${s}</option>`).join('')}
-            ${Seeder.SEASONS.filter(s=>!seasons.includes(s)).map(s=>`<option>${s}</option>`).join('')}
+            ${dbSeasonNames.map(s=>`<option>${s}</option>`).join('')}
           </select>
           <select id="team-category" class="form-input w-auto" onchange="Teams._onFilter()">
             <option value="">All Categories</option>
@@ -140,6 +140,7 @@ const Teams = {
     const schools = (await DB.getAll('schools')).filter(s => !s.isDeleted);
     const coaches = (await DB.getAll('coaches')).filter(c => !c.isDeleted);
     const students= (await DB.getAll('students')).filter(s => !s.isDeleted);
+    const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
     const selectedMembers = t?.members || [];
     Modal.show(id ? 'Edit Team' : 'New Team', `
       <form id="team-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,7 +149,8 @@ const Teams = {
         </div>
         <div><label class="form-label">Season *</label>
           <select class="form-input" name="season">
-            ${Seeder.SEASONS.map(s=>`<option ${t?.season===s?'selected':''}>${s}</option>`).join('')}
+            <option value="">— Select Season —</option>
+            ${dbSeasons.map(s=>`<option value="${s.name}" ${t?.season===s.name?'selected':''}>${s.name}</option>`).join('')}
           </select>
         </div>
         <div><label class="form-label">Category *</label>
