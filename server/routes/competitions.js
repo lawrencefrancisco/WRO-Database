@@ -21,15 +21,29 @@ router.get('/stats', async (req, res) => {
     return res.status(400).json({ success: false, error: 'season query param required.' });
   }
   try {
+    // Teams and coaches come from the teams table directly
     const [[teamRow]] = await pool.execute(
       `SELECT
-         COUNT(*)                  AS teams,
-         COUNT(DISTINCT school_id) AS schools,
-         COUNT(DISTINCT coach_id)  AS coaches
+         COUNT(*)                 AS teams,
+         COUNT(DISTINCT coach_id) AS coaches
        FROM teams
        WHERE season = ? AND is_deleted = 0`,
       [season]
     );
+
+    // Schools: count DISTINCT schools across ALL members of ALL teams in this season.
+    // This correctly handles teams whose members come from different schools.
+    const [[schoolRow]] = await pool.execute(
+      `SELECT COUNT(DISTINCT s.school_id) AS schools
+       FROM team_members tm
+       JOIN teams        t ON t.id  = tm.team_id
+       JOIN students     s ON s.id  = tm.student_id
+       WHERE t.season     = ?
+         AND t.is_deleted = 0
+         AND s.school_id IS NOT NULL`,
+      [season]
+    );
+
     const [[studentRow]] = await pool.execute(
       `SELECT COUNT(DISTINCT tm.student_id) AS students
        FROM team_members tm
@@ -37,6 +51,7 @@ router.get('/stats', async (req, res) => {
        WHERE t.season = ? AND t.is_deleted = 0`,
       [season]
     );
+
     // Derive participating categories live from team records — never stored separately
     const [categoryRows] = await pool.execute(
       `SELECT DISTINCT category
@@ -50,10 +65,10 @@ router.get('/stats', async (req, res) => {
 
     res.json({
       season,
-      teams:      parseInt(teamRow.teams,    10) || 0,
-      schools:    parseInt(teamRow.schools,  10) || 0,
-      coaches:    parseInt(teamRow.coaches,  10) || 0,
-      students:   parseInt(studentRow.students, 10) || 0,
+      teams:    parseInt(teamRow.teams,        10) || 0,
+      schools:  parseInt(schoolRow.schools,    10) || 0,
+      coaches:  parseInt(teamRow.coaches,      10) || 0,
+      students: parseInt(studentRow.students,  10) || 0,
       categories,
     });
   } catch (err) {
