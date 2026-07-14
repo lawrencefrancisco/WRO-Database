@@ -182,11 +182,7 @@ const Dashboard = {
 
     // ── Growth Chart ──────────────────────────────────────
     const byYear = Utils.groupBy(teams, t => (t.season||'').replace(/\D+/g,'').slice(-4));
-    const yearSet = new Set(Object.keys(byYear).filter(y => y.length === 4));
-    const currentYear = new Date().getFullYear();
-    for (let y = 2022; y <= currentYear + 1; y++) yearSet.add(y.toString());
-    const years = Array.from(yearSet).sort();
-
+    const years  = ['2022','2023','2024','2025'];
     this._destroyChart('chart-growth');
     const ctx2 = document.getElementById('chart-growth');
     if (ctx2) {
@@ -203,7 +199,7 @@ const Dashboard = {
             pointBackgroundColor: '#D4A017', pointBorderColor: '#fff', pointBorderWidth: 2,
           }, {
             label: 'Students',
-            data: years.map(y => (byYear[y]||[]).reduce((sum, t) => sum + (t.members?.length || 0), 0)),
+            data: years.map(y => (byYear[y]||[]).length * 2.2),
             borderColor: '#f4841a',
             backgroundColor: 'rgba(244,132,26,0.07)',
             fill: true, tension: 0.4, pointRadius: 6,
