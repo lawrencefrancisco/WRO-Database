@@ -46,16 +46,6 @@ app.get('/api/audit-logs', require('./middleware/auth').authMiddleware, async (r
   }
 });
 
-// ── Seed status endpoint ──────────────────────────────────────
-app.get('/api/seed/status', require('./middleware/auth').authMiddleware, async (req, res) => {
-  try {
-    const [rows] = await pool.execute('SELECT COUNT(*) as cnt FROM users WHERE is_deleted = 0');
-    res.json({ seeded: rows[0].cnt > 0 });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // ── Health check ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

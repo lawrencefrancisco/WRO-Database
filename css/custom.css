@@ -10,7 +10,7 @@
 
 /* ══ DESIGN TOKENS – FELTA MULTIMEDIA ══ */
 :root {
-  --felta-yellow:    #F5C800;
+  --felta-yellow:    #FFC72C;
   --felta-yellow-l:  #FFD933;
   --felta-yellow-d:  #C9A400;
   --felta-yellow-dk: #9A7C00;
@@ -31,7 +31,7 @@
   --bg-active:  rgba(245, 200, 0, 0.13);
   --wro-red:    #E8384F;
   --wro-orange: #F07830;
-  --wro-yellow: #F5C800;
+  --wro-yellow: #FFC72C;
   --wro-green:  #2EC97C;
   --wro-teal:   #1E9EBF;
   --wro-blue:   #1D6FA4;
@@ -39,7 +39,7 @@
   --txt-primary:   #EEF0F8;
   --txt-secondary: #C5C9DC;
   --txt-muted:     #6B7494;
-  --txt-accent:    #F5C800;
+  --txt-accent:    #FFC72C;
   --border-primary: rgba(245, 200, 0, 0.22);
   --border-subtle:  rgba(245, 200, 0, 0.10);
   --border-surface: rgba(255, 255, 255, 0.06);

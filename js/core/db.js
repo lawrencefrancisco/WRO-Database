@@ -167,24 +167,7 @@ const DB = {
     }
   },
 
-  // ── Seeding Status ───────────────────────────────────────
-  async isSeeded() {
-    try {
-      const data = await this._request('GET', '/seed/status');
-      return data?.seeded === true;
-    } catch {
-      return true; // Assume seeded if server unreachable to avoid seeder re-run
-    }
-  },
-
-  markSeeded() {
-    // No-op: server-side data doesn't need client marking
-  },
-
-  resetAll() {
-    console.warn('[DB] resetAll() is not supported in server mode.');
-  },
-
+  // ── Table utilities ──────────────────────────────────────
   getTableNames() {
     return Object.keys(TABLE_ROUTES);
   },

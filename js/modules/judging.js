@@ -266,9 +266,13 @@ const Judging = {
 
   // ── Add / Edit Form ────────────────────────────────────────
   async openForm(id = null) {
-    const j = id ? await DB.getById('judging', id) : null;
+    const [j, rawSeasons] = await Promise.all([
+      id ? DB.getById('judging', id) : Promise.resolve(null),
+      DB.getAll('seasons'),
+    ]);
+    const liveSeasons = rawSeasons.sort((a, b) => (b.year || 0) - (a.year || 0)).map(s => s.name);
 
-    const seasonOptions = Seeder.SEASONS.map(s =>
+    const seasonOptions = liveSeasons.map(s =>
       `<option ${(j?.season === s) ? 'selected' : ''}>${s}</option>`
     ).join('');
 
@@ -434,7 +438,9 @@ const Judging = {
       }
     } catch (_) { /* silently ignore – start with empty selection */ }
 
-    const allSeasons = Seeder.SEASONS;
+    // Always fetch live seasons from DB so newly-created seasons appear immediately
+    const rawSeasons = await DB.getAll('seasons');
+    const allSeasons = rawSeasons.sort((a, b) => (b.year || 0) - (a.year || 0)).map(s => s.name);
     const allCategories = Seeder.WRO_CATEGORIES;
 
     // Build chip HTML for a list of values

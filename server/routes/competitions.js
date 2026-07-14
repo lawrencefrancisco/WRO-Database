@@ -37,12 +37,24 @@ router.get('/stats', async (req, res) => {
        WHERE t.season = ? AND t.is_deleted = 0`,
       [season]
     );
+    // Derive participating categories live from team records — never stored separately
+    const [categoryRows] = await pool.execute(
+      `SELECT DISTINCT category
+       FROM teams
+       WHERE season = ? AND is_deleted = 0
+         AND category IS NOT NULL AND category <> ''
+       ORDER BY category ASC`,
+      [season]
+    );
+    const categories = categoryRows.map(r => r.category);
+
     res.json({
       season,
-      teams:    parseInt(teamRow.teams,    10) || 0,
-      schools:  parseInt(teamRow.schools,  10) || 0,
-      coaches:  parseInt(teamRow.coaches,  10) || 0,
-      students: parseInt(studentRow.students, 10) || 0,
+      teams:      parseInt(teamRow.teams,    10) || 0,
+      schools:    parseInt(teamRow.schools,  10) || 0,
+      coaches:    parseInt(teamRow.coaches,  10) || 0,
+      students:   parseInt(studentRow.students, 10) || 0,
+      categories,
     });
   } catch (err) {
     console.error('[Competitions] stats error:', err);

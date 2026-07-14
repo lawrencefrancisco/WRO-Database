@@ -187,14 +187,59 @@ const Competitions = {
               <div class="text-xs text-slate-600 mt-1">—</div>
             </div>`).join('')}
         </div>
+
+        <!-- Participating Categories (placeholder; filled async) -->
+        <div class="mt-4 pt-4" style="border-top:1px solid rgba(100,116,139,0.18)">
+          <div class="flex items-center gap-1.5 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span class="text-xs font-semibold uppercase tracking-widest" style="color:#a89060">Participating Categories</span>
+          </div>
+          <div id="categories-${s.id}" class="flex flex-wrap gap-1.5">
+            <div class="flex items-center gap-1" style="opacity:0.5">
+              <div class="spinner" style="width:10px;height:10px;border-width:2px;"></div>
+              <span class="text-xs text-slate-600">Loading…</span>
+            </div>
+          </div>
+        </div>
+
       </div>`).join('');
 
     // Load all stats in parallel — each card updates itself when ready
     await Promise.all(seasons.map(s => this._loadSeasonStats(s.name, s.id)));
   },
 
+  // ── Category badge color palette ──────────────────────────
+  // Maps known WRO category names to distinct accent colours.
+  // Unknown categories fall back to a neutral slate style.
+  _categoryBadge(name) {
+    const palette = {
+      'RoboMission':       { bg: 'rgba(212,160,23,0.14)',  text: '#D4A017', border: 'rgba(212,160,23,0.32)' },
+      'Future Innovators': { bg: 'rgba(79,156,249,0.14)',  text: '#4f9cf9', border: 'rgba(79,156,249,0.32)' },
+      'Future Engineers':  { bg: 'rgba(45,198,83,0.14)',   text: '#2dc653', border: 'rgba(45,198,83,0.32)'  },
+      'RoboSports':        { bg: 'rgba(233,30,140,0.14)',  text: '#e91e8c', border: 'rgba(233,30,140,0.32)' },
+      'Advanced Robotics': { bg: 'rgba(168,144,240,0.14)', text: '#a890f0', border: 'rgba(168,144,240,0.32)' },
+    };
+    // Partial-match fallback (case-insensitive prefix) so slight name variations still get a colour
+    const key = Object.keys(palette).find(k => name.toLowerCase().startsWith(k.toLowerCase()));
+    const c   = palette[key] || { bg: 'rgba(100,116,139,0.14)', text: '#94a3b8', border: 'rgba(100,116,139,0.30)' };
+    return `<span style="
+        display:inline-flex;align-items:center;gap:5px;
+        padding:3px 10px 3px 8px;border-radius:20px;font-size:11px;font-weight:600;
+        background:${c.bg};color:${c.text};border:1px solid ${c.border};
+        letter-spacing:0.01em;white-space:nowrap;
+        transition:filter 0.15s;
+      "
+      onmouseover="this.style.filter='brightness(1.2)'"
+      onmouseout="this.style.filter=''"
+      title="${name}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>
+      ${name}
+    </span>`;
+  },
+
   async _loadSeasonStats(seasonName, seasonId) {
-    const el = document.getElementById(`stats-${seasonId}`);
+    const el   = document.getElementById(`stats-${seasonId}`);
+    const catEl = document.getElementById(`categories-${seasonId}`);
     if (!el) return;
     try {
       const stats = await DB._request(
@@ -217,6 +262,16 @@ const Competitions = {
           <div class="text-xl font-bold" style="color:${s.color}">${s.value}</div>
           <div class="text-xs text-slate-500 mt-0.5">${s.label}</div>
         </div>`).join('');
+
+      // ── Participating Categories ──────────────────────────
+      if (catEl) {
+        const cats = Array.isArray(stats.categories) ? stats.categories : [];
+        if (cats.length === 0) {
+          catEl.innerHTML = `<span class="text-xs italic" style="color:rgba(100,116,139,0.6)">No participating categories yet.</span>`;
+        } else {
+          catEl.innerHTML = cats.map(c => this._categoryBadge(c)).join('');
+        }
+      }
     } catch (_) { /* silently ignore — stats are supplemental */ }
   },
 

@@ -145,9 +145,7 @@ router.get('/:id/assignments', async (req, res) => {
 // Body: { seasons: string[], categories: string[] }
 // Strategy: full replace — DELETE then bulk INSERT within a transaction.
 // Validates every value against the canonical lists kept on the server.
-const VALID_SEASONS = [
-  'WRO 2022', 'WRO 2023', 'WRO 2024', 'WRO 2025',
-];
+// VALID_CATEGORIES stays as a constant — these are well-known WRO categories
 const VALID_CATEGORIES = [
   'RoboMission – Elementary', 'RoboMission – Junior', 'RoboMission – Senior',
   'Future Engineers', 'Future Innovators',
@@ -167,13 +165,18 @@ router.put('/:id/assignments', async (req, res) => {
     return res.status(404).json({ success: false, error: 'Judge not found.' });
   }
 
-  // --- Validate season values ---
-  const badSeasons = seasons.filter(s => !VALID_SEASONS.includes(s));
-  if (badSeasons.length) {
-    return res.status(400).json({
-      success: false,
-      error: `Invalid season(s): ${badSeasons.join(', ')}`,
-    });
+  // --- Validate season values against the live seasons table ---
+  // This ensures newly-created seasons are always accepted without code changes.
+  if (seasons.length > 0) {
+    const [seasonRows] = await pool.execute('SELECT name FROM seasons');
+    const validSeasons = new Set(seasonRows.map(r => r.name));
+    const badSeasons = seasons.filter(s => !validSeasons.has(s));
+    if (badSeasons.length) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid season(s): ${badSeasons.join(', ')}`,
+      });
+    }
   }
 
   // --- Validate category values ---
