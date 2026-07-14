@@ -41,24 +41,7 @@
   <script src="js/core/seed.js"></script>
 
   <style>
-    /* ── Login page extras ── */
-    .login-split-line {
-      display: flex; align-items: center; gap: 12px; margin: 4px 0;
-    }
-    .login-split-line::before, .login-split-line::after {
-      content: ''; flex: 1; height: 1px; background: rgba(245,200,0,0.14);
-    }
-    .role-btn {
-      display: flex; align-items: center; gap: 8px;
-      padding: 9px 12px; border-radius: 10px;
-      font-size: 12px; font-weight: 600;
-      border: 1px solid; cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
-      text-align: left; background: transparent;
-      font-family: 'Inter', sans-serif;
-    }
-    .role-btn:hover { transform: translateY(-1px); }
-    .role-btn svg { flex-shrink: 0; }
+
     .input-wrap { position: relative; }
     .input-wrap .input-icon {
       position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -149,44 +132,7 @@
           </div>
         </div>
 
-        <!-- Quick Login Roles -->
-        <div>
-          <div class="login-split-line">
-            <span class="text-xs font-semibold" style="color:#6B7494;letter-spacing:0.6px;">QUICK LOGIN</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mt-2">
-            <!-- Super Admin -->
-            <button type="button" onclick="quickLogin('admin','admin123')" class="role-btn"
-              style="background:rgba(245,200,0,0.09);border-color:rgba(245,200,0,0.28);color:#e8c027;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              Super Admin
-            </button>
-            <!-- Event Admin -->
-            <button type="button" onclick="quickLogin('eventadmin','event123')" class="role-btn"
-              style="background:rgba(29,111,164,0.10);border-color:rgba(29,111,164,0.28);color:#4aadde;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-              Event Admin
-            </button>
-            <!-- Judge -->
-            <button type="button" onclick="quickLogin('judge1','judge123')" class="role-btn"
-              style="background:rgba(240,120,48,0.10);border-color:rgba(240,120,48,0.28);color:#F07830;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Judge
-            </button>
-            <!-- Coach -->
-            <button type="button" onclick="quickLogin('coach1','coach123')" class="role-btn"
-              style="background:rgba(46,201,124,0.09);border-color:rgba(46,201,124,0.26);color:#2EC97C;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
-              Coach
-            </button>
-            <!-- Volunteer full width -->
-            <button type="button" onclick="quickLogin('volunteer1','volunteer123')" class="role-btn col-span-2 justify-center"
-              style="background:rgba(107,116,148,0.09);border-color:rgba(107,116,148,0.24);color:#9299b8;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Volunteer
-            </button>
-          </div>
-        </div>
+
 
         <!-- Submit Button -->
         <button type="submit" id="login-btn"
@@ -205,16 +151,7 @@
       </form>
     </div>
 
-    <!-- Credentials hint -->
-    <div class="glass rounded-xl p-4 text-center" style="border:1px solid rgba(245,200,0,0.13);">
-      <p class="text-xs" style="color:#6B7494;">
-        Default: <span style="color:#C9A400;font-family:monospace;font-weight:600;">admin</span>
-        <span style="color:#6B7494;margin:0 6px;">/</span>
-        <span style="color:#C9A400;font-family:monospace;font-weight:600;">admin123</span>
-        <span style="color:#6B7494;margin:0 8px;">·</span>
-        Use Quick Login above to switch roles
-      </p>
-    </div>
+
 
     <!-- Footer -->
     <p class="text-center text-xs mt-4" style="color:#2d3a52;">
@@ -253,11 +190,7 @@
       }
     }
 
-    function quickLogin(username, password) {
-      document.getElementById('username').value = username;
-      document.getElementById('password').value = password;
-      document.getElementById('login-form').dispatchEvent(new Event('submit'));
-    }
+
 
     function togglePwd() {
       const pwd = document.getElementById('password');
