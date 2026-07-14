@@ -53,19 +53,29 @@ router.post('/', async (req, res) => {
     const d  = req.body;
     const id = d.id || `TEAM_${Date.now()}`;
 
+    // Auto-detect school_id from the first member's student record
+    // if the client didn't supply one explicitly.
+    const members = Array.isArray(d.members) ? d.members : [];
+    let resolvedSchoolId = d.schoolId || null;
+    if (!resolvedSchoolId && members.length > 0) {
+      const [stuRows] = await conn.execute(
+        'SELECT school_id FROM students WHERE id = ? LIMIT 1', [members[0]]
+      );
+      resolvedSchoolId = stuRows[0]?.school_id || null;
+    }
+
     await conn.execute(
       `INSERT INTO teams (id, season, competition_id, team_name, category, age_group, school_id,
        coach_id, robot_platform, programming_language, registration_status, payment_status,
        qualification_status, status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [id, d.season, d.competitionId || null, d.teamName, d.category, d.ageGroup || null,
-       d.schoolId || null, d.coachId || null, d.robotPlatform || null, d.programmingLanguage || null,
+       resolvedSchoolId, d.coachId || null, d.robotPlatform || null, d.programmingLanguage || null,
        d.registrationStatus || 'registered', d.paymentStatus || 'unpaid',
        d.qualificationStatus || 'pending', d.status || 'active']
     );
 
     // Insert team members
-    const members = Array.isArray(d.members) ? d.members : [];
     for (const sid of members) {
       await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [id, sid]);
     }
@@ -90,18 +100,28 @@ router.put('/:id', async (req, res) => {
     await conn.beginTransaction();
     const d = req.body;
 
+    // Auto-detect school_id from the first member's student record
+    // if the client didn't supply one explicitly.
+    const members = Array.isArray(d.members) ? d.members : [];
+    let resolvedSchoolId = d.schoolId || null;
+    if (!resolvedSchoolId && members.length > 0) {
+      const [stuRows] = await conn.execute(
+        'SELECT school_id FROM students WHERE id = ? LIMIT 1', [members[0]]
+      );
+      resolvedSchoolId = stuRows[0]?.school_id || null;
+    }
+
     await conn.execute(
       `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?, age_group=?,
        school_id=?, coach_id=?, robot_platform=?, programming_language=?, registration_status=?,
        payment_status=?, qualification_status=?, status=?, updated_at=NOW() WHERE id = ?`,
       [d.season, d.competitionId || null, d.teamName, d.category, d.ageGroup || null,
-       d.schoolId || null, d.coachId || null, d.robotPlatform || null, d.programmingLanguage || null,
+       resolvedSchoolId, d.coachId || null, d.robotPlatform || null, d.programmingLanguage || null,
        d.registrationStatus, d.paymentStatus, d.qualificationStatus, d.status, req.params.id]
     );
 
     // Replace members
     await conn.execute('DELETE FROM team_members WHERE team_id = ?', [req.params.id]);
-    const members = Array.isArray(d.members) ? d.members : [];
     for (const sid of members) {
       await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [req.params.id, sid]);
     }

@@ -266,11 +266,12 @@ const Schools = {
   },
 
   async viewDetail(id) {
-    const s       = await DB.getById('schools', id);
+    const s        = await DB.getById('schools', id);
     if (!s) return;
-    const teams   = await DB.query('teams', t => t.schoolId === id && !t.isDeleted);
-    const coaches = await DB.query('coaches', c => c.schoolId === id && !c.isDeleted);
-    const awards  = await DB.query('awards', a => a.schoolId === id && !a.isDeleted);
+    const teams    = await DB.query('teams',    t => t.schoolId === id && !t.isDeleted);
+    const coaches  = await DB.query('coaches',  c => c.schoolId === id && !c.isDeleted);
+    const awards   = await DB.query('awards',   a => a.schoolId === id && !a.isDeleted);
+    const students = await DB.query('students', s => s.schoolId === id && !s.isDeleted);
     Modal.show(s.schoolName, `
       <div class="grid grid-cols-2 gap-4 text-sm mb-6">
         <div><span class="text-slate-500">Type:</span> <span class="text-slate-200">${s.schoolType}</span></div>
@@ -285,7 +286,7 @@ const Schools = {
         <div><span class="text-slate-500">Email:</span> <span class="text-slate-200">${s.email}</span></div>
         <div><span class="text-slate-500">Contact:</span> <span class="text-slate-200">${s.contactNumber}</span></div>
       </div>
-      <div class="grid grid-cols-3 gap-4 mt-4">
+      <div class="grid grid-cols-4 gap-4 mt-4">
         <div class="glass-light rounded-xl p-4 text-center">
           <div class="text-2xl font-bold text-indigo-400">${teams.length}</div>
           <div class="text-xs text-slate-400 mt-1">Teams</div>
@@ -293,6 +294,10 @@ const Schools = {
         <div class="glass-light rounded-xl p-4 text-center">
           <div class="text-2xl font-bold text-green-400">${coaches.length}</div>
           <div class="text-xs text-slate-400 mt-1">Coaches</div>
+        </div>
+        <div class="glass-light rounded-xl p-4 text-center">
+          <div class="text-2xl font-bold text-cyan-400">${students.length}</div>
+          <div class="text-xs text-slate-400 mt-1">Students</div>
         </div>
         <div class="glass-light rounded-xl p-4 text-center">
           <div class="text-2xl font-bold text-yellow-400">${awards.length}</div>

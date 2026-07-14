@@ -32,11 +32,21 @@ router.post('/', async (req, res) => {
   try {
     const d  = req.body;
     const id = d.id || `PAY_${Date.now()}`;
+
+    // Auto-resolve school_id from linked team if not explicitly provided
+    let resolvedSchoolId = d.schoolId || null;
+    if (!resolvedSchoolId && d.teamId) {
+      const [teamRows] = await pool.execute(
+        'SELECT school_id FROM teams WHERE id = ? LIMIT 1', [d.teamId]
+      );
+      resolvedSchoolId = teamRows[0]?.school_id || null;
+    }
+
     await pool.execute(
       `INSERT INTO payments (id, team_id, school_id, registration_fee, amount_paid, balance,
        payment_date, payment_method, or_number, sponsorship, scholarship, status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [id, d.teamId || null, d.schoolId || null,
+      [id, d.teamId || null, resolvedSchoolId,
        d.registrationFee || 0, d.amountPaid || 0, d.balance || 0,
        d.paymentDate || null, d.paymentMethod || null, d.orNumber || null,
        d.sponsorship || 0, d.scholarship || 'None', d.status || 'unpaid']
@@ -52,11 +62,21 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
+
+    // Auto-resolve school_id from linked team if not explicitly provided
+    let resolvedSchoolId = d.schoolId || null;
+    if (!resolvedSchoolId && d.teamId) {
+      const [teamRows] = await pool.execute(
+        'SELECT school_id FROM teams WHERE id = ? LIMIT 1', [d.teamId]
+      );
+      resolvedSchoolId = teamRows[0]?.school_id || null;
+    }
+
     await pool.execute(
       `UPDATE payments SET team_id=?, school_id=?, registration_fee=?, amount_paid=?, balance=?,
        payment_date=?, payment_method=?, or_number=?, sponsorship=?, scholarship=?, status=?,
        updated_at=NOW() WHERE id = ?`,
-      [d.teamId || null, d.schoolId || null,
+      [d.teamId || null, resolvedSchoolId,
        d.registrationFee || 0, d.amountPaid || 0, d.balance || 0,
        d.paymentDate || null, d.paymentMethod || null, d.orNumber || null,
        d.sponsorship || 0, d.scholarship || 'None', d.status, req.params.id]

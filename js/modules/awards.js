@@ -25,7 +25,7 @@ const Awards = {
           </div>
           <select id="award-year" class="form-input w-auto" onchange="Awards._onFilter()">
             <option value="">All Years</option>
-            ${[2022,2023,2024,2025].map(y=>`<option>${y}</option>`).join('')}
+            ${Awards._yearOptions()}
           </select>
           ${AUTH.can('awards.write') ? `
           <button onclick="Awards.openForm()" class="btn-primary text-white px-4 py-2 rounded-xl text-sm font-semibold">+ Add Award</button>` : ''}
@@ -161,22 +161,38 @@ const Awards = {
   _onSearch: Utils.debounce(async function(v) { Awards._search = v; Awards._page = 1; await Awards._loadTable(); }, 300),
   async _onFilter() { this._filterYear = document.getElementById('award-year')?.value||''; this._page=1; await this._loadTable(); },
 
+  // Returns year <option> tags from 2022 to current year + 1
+  _yearOptions(selected = null) {
+    const end = new Date().getFullYear() + 1;
+    const years = [];
+    for (let y = 2022; y <= end; y++) years.push(y);
+    return years.map(y => `<option ${selected == y ? 'selected' : ''}>${y}</option>`).join('');
+  },
+
   async openForm(id = null) {
     const a      = id ? await DB.getById('awards', id) : null;
     const teams  = (await DB.getAll('teams')).filter(t => !t.isDeleted);
     const schools= (await DB.getAll('schools')).filter(s => !s.isDeleted);
     const coaches= (await DB.getAll('coaches')).filter(c => !c.isDeleted);
+
+    // Build team→school map for auto-detection
+    const teamSchoolMap = {};
+    teams.forEach(t => { if (t.schoolId) teamSchoolMap[t.id] = t.schoolId; });
+
     Modal.show(id ? 'Edit Award' : 'Add Award', `
       <form id="award-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><label class="form-label">Team</label>
-          <select class="form-input" name="teamId">
+          <select class="form-input" name="teamId" id="award-team-select"
+                  onchange="Awards._onTeamChange()">
             <option value="">Select Team</option>
             ${teams.map(t=>`<option value="${t.id}" ${a?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
           </select>
         </div>
-        <div><label class="form-label">School</label>
-          <select class="form-input" name="schoolId">
-            <option value="">Select School</option>
+        <div><label class="form-label">School
+          <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from team)</span>
+        </label>
+          <select class="form-input" name="schoolId" id="award-school-select">
+            <option value="">— auto-detected —</option>
             ${schools.map(s=>`<option value="${s.id}" ${a?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
           </select>
         </div>
@@ -198,7 +214,7 @@ const Awards = {
         </div>
         <div><label class="form-label">Year</label>
           <select class="form-input" name="year">
-            ${[2022,2023,2024,2025].map(y=>`<option ${a?.year==y?'selected':''}>${y}</option>`).join('')}
+            ${Awards._yearOptions(a?.year)}
           </select>
         </div>
         <div class="md:col-span-2"><label class="form-label">Event</label>
@@ -232,6 +248,16 @@ const Awards = {
        <button onclick="Awards._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Award</button>`,
       'max-w-3xl'
     );
+    Awards._teamSchoolMap = teamSchoolMap;
+  },
+
+  // Auto-fill school when team changes
+  _onTeamChange() {
+    const teamSel   = document.getElementById('award-team-select');
+    const schoolSel = document.getElementById('award-school-select');
+    if (!teamSel || !schoolSel) return;
+    const schoolId = Awards._teamSchoolMap?.[teamSel.value];
+    if (schoolId) schoolSel.value = schoolId;
   },
 
   async _save(id) {

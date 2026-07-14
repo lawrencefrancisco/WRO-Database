@@ -157,17 +157,27 @@ const Payments = {
     const p     = id ? await DB.getById('payments', id) : null;
     const teams = (await DB.getAll('teams')).filter(t => !t.isDeleted);
     const schools = (await DB.getAll('schools')).filter(s => !s.isDeleted);
+
+    // Build team→school map for auto-detection
+    const teamSchoolMap = {};
+    const schoolNameMap = {};
+    schools.forEach(s => { schoolNameMap[s.id] = s.schoolName; });
+    teams.forEach(t => { if (t.schoolId) teamSchoolMap[t.id] = t.schoolId; });
+
     Modal.show(id ? 'Edit Payment' : 'Record Payment', `
       <form id="pay-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><label class="form-label">Team *</label>
-          <select class="form-input" name="teamId" required>
+          <select class="form-input" name="teamId" id="pay-team-select" required
+                  onchange="Payments._onTeamChange()">
             <option value="">Select Team</option>
             ${teams.map(t=>`<option value="${t.id}" ${p?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
           </select>
         </div>
-        <div><label class="form-label">School</label>
-          <select class="form-input" name="schoolId">
-            <option value="">Select School</option>
+        <div><label class="form-label">School
+          <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from team)</span>
+        </label>
+          <select class="form-input" name="schoolId" id="pay-school-select">
+            <option value="">— auto-detected —</option>
             ${schools.map(s=>`<option value="${s.id}" ${p?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
           </select>
         </div>
@@ -210,7 +220,21 @@ const Payments = {
        <button onclick="Payments._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Payment</button>`,
       'max-w-3xl'
     );
+
+    // Store map on the module for the onchange handler
+    Payments._teamSchoolMap = teamSchoolMap;
     setTimeout(() => Payments._calcBalance(), 100);
+  },
+
+  // Auto-fill school when team changes
+  _onTeamChange() {
+    const teamSel   = document.getElementById('pay-team-select');
+    const schoolSel = document.getElementById('pay-school-select');
+    if (!teamSel || !schoolSel) return;
+    const schoolId = Payments._teamSchoolMap?.[teamSel.value];
+    if (schoolId) {
+      schoolSel.value = schoolId;
+    }
   },
 
   _calcBalance() {

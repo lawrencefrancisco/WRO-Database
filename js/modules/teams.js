@@ -142,6 +142,27 @@ const Teams = {
     const students= (await DB.getAll('students')).filter(s => !s.isDeleted);
     const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
     const selectedMembers = t?.members || [];
+
+    // Build lookup maps for auto-detection
+    const schoolMap = {};  // id → schoolName
+    schools.forEach(s => { schoolMap[s.id] = s.schoolName; });
+    const studentSchoolMap = {}; // studentId → { schoolId, schoolName }
+    students.forEach(s => {
+      studentSchoolMap[s.id] = {
+        schoolId:   s.schoolId   || s.school_id || '',
+        schoolName: schoolMap[s.schoolId || s.school_id] || '—',
+      };
+    });
+    // Serialise for inline use in onclick handlers
+    const mapJson = JSON.stringify(studentSchoolMap).replace(/"/g, '&quot;');
+
+    // Derive initial school display from already-selected members
+    const _initSchools = [...new Set(
+      selectedMembers
+        .map(mid => studentSchoolMap[mid]?.schoolName)
+        .filter(Boolean)
+    )];
+
     Modal.show(id ? 'Edit Team' : 'New Team', `
       <form id="team-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><label class="form-label">Team Name *</label>
@@ -163,28 +184,57 @@ const Teams = {
             ${['Elementary','Junior','Senior','Open'].map(a=>`<option ${t?.ageGroup===a?'selected':''}>${a}</option>`).join('')}
           </select>
         </div>
-        <div><label class="form-label">School</label>
-          <select class="form-input" name="schoolId">
-            <option value="">Select School</option>
-            ${schools.map(s=>`<option value="${s.id}" ${t?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
-          </select>
+
+        <!-- School — auto-detected from selected members -->
+        <div class="md:col-span-2">
+          <label class="form-label">School
+            <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from members)</span>
+          </label>
+          <div id="team-school-display"
+               class="form-input flex flex-wrap gap-1.5 min-h-[42px] items-center"
+               style="background:rgba(255,255,255,0.04);cursor:default;">
+            ${_initSchools.length
+              ? _initSchools.map(n => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(212,160,23,0.18);color:#D4A017;">${n}</span>`).join('')
+              : '<span class="text-slate-500 text-sm">Select team members below to auto-detect schools</span>'}
+          </div>
+          <!-- Hidden field carries the primary school id for saving -->
+          <input type="hidden" id="team-school-id" name="schoolId"
+                 value="${t?.schoolId || t?.school_id || ''}">
         </div>
+
         <div><label class="form-label">Coach</label>
           <select class="form-input" name="coachId">
             <option value="">Select Coach</option>
             ${coaches.map(c=>`<option value="${c.id}" ${t?.coachId===c.id?'selected':''}>${c.fullName}</option>`).join('')}
           </select>
         </div>
+
+        <!-- Team Members with per-student school badges -->
         <div class="md:col-span-2"><label class="form-label">Team Members (select 2–3)</label>
-          <div class="max-h-48 overflow-y-auto glass-light rounded-xl p-3 space-y-1">
-            ${students.map(s=>`
-              <label class="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer">
-                <input type="checkbox" name="members" value="${s.id}" ${selectedMembers.includes(s.id)?'checked':''} class="rounded text-indigo-500">
-                <span class="text-sm text-slate-200">${s.fullName}</span>
-                <span class="text-xs text-slate-500 ml-auto">${s.gradeLevel}</span>
-              </label>`).join('')}
+          <div class="max-h-52 overflow-y-auto glass-light rounded-xl p-3 space-y-1"
+               id="members-list">
+            ${students.map(s => {
+              const info = studentSchoolMap[s.id];
+              return `
+              <label class="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer"
+                     title="${info.schoolName}">
+                <input type="checkbox" name="members" value="${s.id}"
+                       data-school-id="${info.schoolId}"
+                       data-school-name="${info.schoolName.replace(/"/g,'&quot;')}"
+                       ${selectedMembers.includes(s.id)?'checked':''}
+                       class="rounded text-indigo-500"
+                       onchange="Teams._onMemberToggle()">
+                <span class="text-sm text-slate-200 flex-1">${s.fullName}</span>
+                <span class="text-xs text-slate-500">${s.gradeLevel}</span>
+                <span class="px-2 py-0.5 rounded-full text-xs ml-1"
+                      style="background:rgba(30,158,191,0.15);color:#1E9EBF;white-space:nowrap;">
+                  ${info.schoolName}
+                </span>
+              </label>`;
+            }).join('')}
           </div>
         </div>
+
         <div><label class="form-label">Robot Platform</label>
           <select class="form-input" name="robotPlatform">
             ${Seeder.ROBOT_PLATFORMS.map(p=>`<option ${t?.robotPlatform===p?'selected':''}>${p}</option>`).join('')}
@@ -221,6 +271,33 @@ const Teams = {
        <button onclick="Teams._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Team</button>`,
       'max-w-3xl'
     );
+  },
+
+  // Called whenever a member checkbox changes — refreshes the school display
+  _onMemberToggle() {
+    const checked = [...document.querySelectorAll('#team-form input[name="members"]:checked')];
+    const display = document.getElementById('team-school-display');
+    const hiddenSchool = document.getElementById('team-school-id');
+    if (!display) return;
+
+    // Collect unique school names and IDs from checked members
+    const seen = new Map(); // schoolId → schoolName
+    checked.forEach(cb => {
+      const sid  = cb.dataset.schoolId;
+      const name = cb.dataset.schoolName;
+      if (sid && !seen.has(sid)) seen.set(sid, name);
+    });
+
+    if (seen.size === 0) {
+      display.innerHTML = '<span class="text-slate-500 text-sm">Select team members below to auto-detect schools</span>';
+      if (hiddenSchool) hiddenSchool.value = '';
+    } else {
+      display.innerHTML = [...seen.values()]
+        .map(n => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(212,160,23,0.18);color:#D4A017;">${n}</span>`)
+        .join('');
+      // Store the first school id as the primary (for the teams.school_id FK)
+      if (hiddenSchool) hiddenSchool.value = [...seen.keys()][0];
+    }
   },
 
   async _save(id) {
@@ -262,17 +339,42 @@ const Teams = {
   async viewDetail(id) {
     const t       = await DB.getById('teams', id);
     if (!t) return;
-    const school  = await DB.getById('schools', t.schoolId);
     const coach   = await DB.getById('coaches', t.coachId);
-    const _allStudents = await DB.getAll('students');
-    const _sMap = {}; _allStudents.forEach(s => { _sMap[s.id] = s; });
+
+    // Load both students and schools in one pass
+    const _allStudents  = await DB.getAll('students');
+    const _allSchools   = await DB.getAll('schools');
+    const _sMap  = {};  _allStudents.forEach(s => { _sMap[s.id]  = s; });
+    const _scMap = {};  _allSchools.forEach(s  => { _scMap[s.id] = s; });
+
     const members = (t.members || []).map(mid => _sMap[mid]).filter(Boolean);
-    const pay     = await DB.query('payments', p => p.teamId === id)[0];
+
+    // Derive unique school names from member records for the header
+    const memberSchools = [...new Map(
+      members
+        .filter(m => m.schoolId || m.school_id)
+        .map(m => {
+          const sid = m.schoolId || m.school_id;
+          return [sid, _scMap[sid]?.schoolName || sid];
+        })
+    ).values()];
+
+    // Fallback to team.school_id if no member school data available
+    const schoolDisplay = memberSchools.length
+      ? memberSchools.join(', ')
+      : (_scMap[t.schoolId]?.schoolName || '—');
+
+    const pay = await DB.query('payments', p => p.teamId === id)[0];
+
     Modal.show(t.teamName, `
       <div class="grid grid-cols-2 gap-3 text-sm mb-4">
         <div><span class="text-slate-500">Season:</span> <span class="text-slate-200">${t.season}</span></div>
         <div><span class="text-slate-500">Category:</span> <span class="text-slate-200">${t.category}</span></div>
-        <div><span class="text-slate-500">School:</span> <span class="text-slate-200">${school?.schoolName||'—'}</span></div>
+        <div class="${memberSchools.length > 1 ? 'col-span-2' : ''}">
+          <span class="text-slate-500">School${memberSchools.length > 1 ? 's' : ''}:</span>
+          <span class="text-slate-200">${schoolDisplay}</span>
+          ${memberSchools.length > 1 ? '<span class="ml-2 px-1.5 py-0.5 rounded text-xs font-semibold" style="background:rgba(30,158,191,0.18);color:#1E9EBF;">Multi-school</span>' : ''}
+        </div>
         <div><span class="text-slate-500">Coach:</span> <span class="text-slate-200">${coach?.fullName||'—'}</span></div>
         <div><span class="text-slate-500">Robot Platform:</span> <span class="text-slate-200">${t.robotPlatform}</span></div>
         <div><span class="text-slate-500">Language:</span> <span class="text-slate-200">${t.programmingLanguage}</span></div>
@@ -284,16 +386,26 @@ const Teams = {
       <div class="mt-4">
         <div class="text-xs text-slate-500 uppercase font-semibold mb-2">Team Members</div>
         <div class="space-y-2">
-          ${members.map(m => `
+          ${members.map(m => {
+            const sid        = m.schoolId || m.school_id;
+            const schoolName = _scMap[sid]?.schoolName || null;
+            const gColor     = m.gender === 'Female'
+              ? 'from-pink-500 to-rose-600'
+              : 'from-indigo-500 to-purple-600';
+            return `
             <div class="flex items-center gap-3 p-2 glass-light rounded-lg">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br ${gColor} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 ${m.fullName.charAt(0)}
               </div>
-              <div>
-                <div class="text-sm text-white">${m.fullName}</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-white font-medium">${m.fullName}</div>
                 <div class="text-xs text-slate-500">${m.gradeLevel} · ${m.gender}</div>
+                ${schoolName ? `<div class="text-xs mt-0.5" style="color:#1E9EBF;">
+                  <svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline;vertical-align:middle;margin-right:3px'><path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/><polyline points='9 22 9 12 15 12 15 22'/></svg>${schoolName}
+                </div>` : ''}
               </div>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
           ${members.length === 0 ? '<p class="text-slate-500 text-sm">No members assigned.</p>' : ''}
         </div>
       </div>`, '', 'max-w-xl');
