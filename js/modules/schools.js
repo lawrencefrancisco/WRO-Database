@@ -244,16 +244,24 @@ const Schools = {
     const form  = document.getElementById('school-form');
     const data  = Object.fromEntries(new FormData(form));
     if (!data.schoolName.trim()) { Toast.error('School name is required.'); return; }
-    if (id) {
-      await DB.update('schools', id, data);
-      Toast.success('School updated successfully!');
-    } else {
-      await DB.insert('schools', data);
-      Toast.success('School added successfully!');
+    try {
+      let result;
+      if (id) {
+        result = await DB.update('schools', id, data);
+        if (!result) { Toast.error('Failed to update school. Check server logs.'); return; }
+        Toast.success('School updated successfully!');
+      } else {
+        result = await DB.insert('schools', data);
+        if (!result) { Toast.error('Failed to add school. Check server logs.'); return; }
+        Toast.success('School added successfully!');
+      }
+      Modal.close();
+      await this._renderStats();
+      await this._loadTable();
+    } catch (err) {
+      console.error('[Schools] Save error:', err);
+      Toast.error('An error occurred while saving. Please try again.');
     }
-    Modal.close();
-    await this._renderStats();
-    await this._loadTable();
   },
 
   async confirmDelete(id) {

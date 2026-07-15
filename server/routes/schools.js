@@ -65,6 +65,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
+    console.log('[Schools] PUT body:', JSON.stringify(d));
+    const params = [
+      d.schoolName, d.schoolType, d.schoolLevel,
+      d.depedId || null, d.region, d.province, d.city, d.address, d.contactNumber,
+      d.email, d.schoolHead, d.roboticsCoordinator, d.website || null,
+      d.yearsJoined || null, d.status, req.params.id
+    ];
+    console.log('[Schools] PUT params:', JSON.stringify(params.map((p,i) => ({i, v: p, type: typeof p}))));
     await pool.execute(
       `UPDATE schools SET school_name=?, school_type=?, school_level=?, deped_id=?,
        region=?, province=?, city=?, address=?, contact_number=?, email=?, school_head=?,
@@ -78,6 +86,7 @@ router.put('/:id', async (req, res) => {
     const [rows] = await pool.execute('SELECT * FROM schools WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
   } catch (err) {
+    console.error('[Schools] PUT error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });

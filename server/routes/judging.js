@@ -95,10 +95,10 @@ router.put('/:id', async (req, res) => {
 
     await pool.execute(
       `UPDATE judges
-       SET judge_code=?, full_name=?, contact_number=?, gender=?, season=?,
+       SET full_name=?, contact_number=?, gender=?, season=?,
            judging_category=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [d.judgeCode || d.judge_code, fullName, contactNumber, gender, season,
+      [fullName, contactNumber, gender, season,
        judgingCategory, status, req.params.id]
     );
 

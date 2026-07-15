@@ -141,11 +141,10 @@ router.put('/:id', async (req, res) => {
     const d = req.body;
     await pool.execute(
       `UPDATE competitions
-       SET competition_code=?, name=?, season=?, theme=?, date=?, venue=?, organizer=?,
+       SET name=?, season=?, theme=?, date=?, venue=?, organizer=?,
            registration_deadline=?, categories=?, status=?, updated_at=NOW()
        WHERE id = ?`,
       [
-        d.competitionCode || d.competition_code,
         d.name,
         d.season              || null,
         d.theme               || null,
