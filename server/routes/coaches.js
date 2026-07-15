@@ -75,10 +75,10 @@ router.put('/:id', async (req, res) => {
     }
 
     await pool.execute(
-      `UPDATE coaches SET coach_code=?, full_name=?, birthday=?, gender=?, email=?, mobile=?,
+      `UPDATE coaches SET full_name=?, birthday=?, gender=?, email=?, mobile=?,
        school_id=?, position=?, shirt_size=?, emergency_contact=?, certifications=?,
        years_coaching=?, previous_awards=?, status=?, updated_at=NOW() WHERE id = ?`,
-      [d.coachCode || d.coach_code, d.fullName, d.birthday || null, d.gender, d.email,
+      [d.fullName, d.birthday || null, d.gender, d.email,
        d.mobile, schoolId, d.position, d.shirtSize, d.emergencyContact,
        d.certifications, d.yearsCoaching || 0, d.previousAwards, d.status, req.params.id]
     );

@@ -66,11 +66,11 @@ router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
     await pool.execute(
-      `UPDATE schools SET school_code=?, school_name=?, school_type=?, school_level=?, deped_id=?,
+      `UPDATE schools SET school_name=?, school_type=?, school_level=?, deped_id=?,
        region=?, province=?, city=?, address=?, contact_number=?, email=?, school_head=?,
        robotics_coordinator=?, website=?, years_joined=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [d.schoolCode || d.school_code, d.schoolName, d.schoolType, d.schoolLevel,
+      [d.schoolName, d.schoolType, d.schoolLevel,
        d.depedId || null, d.region, d.province, d.city, d.address, d.contactNumber,
        d.email, d.schoolHead, d.roboticsCoordinator, d.website || null,
        d.yearsJoined || null, d.status, req.params.id]

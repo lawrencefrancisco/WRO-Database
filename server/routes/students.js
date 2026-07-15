@@ -77,11 +77,11 @@ router.put('/:id', async (req, res) => {
     }
 
     await pool.execute(
-      `UPDATE students SET student_code=?, full_name=?, birthday=?, age=?, gender=?, grade_level=?,
+      `UPDATE students SET full_name=?, birthday=?, age=?, gender=?, grade_level=?,
        school_id=?, parent_name=?, parent_contact=?, parent_email=?, medical_conditions=?,
        allergies=?, shirt_size=?, previous_participation=?, consent_signed=?, status=?,
        updated_at=NOW() WHERE id = ?`,
-      [d.studentCode || d.student_code, d.fullName, d.birthday || null, d.age || null,
+      [d.fullName, d.birthday || null, d.age || null,
        d.gender, d.gradeLevel, schoolId, d.parentName, d.parentContact, d.parentEmail,
        d.medicalConditions || 'None', d.allergies || 'None', d.shirtSize,
        d.previousParticipation || 0, d.consentSigned ? 1 : 0, d.status, req.params.id]

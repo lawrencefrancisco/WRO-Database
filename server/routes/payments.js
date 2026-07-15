@@ -82,10 +82,10 @@ router.put('/:id', async (req, res) => {
     }
 
     await pool.execute(
-      `UPDATE payments SET payment_code=?, team_id=?, school_id=?, registration_fee=?,
+      `UPDATE payments SET team_id=?, school_id=?, registration_fee=?,
        amount_paid=?, balance=?, payment_date=?, payment_method=?, or_number=?, sponsorship=?,
        scholarship=?, status=?, updated_at=NOW() WHERE id = ?`,
-      [d.paymentCode || d.payment_code, teamId, schoolId,
+      [teamId, schoolId,
        d.registrationFee || 0, d.amountPaid || 0, d.balance || 0,
        d.paymentDate || null, d.paymentMethod || null, d.orNumber || null,
        d.sponsorship || 0, d.scholarship || 'None', d.status, req.params.id]

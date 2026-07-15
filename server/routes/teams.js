@@ -147,11 +147,11 @@ router.put('/:id', async (req, res) => {
     }
 
     await conn.execute(
-      `UPDATE teams SET team_code=?, season=?, competition_id=?, team_name=?, category=?,
+      `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?,
        age_group=?, school_id=?, coach_id=?, robot_platform=?, programming_language=?,
        registration_status=?, payment_status=?, qualification_status=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [d.teamCode || d.team_code, d.season, competitionId, d.teamName, d.category,
+      [d.season, competitionId, d.teamName, d.category,
        d.ageGroup || null, schoolId, coachId, d.robotPlatform || null,
        d.programmingLanguage || null, d.registrationStatus, d.paymentStatus,
        d.qualificationStatus, d.status, teamId]

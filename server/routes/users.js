@@ -71,16 +71,16 @@ router.put('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
     if (d.password) {
       const hash = await bcrypt.hash(d.password, 10);
       await pool.execute(
-        `UPDATE users SET user_code=?, username=?, password_hash=?, name=?, role=?, email=?,
+        `UPDATE users SET username=?, password_hash=?, name=?, role=?, email=?,
          is_active=?, updated_at=NOW() WHERE id = ?`,
-        [d.userCode || d.user_code, d.username, hash, d.name, d.role, d.email,
+        [d.username, hash, d.name, d.role, d.email,
          d.isActive ? 1 : 0, req.params.id]
       );
     } else {
       await pool.execute(
-        `UPDATE users SET user_code=?, username=?, name=?, role=?, email=?,
+        `UPDATE users SET username=?, name=?, role=?, email=?,
          is_active=?, updated_at=NOW() WHERE id = ?`,
-        [d.userCode || d.user_code, d.username, d.name, d.role, d.email,
+        [d.username, d.name, d.role, d.email,
          d.isActive ? 1 : 0, req.params.id]
       );
     }

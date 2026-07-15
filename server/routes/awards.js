@@ -73,10 +73,10 @@ router.put('/:id', async (req, res) => {
     const coachId  = await resolveId('coaches', 'coach_code',  d.coachId);
 
     await pool.execute(
-      `UPDATE awards SET award_code=?, team_id=?, school_id=?, coach_id=?, category=?, award=?,
+      `UPDATE awards SET team_id=?, school_id=?, coach_id=?, category=?, award=?,
        year=?, event=?, has_trophy=?, has_medal=?, has_certificate=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [d.awardCode || d.award_code, teamId, schoolId, coachId,
+      [teamId, schoolId, coachId,
        d.category, d.award, d.year, d.event || null,
        d.hasTrophy ? 1 : 0, d.hasMedal ? 1 : 0, d.hasCertificate ? 1 : 0,
        d.status, req.params.id]

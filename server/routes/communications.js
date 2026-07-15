@@ -72,10 +72,10 @@ router.put('/:id', async (req, res) => {
     const teamId = await resolveTeamId(d.teamId);
 
     await pool.execute(
-      `UPDATE communications SET comm_code=?, team_id=?, registration_confirmation=?,
+      `UPDATE communications SET team_id=?, registration_confirmation=?,
        payment_confirmation=?, certificate_sent=?, email_history=?, sms_history=?,
        announcement_received=?, feedback_submitted=?, status=?, updated_at=NOW() WHERE id = ?`,
-      [d.commCode || d.comm_code, teamId,
+      [teamId,
        d.registrationConfirmation ? 1 : 0, d.paymentConfirmation ? 1 : 0,
        d.certificateSent ? 1 : 0,
        JSON.stringify(d.emailHistory || []),

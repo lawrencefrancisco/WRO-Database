@@ -69,11 +69,11 @@ router.put('/:id', async (req, res) => {
     const teamId = await resolveTeamId(d.teamId);
 
     await pool.execute(
-      `UPDATE delegation SET delegation_code=?, team_id=?, destination_country=?, wro_year=?,
+      `UPDATE delegation SET team_id=?, destination_country=?, wro_year=?,
        passport_status=?, passport_expiry=?, visa_status=?, parent_consent=?, flight=?, hotel=?,
        dietary_restrictions=?, shirt_size=?, emergency_contact=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [d.delegationCode || d.delegation_code, teamId, d.destinationCountry, d.wroYear || null,
+      [teamId, d.destinationCountry, d.wroYear || null,
        d.passportStatus, d.passportExpiry || null, d.visaStatus, d.parentConsent ? 1 : 0,
        d.flight || null, d.hotel || null, d.dietaryRestrictions || 'None',
        d.shirtSize, d.emergencyContact || null, d.status, req.params.id]
