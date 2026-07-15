@@ -21,11 +21,12 @@ router.get('/participation', async (req, res) => {
     // Step 1: Get participation counts from teams + team_members join.
     // RIGHT(season, 4) reliably extracts the 4-digit year for all known
     // season name formats ("WRO 2025", "WRO_2025", "2025", etc.)
+ // Update the SELECT columns to use CAST(... AS SIGNED)
     const [participationRows] = await pool.execute(`
       SELECT
-        RIGHT(t.season, 4)            AS year,
-        COUNT(DISTINCT t.id)          AS teams,
-        COUNT(DISTINCT tm.student_id) AS students
+        RIGHT(t.season, 4)                    AS year,
+        CAST(COUNT(DISTINCT t.id) AS SIGNED)  AS teams,
+        CAST(COUNT(DISTINCT tm.student_id) AS SIGNED) AS students
       FROM   teams t
       LEFT JOIN team_members tm ON tm.team_id = t.id
       WHERE  t.is_deleted = 0
@@ -66,7 +67,6 @@ router.get('/participation', async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error('[Dashboard] /participation error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
