@@ -1,6 +1,7 @@
 // ============================================================
 // WRO Philippines DBMS – Seasons Routes
-// First-class season management (create by year, list, delete).
+// id is INT AUTO_INCREMENT. season_code is the business code
+// (e.g. WRO_2026). name and year remain UNIQUE for dedup checks.
 // ============================================================
 
 const express = require('express');
@@ -25,6 +26,7 @@ router.get('/', async (req, res) => {
 // ── POST /api/seasons – create by year ───────────────────────
 // Body: { year: 2026 }
 // Season name is auto-generated as "WRO <year>".
+// season_code is auto-generated as "WRO_<year>".
 router.post('/', async (req, res) => {
   try {
     const year = parseInt(req.body.year, 10);
@@ -32,8 +34,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid year. Must be between 2000 and 2100.' });
     }
 
-    const name = `WRO ${year}`;
-    const id   = `WRO_${year}`;
+    const name       = `WRO ${year}`;
+    const seasonCode = `WRO_${year}`;
 
     // Duplicate check
     const [existing] = await pool.execute(
@@ -46,12 +48,12 @@ router.post('/', async (req, res) => {
       });
     }
 
-    await pool.execute(
-      'INSERT INTO seasons (id, name, year, is_active) VALUES (?, ?, ?, 1)',
-      [id, name, year]
+    const [result] = await pool.execute(
+      'INSERT INTO seasons (season_code, name, year, is_active) VALUES (?, ?, ?, 1)',
+      [seasonCode, name, year]
     );
 
-    const [rows] = await pool.execute('SELECT * FROM seasons WHERE id = ?', [id]);
+    const [rows] = await pool.execute('SELECT * FROM seasons WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -63,9 +65,8 @@ router.post('/', async (req, res) => {
 });
 
 // ── DELETE /api/seasons/:id ───────────────────────────────────
-// Hard delete – season records are lightweight reference data,
-// not soft-deleted. Teams referencing this season are unaffected
-// (they store the season string, not a FK).
+// Hard delete – seasons are lightweight reference data.
+// Teams referencing this season by name string are unaffected.
 router.delete('/:id', async (req, res) => {
   try {
     await pool.execute('DELETE FROM seasons WHERE id = ?', [req.params.id]);

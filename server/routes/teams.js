@@ -1,6 +1,8 @@
 // ============================================================
 // WRO Philippines DBMS – Teams Routes
-// Teams store members as a JSON array; uses team_members junction too.
+// id is INT AUTO_INCREMENT. team_code is the business code.
+// competition_id, school_id, coach_id are INT UNSIGNED FKs.
+// team_members junction uses INT UNSIGNED for both columns.
 // ============================================================
 
 const express = require('express');
@@ -10,7 +12,7 @@ const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
-// Helper: fetch members array for a team
+// Helper: fetch members array for a team (returns array of integer student ids)
 async function getMembers(teamId) {
   const [rows] = await pool.execute(
     'SELECT student_id FROM team_members WHERE team_id = ?', [teamId]
@@ -18,11 +20,19 @@ async function getMembers(teamId) {
   return rows.map(r => r.student_id);
 }
 
+// Helper: resolve an integer FK from either a raw integer or a code string.
+// table: 'schools'|'coaches'|'competitions', codeCol: e.g. 'school_code'
+async function resolveId(conn, table, codeCol, value) {
+  if (!value) return null;
+  if (typeof value === 'number' || /^\d+$/.test(String(value))) return parseInt(value, 10);
+  const [rows] = await conn.execute(`SELECT id FROM ${table} WHERE ${codeCol} = ? LIMIT 1`, [value]);
+  return rows[0]?.id || null;
+}
+
 // GET /api/teams
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM teams WHERE is_deleted = 0 ORDER BY team_name');
-    // Attach members array to each team
     for (const team of rows) {
       team.members = await getMembers(team.id);
     }
@@ -50,39 +60,47 @@ router.post('/', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const d  = req.body;
-    const id = d.id || `TEAM_${Date.now()}`;
+    const d        = req.body;
+    const teamCode = d.teamCode || d.team_code || `TEAM_${Date.now()}`;
 
-    // Auto-detect school_id from the first member's student record
-    // if the client didn't supply one explicitly.
+    // members: array of integer student ids or student_codes
     const members = Array.isArray(d.members) ? d.members : [];
-    let resolvedSchoolId = d.schoolId || null;
-    if (!resolvedSchoolId && members.length > 0) {
-      const [stuRows] = await conn.execute(
-        'SELECT school_id FROM students WHERE id = ? LIMIT 1', [members[0]]
-      );
-      resolvedSchoolId = stuRows[0]?.school_id || null;
+
+    // Resolve integer FKs (accept integer or business-code string)
+    const competitionId = await resolveId(conn, 'competitions', 'competition_code', d.competitionId);
+    let   schoolId      = await resolveId(conn, 'schools',      'school_code',      d.schoolId);
+    const coachId       = await resolveId(conn, 'coaches',      'coach_code',       d.coachId);
+
+    // Auto-detect school_id from first member's student record if still unresolved
+    if (!schoolId && members.length > 0) {
+      const firstMember = await resolveId(conn, 'students', 'student_code', members[0]);
+      if (firstMember) {
+        const [stuRows] = await conn.execute('SELECT school_id FROM students WHERE id = ? LIMIT 1', [firstMember]);
+        schoolId = stuRows[0]?.school_id || null;
+      }
     }
 
-    await conn.execute(
-      `INSERT INTO teams (id, season, competition_id, team_name, category, age_group, school_id,
-       coach_id, robot_platform, programming_language, registration_status, payment_status,
-       qualification_status, status, created_at, updated_at)
+    const [result] = await conn.execute(
+      `INSERT INTO teams (team_code, season, competition_id, team_name, category, age_group,
+       school_id, coach_id, robot_platform, programming_language, registration_status,
+       payment_status, qualification_status, status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [id, d.season, d.competitionId || null, d.teamName, d.category, d.ageGroup || null,
-       resolvedSchoolId, d.coachId || null, d.robotPlatform || null, d.programmingLanguage || null,
+      [teamCode, d.season, competitionId, d.teamName, d.category, d.ageGroup || null,
+       schoolId, coachId, d.robotPlatform || null, d.programmingLanguage || null,
        d.registrationStatus || 'registered', d.paymentStatus || 'unpaid',
        d.qualificationStatus || 'pending', d.status || 'active']
     );
+    const newId = result.insertId;
 
-    // Insert team members
-    for (const sid of members) {
-      await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [id, sid]);
+    // Insert team members (resolve student ids)
+    for (const memberVal of members) {
+      const sid = await resolveId(conn, 'students', 'student_code', memberVal);
+      if (sid) await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [newId, sid]);
     }
 
     await conn.commit();
-    const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [id]);
-    rows[0].members = await getMembers(id);
+    const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [newId]);
+    rows[0].members = await getMembers(newId);
     res.status(201).json(rows[0]);
   } catch (err) {
     await conn.rollback();
@@ -98,37 +116,43 @@ router.put('/:id', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const d = req.body;
-
-    // Auto-detect school_id from the first member's student record
-    // if the client didn't supply one explicitly.
+    const d       = req.body;
+    const teamId  = parseInt(req.params.id, 10);
     const members = Array.isArray(d.members) ? d.members : [];
-    let resolvedSchoolId = d.schoolId || null;
-    if (!resolvedSchoolId && members.length > 0) {
-      const [stuRows] = await conn.execute(
-        'SELECT school_id FROM students WHERE id = ? LIMIT 1', [members[0]]
-      );
-      resolvedSchoolId = stuRows[0]?.school_id || null;
+
+    const competitionId = await resolveId(conn, 'competitions', 'competition_code', d.competitionId);
+    let   schoolId      = await resolveId(conn, 'schools',      'school_code',      d.schoolId);
+    const coachId       = await resolveId(conn, 'coaches',      'coach_code',       d.coachId);
+
+    if (!schoolId && members.length > 0) {
+      const firstMember = await resolveId(conn, 'students', 'student_code', members[0]);
+      if (firstMember) {
+        const [stuRows] = await conn.execute('SELECT school_id FROM students WHERE id = ? LIMIT 1', [firstMember]);
+        schoolId = stuRows[0]?.school_id || null;
+      }
     }
 
     await conn.execute(
-      `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?, age_group=?,
-       school_id=?, coach_id=?, robot_platform=?, programming_language=?, registration_status=?,
-       payment_status=?, qualification_status=?, status=?, updated_at=NOW() WHERE id = ?`,
-      [d.season, d.competitionId || null, d.teamName, d.category, d.ageGroup || null,
-       resolvedSchoolId, d.coachId || null, d.robotPlatform || null, d.programmingLanguage || null,
-       d.registrationStatus, d.paymentStatus, d.qualificationStatus, d.status, req.params.id]
+      `UPDATE teams SET team_code=?, season=?, competition_id=?, team_name=?, category=?,
+       age_group=?, school_id=?, coach_id=?, robot_platform=?, programming_language=?,
+       registration_status=?, payment_status=?, qualification_status=?, status=?, updated_at=NOW()
+       WHERE id = ?`,
+      [d.teamCode || d.team_code, d.season, competitionId, d.teamName, d.category,
+       d.ageGroup || null, schoolId, coachId, d.robotPlatform || null,
+       d.programmingLanguage || null, d.registrationStatus, d.paymentStatus,
+       d.qualificationStatus, d.status, teamId]
     );
 
     // Replace members
-    await conn.execute('DELETE FROM team_members WHERE team_id = ?', [req.params.id]);
-    for (const sid of members) {
-      await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [req.params.id, sid]);
+    await conn.execute('DELETE FROM team_members WHERE team_id = ?', [teamId]);
+    for (const memberVal of members) {
+      const sid = await resolveId(conn, 'students', 'student_code', memberVal);
+      if (sid) await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [teamId, sid]);
     }
 
     await conn.commit();
-    const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [req.params.id]);
-    rows[0].members = await getMembers(req.params.id);
+    const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [teamId]);
+    rows[0].members = await getMembers(teamId);
     res.json(rows[0]);
   } catch (err) {
     await conn.rollback();

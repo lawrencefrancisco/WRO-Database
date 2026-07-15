@@ -1,7 +1,7 @@
 // ============================================================
 // WRO Philippines DBMS – Competitions Routes
-// Stats are computed live from teams/team_members; they are
-// never stored manually on the competition record.
+// id is INT AUTO_INCREMENT. competition_code is the business code.
+// Stats are computed live from teams/team_members; never stored.
 // ============================================================
 
 const express = require('express');
@@ -12,35 +12,25 @@ const { authMiddleware } = require('../middleware/auth');
 router.use(authMiddleware);
 
 // ── GET /api/competitions/stats?season=WRO+2026 ──────────────
-// Computes live: teams, unique schools, unique coaches, students.
-// This MUST be declared before /:id so Express does not treat
-// "stats" as an id parameter.
+// Must be declared before /:id so Express does not treat "stats" as an id.
 router.get('/stats', async (req, res) => {
   const season = req.query.season;
   if (!season) {
     return res.status(400).json({ success: false, error: 'season query param required.' });
   }
   try {
-    // Teams and coaches come from the teams table directly
     const [[teamRow]] = await pool.execute(
-      `SELECT
-         COUNT(*)                 AS teams,
-         COUNT(DISTINCT coach_id) AS coaches
-       FROM teams
-       WHERE season = ? AND is_deleted = 0`,
+      `SELECT COUNT(*) AS teams, COUNT(DISTINCT coach_id) AS coaches
+       FROM teams WHERE season = ? AND is_deleted = 0`,
       [season]
     );
 
-    // Schools: count DISTINCT schools across ALL members of ALL teams in this season.
-    // This correctly handles teams whose members come from different schools.
     const [[schoolRow]] = await pool.execute(
       `SELECT COUNT(DISTINCT s.school_id) AS schools
        FROM team_members tm
-       JOIN teams        t ON t.id  = tm.team_id
-       JOIN students     s ON s.id  = tm.student_id
-       WHERE t.season     = ?
-         AND t.is_deleted = 0
-         AND s.school_id IS NOT NULL`,
+       JOIN teams    t ON t.id = tm.team_id
+       JOIN students s ON s.id = tm.student_id
+       WHERE t.season = ? AND t.is_deleted = 0 AND s.school_id IS NOT NULL`,
       [season]
     );
 
@@ -52,12 +42,9 @@ router.get('/stats', async (req, res) => {
       [season]
     );
 
-    // Derive participating categories live from team records — never stored separately
     const [categoryRows] = await pool.execute(
-      `SELECT DISTINCT category
-       FROM teams
-       WHERE season = ? AND is_deleted = 0
-         AND category IS NOT NULL AND category <> ''
+      `SELECT DISTINCT category FROM teams
+       WHERE season = ? AND is_deleted = 0 AND category IS NOT NULL AND category <> ''
        ORDER BY category ASC`,
       [season]
     );
@@ -65,10 +52,10 @@ router.get('/stats', async (req, res) => {
 
     res.json({
       season,
-      teams:    parseInt(teamRow.teams,        10) || 0,
-      schools:  parseInt(schoolRow.schools,    10) || 0,
-      coaches:  parseInt(teamRow.coaches,      10) || 0,
-      students: parseInt(studentRow.students,  10) || 0,
+      teams:    parseInt(teamRow.teams,       10) || 0,
+      schools:  parseInt(schoolRow.schools,   10) || 0,
+      coaches:  parseInt(teamRow.coaches,     10) || 0,
+      students: parseInt(studentRow.students, 10) || 0,
       categories,
     });
   } catch (err) {
@@ -83,7 +70,6 @@ router.get('/', async (req, res) => {
     const [rows] = await pool.execute(
       'SELECT * FROM competitions WHERE is_deleted = 0 ORDER BY date DESC'
     );
-    // Parse categories JSON if stored as string
     rows.forEach(r => {
       if (typeof r.categories === 'string') {
         try { r.categories = JSON.parse(r.categories); } catch { r.categories = []; }
@@ -116,33 +102,32 @@ router.get('/:id', async (req, res) => {
 // ── POST /api/competitions ────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const d  = req.body;
-    const id = d.id || `COMP_${Date.now()}`;
+    const d = req.body;
+    const competitionCode = d.competitionCode || d.competition_code || `COMP_${Date.now()}`;
 
     if (!d.name) {
       return res.status(400).json({ success: false, error: 'Event name is required.' });
     }
 
-    await pool.execute(
+    const [result] = await pool.execute(
       `INSERT INTO competitions
-         (id, name, season, theme, date, venue, organizer,
+         (competition_code, name, season, theme, date, venue, organizer,
           registration_deadline, categories, status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [
-        id,
+        competitionCode,
         d.name,
-        d.season        || null,
-        d.theme         || null,
-        d.date          || null,
-        d.venue         || null,
-        d.organizer     || null,
+        d.season              || null,
+        d.theme               || null,
+        d.date                || null,
+        d.venue               || null,
+        d.organizer           || null,
         d.registrationDeadline || null,
         JSON.stringify(d.categories || []),
-        d.status        || 'upcoming',
+        d.status              || 'upcoming',
       ]
     );
-
-    const [rows] = await pool.execute('SELECT * FROM competitions WHERE id = ?', [id]);
+    const [rows] = await pool.execute('SELECT * FROM competitions WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[Competitions] POST error:', err);
@@ -154,26 +139,25 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
-
     await pool.execute(
       `UPDATE competitions
-       SET name=?, season=?, theme=?, date=?, venue=?, organizer=?,
+       SET competition_code=?, name=?, season=?, theme=?, date=?, venue=?, organizer=?,
            registration_deadline=?, categories=?, status=?, updated_at=NOW()
        WHERE id = ?`,
       [
+        d.competitionCode || d.competition_code,
         d.name,
-        d.season        || null,
-        d.theme         || null,
-        d.date          || null,
-        d.venue         || null,
-        d.organizer     || null,
+        d.season              || null,
+        d.theme               || null,
+        d.date                || null,
+        d.venue               || null,
+        d.organizer           || null,
         d.registrationDeadline || null,
         JSON.stringify(d.categories || []),
-        d.status        || 'upcoming',
+        d.status              || 'upcoming',
         req.params.id,
       ]
     );
-
     const [rows] = await pool.execute('SELECT * FROM competitions WHERE id = ?', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found.' });
     res.json(rows[0]);

@@ -1,5 +1,8 @@
 // ============================================================
 // WRO Philippines DBMS – Coaches Routes
+// id column is now INT AUTO_INCREMENT (surrogate key).
+// coach_code holds the human-readable code (COA_xxx).
+// school_id is INT UNSIGNED FK → schools.id
 // ============================================================
 
 const express = require('express');
@@ -31,20 +34,28 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/coaches
+// Body may pass schoolId (integer) or schoolCode (e.g. 'SCH_001'); integer wins.
 router.post('/', async (req, res) => {
   try {
     const d = req.body;
-    const id = d.id || `COA_${Date.now()}`;
-    await pool.execute(
-      `INSERT INTO coaches (id, full_name, birthday, gender, email, mobile, school_id, position,
-       shirt_size, emergency_contact, certifications, years_coaching, previous_awards, status,
-       created_at, updated_at)
+    const coachCode = d.coachCode || d.coach_code || `COA_${Date.now()}`;
+
+    let schoolId = d.schoolId || null;
+    if (!schoolId && d.schoolCode) {
+      const [sr] = await pool.execute('SELECT id FROM schools WHERE school_code = ? LIMIT 1', [d.schoolCode]);
+      schoolId = sr[0]?.id || null;
+    }
+
+    const [result] = await pool.execute(
+      `INSERT INTO coaches (coach_code, full_name, birthday, gender, email, mobile, school_id,
+       position, shirt_size, emergency_contact, certifications, years_coaching, previous_awards,
+       status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [id, d.fullName, d.birthday || null, d.gender, d.email, d.mobile, d.schoolId || null,
-       d.position, d.shirtSize, d.emergencyContact, d.certifications,
-       d.yearsCoaching || 0, d.previousAwards, d.status || 'active']
+      [coachCode, d.fullName, d.birthday || null, d.gender, d.email, d.mobile,
+       schoolId, d.position, d.shirtSize, d.emergencyContact,
+       d.certifications, d.yearsCoaching || 0, d.previousAwards, d.status || 'active']
     );
-    const [rows] = await pool.execute('SELECT * FROM coaches WHERE id = ?', [id]);
+    const [rows] = await pool.execute('SELECT * FROM coaches WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -56,13 +67,20 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
+
+    let schoolId = d.schoolId || null;
+    if (!schoolId && d.schoolCode) {
+      const [sr] = await pool.execute('SELECT id FROM schools WHERE school_code = ? LIMIT 1', [d.schoolCode]);
+      schoolId = sr[0]?.id || null;
+    }
+
     await pool.execute(
-      `UPDATE coaches SET full_name=?, birthday=?, gender=?, email=?, mobile=?, school_id=?,
-       position=?, shirt_size=?, emergency_contact=?, certifications=?, years_coaching=?,
-       previous_awards=?, status=?, updated_at=NOW() WHERE id = ?`,
-      [d.fullName, d.birthday || null, d.gender, d.email, d.mobile, d.schoolId || null,
-       d.position, d.shirtSize, d.emergencyContact, d.certifications,
-       d.yearsCoaching || 0, d.previousAwards, d.status, req.params.id]
+      `UPDATE coaches SET coach_code=?, full_name=?, birthday=?, gender=?, email=?, mobile=?,
+       school_id=?, position=?, shirt_size=?, emergency_contact=?, certifications=?,
+       years_coaching=?, previous_awards=?, status=?, updated_at=NOW() WHERE id = ?`,
+      [d.coachCode || d.coach_code, d.fullName, d.birthday || null, d.gender, d.email,
+       d.mobile, schoolId, d.position, d.shirtSize, d.emergencyContact,
+       d.certifications, d.yearsCoaching || 0, d.previousAwards, d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM coaches WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

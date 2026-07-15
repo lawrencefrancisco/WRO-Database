@@ -1,5 +1,8 @@
 // ============================================================
 // WRO Philippines DBMS – Schools Routes
+// id column is now INT AUTO_INCREMENT (surrogate key).
+// school_code holds the human-readable business code (SCH_xxx).
+// deped_id is a separate UNIQUE column for the DepEd identifier.
 // ============================================================
 
 const express = require('express');
@@ -20,7 +23,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/schools/:id
+// GET /api/schools/:id  (integer surrogate key)
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM schools WHERE id = ? AND is_deleted = 0', [req.params.id]);
@@ -32,20 +35,25 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/schools
+// Accepts school_code from body (or auto-generates one).
+// id is assigned by MySQL AUTO_INCREMENT.
 router.post('/', async (req, res) => {
   try {
     const d = req.body;
-    const id = d.id || `SCH_${Date.now()}`;
-    await pool.execute(
-      `INSERT INTO schools (id, school_name, school_type, school_level, deped_id, region, province,
-       city, address, contact_number, email, school_head, robotics_coordinator, website,
+    const schoolCode = d.schoolCode || d.school_code || `SCH_${Date.now()}`;
+
+    const [result] = await pool.execute(
+      `INSERT INTO schools (school_code, school_name, school_type, school_level, deped_id, region,
+       province, city, address, contact_number, email, school_head, robotics_coordinator, website,
        years_joined, status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [id, d.schoolName, d.schoolType, d.schoolLevel, d.depedId, d.region, d.province,
-       d.city, d.address, d.contactNumber, d.email, d.schoolHead, d.roboticsCoordinator,
-       d.website || null, d.yearsJoined || null, d.status || 'active']
+      [schoolCode, d.schoolName, d.schoolType, d.schoolLevel, d.depedId || null,
+       d.region, d.province, d.city, d.address, d.contactNumber, d.email,
+       d.schoolHead, d.roboticsCoordinator, d.website || null,
+       d.yearsJoined || null, d.status || 'active']
     );
-    const [rows] = await pool.execute('SELECT * FROM schools WHERE id = ?', [id]);
+    const newId = result.insertId;
+    const [rows] = await pool.execute('SELECT * FROM schools WHERE id = ?', [newId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -58,13 +66,14 @@ router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
     await pool.execute(
-      `UPDATE schools SET school_name=?, school_type=?, school_level=?, deped_id=?, region=?,
-       province=?, city=?, address=?, contact_number=?, email=?, school_head=?,
+      `UPDATE schools SET school_code=?, school_name=?, school_type=?, school_level=?, deped_id=?,
+       region=?, province=?, city=?, address=?, contact_number=?, email=?, school_head=?,
        robotics_coordinator=?, website=?, years_joined=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [d.schoolName, d.schoolType, d.schoolLevel, d.depedId, d.region, d.province,
-       d.city, d.address, d.contactNumber, d.email, d.schoolHead, d.roboticsCoordinator,
-       d.website || null, d.yearsJoined || null, d.status, req.params.id]
+      [d.schoolCode || d.school_code, d.schoolName, d.schoolType, d.schoolLevel,
+       d.depedId || null, d.region, d.province, d.city, d.address, d.contactNumber,
+       d.email, d.schoolHead, d.roboticsCoordinator, d.website || null,
+       d.yearsJoined || null, d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM schools WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

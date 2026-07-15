@@ -1,5 +1,7 @@
 // ============================================================
 // WRO Philippines DBMS – Awards Routes
+// id is INT AUTO_INCREMENT. award_code is the business code.
+// team_id, school_id, coach_id are INT UNSIGNED FKs.
 // ============================================================
 
 const express = require('express');
@@ -8,6 +10,14 @@ const pool    = require('../db/pool');
 const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+// Helper: resolve integer FK from either integer or business-code string
+async function resolveId(table, codeCol, value) {
+  if (!value) return null;
+  if (typeof value === 'number' || /^\d+$/.test(String(value))) return parseInt(value, 10);
+  const [rows] = await pool.execute(`SELECT id FROM ${table} WHERE ${codeCol} = ? LIMIT 1`, [value]);
+  return rows[0]?.id || null;
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -30,18 +40,23 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const d  = req.body;
-    const id = d.id || `AWD_${Date.now()}`;
-    await pool.execute(
-      `INSERT INTO awards (id, team_id, school_id, coach_id, category, award, year, event,
+    const d         = req.body;
+    const awardCode = d.awardCode || d.award_code || `AWD_${Date.now()}`;
+
+    const teamId   = await resolveId('teams',   'team_code',   d.teamId);
+    const schoolId = await resolveId('schools', 'school_code', d.schoolId);
+    const coachId  = await resolveId('coaches', 'coach_code',  d.coachId);
+
+    const [result] = await pool.execute(
+      `INSERT INTO awards (award_code, team_id, school_id, coach_id, category, award, year, event,
        has_trophy, has_medal, has_certificate, status, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [id, d.teamId || null, d.schoolId || null, d.coachId || null,
+      [awardCode, teamId, schoolId, coachId,
        d.category, d.award, d.year || new Date().getFullYear(), d.event || null,
        d.hasTrophy ? 1 : 0, d.hasMedal ? 1 : 0, d.hasCertificate ? 1 : 0,
        d.status || 'confirmed']
     );
-    const [rows] = await pool.execute('SELECT * FROM awards WHERE id = ?', [id]);
+    const [rows] = await pool.execute('SELECT * FROM awards WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -52,10 +67,16 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
+
+    const teamId   = await resolveId('teams',   'team_code',   d.teamId);
+    const schoolId = await resolveId('schools', 'school_code', d.schoolId);
+    const coachId  = await resolveId('coaches', 'coach_code',  d.coachId);
+
     await pool.execute(
-      `UPDATE awards SET team_id=?, school_id=?, coach_id=?, category=?, award=?, year=?, event=?,
-       has_trophy=?, has_medal=?, has_certificate=?, status=?, updated_at=NOW() WHERE id = ?`,
-      [d.teamId || null, d.schoolId || null, d.coachId || null,
+      `UPDATE awards SET award_code=?, team_id=?, school_id=?, coach_id=?, category=?, award=?,
+       year=?, event=?, has_trophy=?, has_medal=?, has_certificate=?, status=?, updated_at=NOW()
+       WHERE id = ?`,
+      [d.awardCode || d.award_code, teamId, schoolId, coachId,
        d.category, d.award, d.year, d.event || null,
        d.hasTrophy ? 1 : 0, d.hasMedal ? 1 : 0, d.hasCertificate ? 1 : 0,
        d.status, req.params.id]

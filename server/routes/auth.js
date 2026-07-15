@@ -1,5 +1,7 @@
 // ============================================================
 // WRO Philippines DBMS – Auth Routes
+// JWT payload carries the integer users.id as userId.
+// user_code is also exposed in the token for display purposes.
 // ============================================================
 
 const express = require('express');
@@ -40,18 +42,20 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid username or password.' });
     }
 
+    // userId is now the integer surrogate PK; user_code carries the readable code
     const payload = {
-      userId: user.id,
-      name:   user.name,
-      role:   user.role,
-      email:  user.email,
+      userId:   user.id,        // INT surrogate PK — used for FK references
+      userCode: user.user_code, // business code — for display only
+      name:     user.name,
+      role:     user.role,
+      email:    user.email,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '8h',
     });
 
-    // Update last login
+    // Update last login using the integer surrogate PK
     await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
     res.json({
