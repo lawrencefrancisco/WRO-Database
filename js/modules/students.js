@@ -244,7 +244,8 @@ const Students = {
     const s      = await DB.getById('students', id);
     if (!s) return;
     const school = await DB.getById('schools', s.schoolId);
-    const teams  = await DB.query('teams', t => Array.isArray(t.members) && t.members.includes(id) && !t.isDeleted);
+    const numId  = parseInt(id, 10);
+    const teams  = await DB.query('teams', t => Array.isArray(t.members) && t.members.includes(numId) && !t.isDeleted);
     Modal.show(s.fullName, `
       <div class="grid grid-cols-2 gap-3 text-sm mb-4">
         <div><span class="text-slate-500">Birthday:</span> <span class="text-slate-200">${Utils.formatDate(s.birthday)}</span></div>

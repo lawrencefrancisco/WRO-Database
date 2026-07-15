@@ -180,45 +180,97 @@ const Dashboard = {
       });
     }
 
-    // ── Growth Chart ──────────────────────────────────────
-    const byYear = Utils.groupBy(teams, t => (t.season||'').replace(/\D+/g,'').slice(-4));
-    const yearSet = new Set(Object.keys(byYear).filter(y => y.length === 4));
-    const currentYear = new Date().getFullYear();
-    for (let y = 2022; y <= currentYear + 1; y++) yearSet.add(y.toString());
-    const years = Array.from(yearSet).sort();
-
+    // ── Growth Chart (Participation by Year) ─────────────────────
+    // Data comes from the dedicated backend endpoint which runs a
+    // proper SQL COUNT(DISTINCT) join across teams + team_members.
+    // This is accurate even when teams have null seasons or when
+    // the same student belongs to multiple teams in the same year.
     this._destroyChart('chart-growth');
     const ctx2 = document.getElementById('chart-growth');
     if (ctx2) {
-      this._charts['chart-growth'] = new Chart(ctx2, {
-        type: 'line',
-        data: {
-          labels: years,
-          datasets: [{
-            label: 'Teams',
-            data: years.map(y => (byYear[y]||[]).length),
-            borderColor: '#D4A017',
-            backgroundColor: 'rgba(212,160,23,0.12)',
-            fill: true, tension: 0.4, pointRadius: 6,
-            pointBackgroundColor: '#D4A017', pointBorderColor: '#fff', pointBorderWidth: 2,
-          }, {
-            label: 'Students',
-            data: years.map(y => (byYear[y]||[]).reduce((sum, t) => sum + (t.members?.length || 0), 0)),
-            borderColor: '#f4841a',
-            backgroundColor: 'rgba(244,132,26,0.07)',
-            fill: true, tension: 0.4, pointRadius: 6,
-            pointBackgroundColor: '#f4841a', pointBorderColor: '#fff', pointBorderWidth: 2,
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'top', labels: { color: '#a89060' } } },
-          scales: {
-            x: { grid: { display: false }, ticks: { color: '#a89060' } },
-            y: { beginAtZero: true, grid: { color: 'rgba(212,160,23,0.1)' }, ticks: { color: '#a89060' } }
-          }
+      try {
+        // Fetch SQL-aggregated participation data from the server
+        const rawData = await DB._request('GET', '/dashboard/participation');
+        const participationData = Array.isArray(rawData) ? rawData : [];
+
+        // Build a complete year map: always show 2022 → currentYear+1
+        // so the axis is consistent even when some years have no data.
+        const currentYear = new Date().getFullYear();
+        const yearMap = {};
+        for (let y = 2022; y <= currentYear + 1; y++) {
+          yearMap[String(y)] = { teams: 0, students: 0 };
         }
-      });
+        // Overlay real data from the API
+        participationData.forEach(d => {
+          if (d.year && String(d.year).length === 4) {
+            yearMap[String(d.year)] = {
+              teams:    Number(d.teams)    || 0,
+              students: Number(d.students) || 0,
+            };
+          }
+        });
+
+        const years       = Object.keys(yearMap).sort();
+        const teamData    = years.map(y => yearMap[y].teams);
+        const studentData = years.map(y => yearMap[y].students);
+        const hasAnyData  = teamData.some(v => v > 0) || studentData.some(v => v > 0);
+
+        if (!hasAnyData) {
+          // Show a graceful empty state instead of a flat-zero chart
+          ctx2.parentElement.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full gap-2 py-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
+                fill="none" stroke="rgba(212,160,23,0.35)" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              <p class="text-slate-500 text-sm">No participation data yet</p>
+              <p class="text-slate-600 text-xs">Data will appear once teams are registered with a season</p>
+            </div>`;
+        } else {
+          this._charts['chart-growth'] = new Chart(ctx2, {
+            type: 'line',
+            data: {
+              labels: years,
+              datasets: [{
+                label: 'Teams',
+                data: teamData,
+                borderColor: '#D4A017',
+                backgroundColor: 'rgba(212,160,23,0.12)',
+                fill: true, tension: 0.4, pointRadius: 6,
+                pointBackgroundColor: '#D4A017', pointBorderColor: '#fff', pointBorderWidth: 2,
+              }, {
+                label: 'Students',
+                data: studentData,
+                borderColor: '#f4841a',
+                backgroundColor: 'rgba(244,132,26,0.07)',
+                fill: true, tension: 0.4, pointRadius: 6,
+                pointBackgroundColor: '#f4841a', pointBorderColor: '#fff', pointBorderWidth: 2,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'top', labels: { color: '#a89060' } } },
+              scales: {
+                x: { grid: { display: false }, ticks: { color: '#a89060' } },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: 'rgba(212,160,23,0.1)' },
+                  ticks: { color: '#a89060', stepSize: 1, precision: 0 },
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error('[Dashboard] Growth chart error:', err);
+        if (ctx2 && ctx2.parentElement) {
+          ctx2.parentElement.innerHTML =
+            `<p class="text-slate-500 text-sm flex items-center justify-center h-full">
+               Could not load participation data
+             </p>`;
+        }
+      }
     }
 
     // ── School Type Doughnut ──────────────────────────────

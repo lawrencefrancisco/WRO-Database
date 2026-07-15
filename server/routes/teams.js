@@ -33,8 +33,22 @@ async function resolveId(conn, table, codeCol, value) {
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM teams WHERE is_deleted = 0 ORDER BY team_name');
-    for (const team of rows) {
-      team.members = await getMembers(team.id);
+    
+    if (rows.length > 0) {
+      const teamIds = rows.map(r => r.id);
+      const placeholders = teamIds.map(() => '?').join(',');
+      const [memberRows] = await pool.execute(
+        `SELECT team_id, student_id FROM team_members WHERE team_id IN (${placeholders})`,
+        teamIds
+      );
+      const memberMap = {};
+      memberRows.forEach(r => {
+        if (!memberMap[r.team_id]) memberMap[r.team_id] = [];
+        memberMap[r.team_id].push(r.student_id);
+      });
+      rows.forEach(t => {
+        t.members = memberMap[t.id] || [];
+      });
     }
     res.json(rows);
   } catch (err) {

@@ -268,10 +268,11 @@ const Schools = {
   async viewDetail(id) {
     const s        = await DB.getById('schools', id);
     if (!s) return;
-    const teams    = await DB.query('teams',    t => t.schoolId === id && !t.isDeleted);
-    const coaches  = await DB.query('coaches',  c => c.schoolId === id && !c.isDeleted);
-    const awards   = await DB.query('awards',   a => a.schoolId === id && !a.isDeleted);
-    const students = await DB.query('students', s => s.schoolId === id && !s.isDeleted);
+    const numId    = parseInt(id, 10);
+    const teams    = await DB.query('teams',    t => t.schoolId === numId && !t.isDeleted);
+    const coaches  = await DB.query('coaches',  c => c.schoolId === numId && !c.isDeleted);
+    const awards   = await DB.query('awards',   a => a.schoolId === numId && !a.isDeleted);
+    const students = await DB.query('students', s => s.schoolId === numId && !s.isDeleted);
     Modal.show(s.schoolName, `
       <div class="grid grid-cols-2 gap-4 text-sm mb-6">
         <div><span class="text-slate-500">Type:</span> <span class="text-slate-200">${s.schoolType}</span></div>

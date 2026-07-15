@@ -137,13 +137,31 @@ const Judging = {
         (r.contactNumber || r.contact_number || '').toLowerCase().includes(q)
       );
     }
-    if (this._filterSeason) {
-      rows = rows.filter(r => r.season === this._filterSeason);
-    }
-    if (this._filterCategory) {
-      rows = rows.filter(r =>
-        (r.judgingCategory || r.judging_category) === this._filterCategory
-      );
+
+    // Build a set of judge IDs that have matching assignments so the filter
+    // captures judges assigned via judge_assignments (not just their own row field).
+    if (this._filterSeason || this._filterCategory) {
+      // Fetch assignments for all visible judges in one batch via the API
+      const assignmentMap = {}; // judgeId -> { seasons: [], categories: [] }
+      await Promise.all(rows.map(async r => {
+        try {
+          const res = await DB._request('GET', `/judging/${r.id}/assignments`);
+          if (res && !res.error) assignmentMap[r.id] = res;
+        } catch { /* silently ignore */ }
+      }));
+
+      rows = rows.filter(r => {
+        const asgn = assignmentMap[r.id];
+        const seasonMatch = !this._filterSeason || (
+          r.season === this._filterSeason ||
+          (asgn?.seasons || []).includes(this._filterSeason)
+        );
+        const catMatch = !this._filterCategory || (
+          (r.judgingCategory || r.judging_category) === this._filterCategory ||
+          (asgn?.categories || []).includes(this._filterCategory)
+        );
+        return seasonMatch && catMatch;
+      });
     }
 
     return rows.sort((a, b) => {
