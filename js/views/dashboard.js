@@ -14,11 +14,11 @@ const Dashboard = {
         <div class="rounded-2xl p-6 welcome-banner gold-glow">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-xs font-semibold uppercase tracking-wider mb-1" style="color:#D4A017;">Welcome back</div>
+              <div class="text-xs font-semibold uppercase tracking-wider mb-1" style="color:#F6C945;">Welcome back</div>
               <h2 class="text-2xl font-black" style="color:#f0e9d2;">
                 ${AUTH.currentUser()?.name || 'Administrator'}
               </h2>
-              <p class="text-sm mt-1" style="color:#a89060;">
+              <p class="text-sm mt-1" style="color:#F6C945;">
                 ${new Date().toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
               </p>
             </div>
@@ -74,14 +74,14 @@ const Dashboard = {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="glass rounded-2xl p-6">
             <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
               Regional Distribution
             </h3>
             <div id="region-bars" class="space-y-2"></div>
           </div>
           <div class="glass rounded-2xl p-6">
             <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               Recent Activity
             </h3>
             <div id="recent-activity" class="space-y-3"></div>
@@ -92,14 +92,14 @@ const Dashboard = {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="glass rounded-2xl p-6">
             <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
               Top Performing Schools
             </h3>
             <div id="top-schools-dash" class="space-y-2"></div>
           </div>
           <div class="glass rounded-2xl p-6">
             <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               Financial Summary
             </h3>
             <div id="financial-summary"></div>
@@ -126,8 +126,8 @@ const Dashboard = {
     // Inline SVG icons (Lucide-style, monochrome outline)
     const _svg = (paths, extra='') => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" ${extra}>${paths}</svg>`;
     document.getElementById('kpi-grid').innerHTML = [
-      { label:'Schools',      value: schools,  icon: _svg('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),      grad:'from-yellow-700 to-yellow-900',  glow:'rgba(212,160,23,0.2)',  color:'#D4A017' },
-      { label:'Teams',        value: teams,    icon: _svg('<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>'),                              grad:'from-amber-600 to-amber-900',    glow:'rgba(184,134,11,0.2)',  color:'#e8c027' },
+      { label:'Schools',      value: schools,  icon: _svg('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),      grad:'from-yellow-700 to-yellow-900',  glow:'rgba(246,201,69,0.2)',  color:'#F6C945' },
+      { label:'Teams',        value: teams,    icon: _svg('<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>'),                              grad:'from-amber-600 to-amber-900',    glow:'rgba(246,201,69,0.2)',  color:'#e8c027' },
       { label:'Coaches',      value: coaches,  icon: _svg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>'),                                                                grad:'from-orange-700 to-orange-900',  glow:'rgba(244,132,26,0.2)',  color:'#f4841a' },
       { label:'Students',     value: students, icon: _svg('<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>'),                                                                                                           grad:'from-blue-700 to-blue-900',      glow:'rgba(29,111,164,0.2)', color:'#1d6fa4' },
       { label:'Competitions', value: comps,    icon: _svg('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>'), grad:'from-red-700 to-red-900',        glow:'rgba(230,57,70,0.2)',  color:'#e63946' },
@@ -137,7 +137,7 @@ const Dashboard = {
         <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-gradient-to-br ${k.grad} opacity-15 transform translate-x-6 -translate-y-6"></div>
         <div class="kpi-icon-wrap mb-3" style="color:${k.color}">${k.icon}</div>
         <div class="text-3xl font-black" style="color:#f0e9d2;">${Utils.formatNumber(k.value)}</div>
-        <div class="text-xs mt-1" style="color:#a89060;">${k.label}</div>
+        <div class="text-xs mt-1" style="color:#F6C945;">${k.label}</div>
       </div>`).join('');
   },
 
@@ -147,9 +147,9 @@ const Dashboard = {
       return;
     }
 
-    Chart.defaults.color = '#a89060';
-    Chart.defaults.borderColor = 'rgba(212,160,23,0.15)';
-    const gradColors = ['#D4A017','#f4841a','#e63946','#2dc653','#1d6fa4','#8338ec','#f9c61b','#e91e8c'];
+    Chart.defaults.color = '#F6C945';
+    Chart.defaults.borderColor = 'rgba(246,201,69,0.15)';
+    const gradColors = ['#F6C945','#f4841a','#e63946','#2dc653','#1d6fa4','#8338ec','#f9c61b','#e91e8c'];
 
     // ── Category Chart ────────────────────────────────────
     const teams   = (await DB.getAll('teams')).filter(t => !t.isDeleted);
@@ -173,8 +173,8 @@ const Dashboard = {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { grid: { display: false }, ticks: { color: '#a89060' } },
-            y: { beginAtZero: true, grid: { color: 'rgba(212,160,23,0.1)' }, ticks: { color: '#a89060' } }
+            x: { grid: { display: false }, ticks: { color: '#F6C945' } },
+            y: { beginAtZero: true, grid: { color: 'rgba(246,201,69,0.1)' }, ticks: { color: '#F6C945' } }
           }
         }
       });
@@ -220,7 +220,7 @@ const Dashboard = {
           ctx2.parentElement.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full gap-2 py-4">
               <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
-                fill="none" stroke="rgba(212,160,23,0.35)" stroke-width="1.5"
+                fill="none" stroke="rgba(246,201,69,0.35)" stroke-width="1.5"
                 stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
               </svg>
@@ -235,10 +235,10 @@ const Dashboard = {
               datasets: [{
                 label: 'Teams',
                 data: teamData,
-                borderColor: '#D4A017',
-                backgroundColor: 'rgba(212,160,23,0.12)',
+                borderColor: '#F6C945',
+                backgroundColor: 'rgba(246,201,69,0.12)',
                 fill: true, tension: 0.4, pointRadius: 6,
-                pointBackgroundColor: '#D4A017', pointBorderColor: '#fff', pointBorderWidth: 2,
+                pointBackgroundColor: '#F6C945', pointBorderColor: '#fff', pointBorderWidth: 2,
               }, {
                 label: 'Students',
                 data: studentData,
@@ -250,13 +250,13 @@ const Dashboard = {
             },
             options: {
               responsive: true, maintainAspectRatio: false,
-              plugins: { legend: { position: 'top', labels: { color: '#a89060' } } },
+              plugins: { legend: { position: 'top', labels: { color: '#F6C945' } } },
               scales: {
-                x: { grid: { display: false }, ticks: { color: '#a89060' } },
+                x: { grid: { display: false }, ticks: { color: '#F6C945' } },
                 y: {
                   beginAtZero: true,
-                  grid: { color: 'rgba(212,160,23,0.1)' },
-                  ticks: { color: '#a89060', stepSize: 1, precision: 0 },
+                  grid: { color: 'rgba(246,201,69,0.1)' },
+                  ticks: { color: '#F6C945', stepSize: 1, precision: 0 },
                 }
               }
             }
@@ -283,9 +283,9 @@ const Dashboard = {
         type: 'doughnut',
         data: {
           labels: Object.keys(byType),
-          datasets: [{ data: Object.values(byType).map(v=>v.length), backgroundColor: ['#D4A017','#f4841a','#2dc653'], borderWidth: 0 }]
+          datasets: [{ data: Object.values(byType).map(v=>v.length), backgroundColor: ['#F6C945','#f4841a','#2dc653'], borderWidth: 0 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#a89060' } } }, cutout: '65%' }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#F6C945' } } }, cutout: '65%' }
       });
     }
 
@@ -302,7 +302,7 @@ const Dashboard = {
           labels: ['Male','Female'],
           datasets: [{ data: [male,female], backgroundColor: ['#1d6fa4','#e91e8c'], borderWidth: 0 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#a89060' } } }, cutout: '65%' }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#F6C945' } } }, cutout: '65%' }
       });
     }
 
@@ -316,9 +316,9 @@ const Dashboard = {
         type: 'pie',
         data: {
           labels: Object.keys(payGroups).map(Utils.capitalize),
-          datasets: [{ data: Object.values(payGroups).map(v=>v.length), backgroundColor: ['#2dc653','#e63946','#D4A017'], borderWidth: 0 }]
+          datasets: [{ data: Object.values(payGroups).map(v=>v.length), backgroundColor: ['#2dc653','#e63946','#F6C945'], borderWidth: 0 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#a89060' } } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#F6C945' } } } }
       });
     }
   },
@@ -359,16 +359,16 @@ const Dashboard = {
 
     const icons = {
       INSERT: _svg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>', '#2dc653'),
-      UPDATE: _svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', '#D4A017'),
+      UPDATE: _svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', '#F6C945'),
       DELETE: _svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>', '#e63946'),
       LOGIN:  _svg('<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>', '#4f9cf9'),
-      LOGOUT: _svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', '#a89060'),
+      LOGOUT: _svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', '#F6C945'),
     };
-    const defaultIcon = _svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', '#a89060');
+    const defaultIcon = _svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', '#F6C945');
 
     const actionColors = {
-      INSERT: '#2dc653', UPDATE: '#D4A017', DELETE: '#e63946',
-      LOGIN:  '#4f9cf9', LOGOUT: '#a89060',
+      INSERT: '#2dc653', UPDATE: '#F6C945', DELETE: '#e63946',
+      LOGIN:  '#4f9cf9', LOGOUT: '#F6C945',
     };
     const actionLabels = {
       INSERT: 'Added',  UPDATE: 'Updated', DELETE: 'Deleted',
@@ -385,7 +385,7 @@ const Dashboard = {
       const tableName = l.table_name || l.table || '—';
       const userName  = l.user_name  || l.userName || 'System';
       const label     = actionLabels[action] || action;
-      const color     = actionColors[action] || '#a89060';
+      const color     = actionColors[action] || '#F6C945';
       const icon      = icons[action]       || defaultIcon;
       return `
         <div class="flex items-center gap-3 p-3 glass-light rounded-xl">
@@ -409,7 +409,7 @@ const Dashboard = {
     const el      = document.getElementById('top-schools-dash');
     if (!el) return;
     // Rank badge SVG icons
-    const rankColors = ['#D4A017','#a89060','#cd7f32','#5a6a8a','#5a6a8a'];
+    const rankColors = ['#F6C945','#F6C945','#cd7f32','#5a6a8a','#5a6a8a'];
     const rankLabels = ['1st','2nd','3rd','4th','5th'];
     el.innerHTML = sorted.map(([sid, aList], idx) => {
       const school = _schoolsMap[sid];
@@ -439,9 +439,9 @@ const Dashboard = {
     el.innerHTML = `
       <div class="space-y-4">
         ${[
-          { label:'Total Registration Income', value: Utils.formatCurrency(totalFee),  color:'text-white',        icon: _svg('<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>','#a89060') },
+          { label:'Total Registration Income', value: Utils.formatCurrency(totalFee),  color:'text-white',        icon: _svg('<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>','#F6C945') },
           { label:'Amount Collected',          value: Utils.formatCurrency(collected), color:'text-green-400',     icon: _svg('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
-          { label:'Outstanding Balance',       value: Utils.formatCurrency(balance),   color:'text-yellow-400',    icon: _svg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>','#D4A017') },
+          { label:'Outstanding Balance',       value: Utils.formatCurrency(balance),   color:'text-yellow-400',    icon: _svg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>','#F6C945') },
           { label:'Sponsorship Income',        value: Utils.formatCurrency(sponsors),  color:'text-indigo-400',    icon: _svg('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>','#8338ec') },
         ].map(f=>`
           <div class="flex items-center justify-between p-3 glass-light rounded-xl">

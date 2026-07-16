@@ -12,7 +12,7 @@ const Awards = {
         <!-- Hall of Fame Banner -->
         <div class="glass rounded-2xl p-6 text-center border border-yellow-500/20"
              style="background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(168,85,247,0.05));">
-          <div class="flex justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg></div>
+          <div class="flex justify-center mb-3"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg></div>
           <h2 class="text-2xl font-black text-white mb-1">WRO Philippines Hall of Fame</h2>
           <p class="text-slate-400 text-sm">Celebrating excellence in robotics across all seasons</p>
           <div class="grid grid-cols-3 gap-4 mt-4" id="hof-stats"></div>
@@ -34,7 +34,7 @@ const Awards = {
 
         <!-- Champion Schools -->
         <div class="glass rounded-2xl p-6">
-          <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Most Awarded Schools</h3>
+          <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Most Awarded Schools</h3>
           <div id="top-schools" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
         </div>
 
@@ -63,7 +63,7 @@ const Awards = {
     const champions = all.filter(a => a.award === 'Champion').length;
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     document.getElementById('hof-stats').innerHTML = [
-      { label:'Total Awards',  value: all.length,   icon: _si('<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>','#D4A017') },
+      { label:'Total Awards',  value: all.length,   icon: _si('<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>','#F6C945') },
       { label:'Champions',     value: champions,    icon: _si('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>','#e8c027') },
       { label:'Competitions',  value: [...new Set(all.map(a=>a.year))].length, icon: _si('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>','#8338ec') },
     ].map(s=>`
@@ -79,7 +79,7 @@ const Awards = {
     const all = (await DB.getAll('awards')).filter(a => !a.isDeleted);
     const bySchool = Utils.groupBy(all, 'schoolId');
     const sorted   = Object.entries(bySchool).sort((a,b) => b[1].length - a[1].length).slice(0,6);
-    const rankColors = ['#D4A017','#a89060','#cd7f32','#5a6a8a','#5a6a8a','#5a6a8a'];
+    const rankColors = ['#F6C945','#F6C945','#cd7f32','#5a6a8a','#5a6a8a','#5a6a8a'];
     const rankLabels = ['1st','2nd','3rd','4th','5th','6th'];
     document.getElementById('top-schools').innerHTML = sorted.map(([sid, awards], idx) => {
       const school = _schoolsMap[sid];
@@ -114,16 +114,16 @@ const Awards = {
     const tbody = document.getElementById('awards-tbody');
     if (!tbody) return;
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></div><div class="text-slate-300 text-lg mt-2">No awards yet</div></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></div><div class="text-slate-300 text-lg mt-2">No awards yet</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = page.map(a => {
       const team   = _teamsMap[a.teamId];
       const school = _schoolsMap[a.schoolId];
       const awardIcon = a.award==='Champion'
-        ? `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#D4A017' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`
+        ? `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#F6C945' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`
         : a.award?.includes('Runner')
-          ? `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#a89060' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='6'/><path d='M15.477 12.89 17 22l-5-3-5 3 1.523-9.11'/></svg>`
+          ? `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#F6C945' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='6'/><path d='M15.477 12.89 17 22l-5-3-5 3 1.523-9.11'/></svg>`
           : `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#cd7f32' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='6'/><path d='M15.477 12.89 17 22l-5-3-5 3 1.523-9.11'/></svg>`;
       return `
         <tr class="table-row">

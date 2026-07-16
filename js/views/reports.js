@@ -27,7 +27,7 @@ const Reports = {
       <div class="glass rounded-2xl p-6 border border-slate-700/30 hover:border-indigo-500/30 transition-all">
         <div class="flex items-start gap-4 mb-4">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4A017" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${r.paths}</svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${r.paths}</svg>
           </div>
           <div class="flex-1">
             <h3 class="font-bold text-white">${r.title}</h3>

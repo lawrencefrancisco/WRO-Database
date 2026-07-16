@@ -71,9 +71,9 @@ const Payments = {
 
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     document.getElementById('pay-stats').innerHTML = [
-      { label:'Total Registration', value: Utils.formatCurrency(totalFee),           icon: _si('<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>','#D4A017') },
+      { label:'Total Registration', value: Utils.formatCurrency(totalFee),           icon: _si('<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>','#F6C945') },
       { label:'Collected',          value: Utils.formatCurrency(collected),           icon: _si('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
-      { label:'Outstanding',        value: Utils.formatCurrency(totalFee-collected), icon: _si('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>','#D4A017') },
+      { label:'Outstanding',        value: Utils.formatCurrency(totalFee-collected), icon: _si('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>','#F6C945') },
       { label:'Paid Teams',         value: `${paid.length}/${all.length}`,          icon: _si('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>','#8338ec') },
     ].map(s => `
       <div class="kpi-card rounded-xl p-4">
@@ -115,7 +115,7 @@ const Payments = {
     const tbody = document.getElementById('payments-tbody');
     if (!tbody) return;
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="text-slate-300 text-lg mt-2">No payment records</div></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="text-slate-300 text-lg mt-2">No payment records</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = page.map(p => {
@@ -293,7 +293,7 @@ const Communications = {
       <div class="page-view space-y-6">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           ${[
-            { label:'Total Records',       value: all.length, icon: _sic('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 0 2 2z"/>','#D4A017') },
+            { label:'Total Records',       value: all.length, icon: _sic('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 0 2 2z"/>','#F6C945') },
             { label:'Confirmations Sent',  value: sent,       icon: _sic('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
             { label:'Certificates Sent',   value: certs,      icon: _sic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>','#e8c027') },
             { label:'Feedback Received',   value: all.filter(c=>c.feedbackSubmitted).length, icon: _sic('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 0 2 2z"/>','#8338ec') },
@@ -420,7 +420,7 @@ const Delegation = {
                       <td>${Utils.statusBadge(d.status)}</td>
                     </tr>`;
                 }).join('')}
-                ${all.length === 0 ? `<tr><td colspan="9"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><div class="text-slate-400 mt-2">No delegation records</div></div></td></tr>` : ''}
+                ${all.length === 0 ? `<tr><td colspan="9"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><div class="text-slate-400 mt-2">No delegation records</div></div></td></tr>` : ''}
               </tbody>
             </table>
           </div>

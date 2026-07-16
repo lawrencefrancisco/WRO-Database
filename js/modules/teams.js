@@ -59,7 +59,7 @@ const Teams = {
     const byCat     = Utils.groupBy(all, 'category');
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     document.getElementById('team-stats').innerHTML = [
-      { label:'Total Teams', value: all.length,                    icon: _si('<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>','#D4A017') },
+      { label:'Total Teams', value: all.length,                    icon: _si('<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>','#F6C945') },
       { label:'Paid',        value: paid,                         icon: _si('<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>','#2dc653') },
       { label:'Qualified',   value: qualified,                    icon: _si('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>','#e8c027') },
       { label:'Categories',  value: Object.keys(byCat).length,   icon: _si('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>','#8338ec') },
@@ -92,7 +92,7 @@ const Teams = {
     const tbody = document.getElementById('teams-tbody');
     if (!tbody) return;
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No teams found</div></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No teams found</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = page.map(t => {
@@ -194,7 +194,7 @@ const Teams = {
                class="form-input flex flex-wrap gap-1.5 min-h-[42px] items-center"
                style="background:rgba(255,255,255,0.04);cursor:default;">
             ${_initSchools.length
-              ? _initSchools.map(n => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(212,160,23,0.18);color:#D4A017;">${n}</span>`).join('')
+              ? _initSchools.map(n => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${n}</span>`).join('')
               : '<span class="text-slate-500 text-sm">Select team members below to auto-detect schools</span>'}
           </div>
           <!-- Hidden field carries the primary school id for saving -->
@@ -293,7 +293,7 @@ const Teams = {
       if (hiddenSchool) hiddenSchool.value = '';
     } else {
       display.innerHTML = [...seen.values()]
-        .map(n => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(212,160,23,0.18);color:#D4A017;">${n}</span>`)
+        .map(n => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${n}</span>`)
         .join('');
       // Store the first school id as the primary (for the teams.school_id FK)
       if (hiddenSchool) hiddenSchool.value = [...seen.keys()][0];

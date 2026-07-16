@@ -53,7 +53,7 @@ const Coaches = {
     const male   = all.filter(s => s.gender === 'Male').length;
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     document.getElementById('coach-stats').innerHTML = [
-      { label:'Total Coaches',  value: all.length,           icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>','#D4A017') },
+      { label:'Total Coaches',  value: all.length,           icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>','#F6C945') },
       { label:'Active Coaches', value: active,               icon: _si('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
       { label:'Male',           value: male,                 icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>','#1d6fa4') },
       { label:'Female',         value: all.length - male,    icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>','#e91e8c') },
@@ -84,7 +84,7 @@ const Coaches = {
     if (!tbody) return;
 
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No coaches found</div></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No coaches found</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = page.map(c => {

@@ -65,6 +65,123 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// ── GET /api/competitions/season-details?season=WRO+2026 ─────
+// Must be declared before /:id. Returns all teams (with per-team members),
+// unique schools, coaches, judges, and students for a given season name.
+router.get('/season-details', async (req, res) => {
+  const season = req.query.season;
+  if (!season) {
+    return res.status(400).json({ success: false, error: 'season query param required.' });
+  }
+  try {
+    // Teams in this season with coach + school info
+    const [teamRows] = await pool.execute(
+      `SELECT t.id, t.team_name, t.category, t.age_group,
+              t.registration_status, t.qualification_status, t.payment_status, t.status,
+              sc.school_name,
+              co.full_name AS coach_name, co.email AS coach_email, co.mobile AS coach_mobile
+       FROM   teams t
+       LEFT JOIN schools sc ON sc.id = t.school_id
+       LEFT JOIN coaches co ON co.id = t.coach_id
+       WHERE  t.season = ? AND t.is_deleted = 0
+       ORDER  BY t.team_name ASC`,
+      [season]
+    );
+
+    // Per-team member names
+    const teamIds = teamRows.map(r => r.id);
+    const memberMap = {};
+    if (teamIds.length > 0) {
+      const ph = teamIds.map(() => '?').join(',');
+      const [memberRows] = await pool.execute(
+        `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
+                s.gender, sc.school_name AS student_school
+         FROM   team_members tm
+         JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
+         LEFT JOIN schools sc ON sc.id = s.school_id
+         WHERE  tm.team_id IN (${ph})`,
+        teamIds
+      );
+      memberRows.forEach(r => {
+        if (!memberMap[r.team_id]) memberMap[r.team_id] = [];
+        memberMap[r.team_id].push(r);
+      });
+    }
+    teamRows.forEach(t => { t.members = memberMap[t.id] || []; });
+
+    // Unique schools via student membership
+    const [schoolRows] = await pool.execute(
+      `SELECT DISTINCT sc.id, sc.school_name, sc.city, sc.region, sc.address,
+                       sc.contact_number, sc.email, sc.school_type,
+                       sc.school_head, sc.robotics_coordinator
+       FROM   team_members tm
+       JOIN   teams   t  ON t.id  = tm.team_id  AND t.season = ? AND t.is_deleted = 0
+       JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
+       JOIN   schools sc  ON sc.id = s.school_id
+       ORDER  BY sc.school_name ASC`,
+      [season]
+    );
+
+    // Coaches assigned to teams in this season
+    const [coachRows] = await pool.execute(
+      `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile,
+                       co.position, co.years_coaching, co.certifications,
+                       sc.school_name AS school_name
+       FROM   coaches co
+       JOIN   teams   t  ON t.coach_id = co.id AND t.season = ? AND t.is_deleted = 0
+       LEFT JOIN schools sc ON sc.id = co.school_id
+       WHERE  co.is_deleted = 0
+       ORDER  BY co.full_name ASC`,
+      [season]
+    );
+
+    // Judges for this season
+    const [judgeRows] = await pool.execute(
+      `SELECT id, full_name, contact_number, gender, judging_category, status
+       FROM   judges
+       WHERE  season = ? AND is_deleted = 0
+       ORDER  BY full_name ASC`,
+      [season]
+    );
+
+    // Distinct students
+    const [studentRows] = await pool.execute(
+      `SELECT DISTINCT s.id, s.full_name, s.age, s.grade_level, s.gender,
+                       s.consent_signed, s.shirt_size,
+                       sc.school_name AS school_name, t.team_name
+       FROM   team_members tm
+       JOIN   teams   t  ON t.id  = tm.team_id  AND t.season = ? AND t.is_deleted = 0
+       JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
+       LEFT JOIN schools sc ON sc.id = s.school_id
+       ORDER  BY s.full_name ASC`,
+      [season]
+    );
+
+    // Competition events in this season
+    const [eventRows] = await pool.execute(
+      `SELECT id, name, date, venue, status, categories
+       FROM   competitions
+       WHERE  season = ? AND is_deleted = 0
+       ORDER  BY date ASC`,
+      [season]
+    );
+    eventRows.forEach(r => {
+      if (typeof r.categories === 'string') {
+        try { r.categories = JSON.parse(r.categories); } catch { r.categories = []; }
+      }
+    });
+
+    res.json({ season, teams: teamRows, schools: schoolRows,
+               coaches: coachRows, judges: judgeRows,
+               students: studentRows, events: eventRows });
+  } catch (err) {
+    console.error('[Competitions] season-details error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+
 // ── GET /api/competitions/details/:id ────────────────────────
 // Returns all related participants for a competition — teams (with member
 // names), unique schools, coaches, judges, and students — keyed by the

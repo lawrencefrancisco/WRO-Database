@@ -21,7 +21,7 @@ const Judging = {
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              ${_icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#D4A017')}
+              ${_icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#F6C945')}
               Judges
             </h2>
             <p class="text-xs text-slate-500 mt-1">Master data repository for WRO Philippines competition judges</p>
@@ -69,7 +69,7 @@ const Judging = {
         <div class="glass rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-slate-700/50 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              ${_icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#a89060')}
+              ${_icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#F6C945')}
               Judge Records
             </h3>
             <span id="judge-count" class="text-slate-500 text-xs"></span>
@@ -110,7 +110,7 @@ const Judging = {
     const _si = (d, c) => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
     const cards = [
-      { label: 'Total Judges', value: all.length, icon: _si('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#D4A017'), color: '#D4A017' },
+      { label: 'Total Judges', value: all.length, icon: _si('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#F6C945'), color: '#F6C945' },
       { label: 'Active', value: active, icon: _si('<polyline points="20 6 9 17 4 12"/>', '#2dc653'), color: '#2dc653' },
       { label: 'Male', value: male, icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#1d6fa4'), color: '#1d6fa4' },
       { label: 'Female', value: female, icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '#e91e8c'), color: '#e91e8c' },
@@ -190,7 +190,7 @@ const Judging = {
         <tr><td colspan="5">
           <div class="empty-state">
             <div style="opacity:0.3;display:flex;justify-content:center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
             </div>
@@ -214,7 +214,7 @@ const Judging = {
             <td>
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                  style="background:linear-gradient(135deg,#D4A017,#8B6914);">
+                  style="background:linear-gradient(135deg,#F6C945,#8B6914);">
                   ${initial}
                 </div>
                 <div>
@@ -232,9 +232,9 @@ const Judging = {
                 <button onclick="Judging.openForm('${j.id}')"
                   title="Edit Judge"
                   class="p-1.5 rounded-lg text-xs transition flex items-center"
-                  style="background:rgba(212,160,23,0.12);color:#D4A017;"
-                  onmouseover="this.style.background='rgba(212,160,23,0.25)'"
-                  onmouseout="this.style.background='rgba(212,160,23,0.12)'">
+                  style="background:rgba(246,201,69,0.12);color:#F6C945;"
+                  onmouseover="this.style.background='rgba(246,201,69,0.25)'"
+                  onmouseout="this.style.background='rgba(246,201,69,0.12)'">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
                 <button onclick="Judging.openAssignment('${j.id}', '${name.replace(/'/g, "\\'")}')" 
@@ -416,7 +416,7 @@ const Judging = {
           style="background:rgba(230,57,70,0.12);">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </div>
-        <p class="text-white font-semibold text-base">Remove <span style="color:#D4A017">${name}</span>?</p>
+        <p class="text-white font-semibold text-base">Remove <span style="color:#F6C945">${name}</span>?</p>
         <p class="text-slate-400 text-sm mt-2">This judge will be removed from the database. This action can be reviewed in the audit log.</p>
       </div>`,
       `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">Cancel</button>
@@ -473,7 +473,7 @@ const Judging = {
             class="assignment-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
             style="${isSelected
             ? groupId === 'season'
-              ? 'background:rgba(212,160,23,0.22);color:#D4A017;border-color:rgba(212,160,23,0.55);'
+              ? 'background:rgba(246,201,69,0.22);color:#F6C945;border-color:rgba(246,201,69,0.55);'
               : 'background:rgba(30,158,191,0.22);color:#1E9EBF;border-color:rgba(30,158,191,0.55);'
             : 'background:rgba(255,255,255,0.04);color:#6B7494;border-color:rgba(255,255,255,0.10);'
           }"
@@ -489,7 +489,7 @@ const Judging = {
         <!-- Seasons -->
         <div>
           <div class="flex items-center justify-between mb-3">
-            <label class="form-label mb-0" style="color:#D4A017;">
+            <label class="form-label mb-0" style="color:#F6C945;">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Seasons
             </label>
@@ -564,7 +564,7 @@ const Judging = {
     const nextState = !isSelected;
 
     const activeStyle = group === 'season'
-      ? 'background:rgba(212,160,23,0.22);color:#D4A017;border-color:rgba(212,160,23,0.55);'
+      ? 'background:rgba(246,201,69,0.22);color:#F6C945;border-color:rgba(246,201,69,0.55);'
       : 'background:rgba(30,158,191,0.22);color:#1E9EBF;border-color:rgba(30,158,191,0.55);';
     const inactiveStyle = 'background:rgba(255,255,255,0.04);color:#6B7494;border-color:rgba(255,255,255,0.10);';
 

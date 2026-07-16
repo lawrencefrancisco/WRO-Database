@@ -52,7 +52,7 @@ const Students = {
     const avgAge = all.length ? Math.round(all.reduce((acc,s) => acc + (s.age||0), 0)/all.length) : 0;
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     document.getElementById('student-stats').innerHTML = [
-      { label:'Total Students', value: all.length,           icon: _si('<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>','#D4A017') },
+      { label:'Total Students', value: all.length,           icon: _si('<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>','#F6C945') },
       { label:'Male',           value: male,                 icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>','#1d6fa4') },
       { label:'Female',         value: all.length - male,    icon: _si('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>','#e91e8c') },
       { label:'Avg Age',        value: avgAge,               icon: _si('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>','#2dc653') },
@@ -83,7 +83,7 @@ const Students = {
     const tbody = document.getElementById('students-tbody');
     if (!tbody) return;
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No students found</div></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No students found</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = page.map(s => {

@@ -313,13 +313,13 @@ const App = {
 
     document.getElementById('sidebar').innerHTML = `
       <!-- Logo -->
-      <div style="padding:16px;border-bottom:1px solid rgba(212,160,23,0.2);">
+      <div style="padding:16px;border-bottom:1px solid rgba(246,201,69,0.2);">
         <div class="flex items-center gap-3">
           <img id="sidebar-logo" src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines logo"
             class="sidebar-logo-text js-theme-logo h-12 object-contain"
-            style="filter:drop-shadow(0 1px 6px rgba(212,160,23,0.35));max-width:180px;">
+            style="filter:drop-shadow(0 1px 6px rgba(246,201,69,0.35));max-width:180px;">
           <div class="sidebar-logo-text" style="white-space:nowrap;">
-            <div style="font-size:10px;font-weight:700;color:#a89060;letter-spacing:0.4px;" aria-hidden="true">DATABASE SYSTEM</div>
+            <div style="font-size:10px;font-weight:700;color:#F6C945;letter-spacing:0.4px;" aria-hidden="true">DATABASE SYSTEM</div>
           </div>
         </div>
         <!-- WRO Rainbow Bar -->
@@ -332,15 +332,15 @@ const App = {
       </nav>
 
       <!-- User Profile -->
-      <div style="padding:14px;border-top:1px solid rgba(212,160,23,0.2);">
+      <div style="padding:14px;border-top:1px solid rgba(246,201,69,0.2);">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-            style="background:linear-gradient(135deg,#D4A017,#8B6914);" aria-hidden="true">
+            style="background:linear-gradient(135deg,#F6C945,#8B6914);" aria-hidden="true">
             ${(user?.name||'?').charAt(0)}
           </div>
           <div class="nav-label flex-1 overflow-hidden">
             <div class="text-sm font-semibold truncate" style="color:#f0e9d2;">${user?.name}</div>
-            <div class="text-xs" style="color:#a89060;">${ri.label}</div>
+            <div class="text-xs" style="color:#F6C945;">${ri.label}</div>
           </div>
           <button onclick="AUTH.logout()" title="Log out" aria-label="Log out" class="nav-label transition" style="color:#5a6a8a;background:none;border:none;cursor:pointer;display:flex;align-items:center;" onmouseover="this.style.color='#e63946'" onmouseout="this.style.color='#5a6a8a'">${ICONS.logout}</button>
         </div>
@@ -357,7 +357,7 @@ const App = {
           aria-label="Toggle navigation menu"
           aria-controls="sidebar"
           aria-expanded="false"
-          class="p-2 rounded-xl transition" style="color:#a89060;background:rgba(212,160,23,0.08);display:flex;align-items:center;">
+          class="p-2 rounded-xl transition" style="color:#F6C945;background:rgba(246,201,69,0.08);display:flex;align-items:center;">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <!-- Page Title -->
@@ -368,14 +368,14 @@ const App = {
       <div class="flex items-center gap-3">
         <p id="page-subtitle" class="text-xs hidden md:block" style="color:#5a6a8a;"></p>
 
-        <button onclick="ThemeManager.toggle()" id="theme-toggle-icon" class="p-2 rounded-xl transition hover:bg-slate-700/50" style="color:#a89060; display:flex; align-items:center;" title="Toggle Light/Dark Mode" aria-label="Toggle light/dark mode">
+        <button onclick="ThemeManager.toggle()" id="theme-toggle-icon" class="p-2 rounded-xl transition hover:bg-slate-700/50" style="color:#F6C945; display:flex; align-items:center;" title="Toggle Light/Dark Mode" aria-label="Toggle light/dark mode">
           <!-- Default sun icon (handled by ThemeManager) -->
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         </button>
 
         <div class="flex items-center gap-2 px-3 py-1.5 glass-light rounded-xl" aria-live="polite" aria-label="System status: online">
           <div class="pulse-dot" aria-hidden="true"></div>
-          <span class="text-xs font-medium" style="color:#D4A017;">Live</span>
+          <span class="text-xs font-medium" style="color:#F6C945;">Live</span>
         </div>
         <div class="text-xs hidden md:block" style="color:#5a6a8a;">${new Date().toLocaleDateString('en-PH')}</div>
         <button onclick="AUTH.logout()" class="px-3 py-1.5 rounded-xl text-xs font-medium transition"
@@ -405,11 +405,12 @@ const ThemeManager = {
   key: 'wro_ph_theme',
   init() {
     const saved = localStorage.getItem(this.key);
-    if (saved === 'light') this.setLight();
-    else this.setDark();
-    // Sync logo after sidebar has been rendered (App._renderSidebar runs before ThemeManager.init)
-    this._swapLogos(saved === 'light');
+    // Default is LIGHT — only use dark if explicitly saved
+    if (saved === 'dark') this.setDark();
+    else this.setLight();
+    this._swapLogos(saved !== 'dark');
   },
+
   toggle() {
     if (document.documentElement.classList.contains('light-mode')) this.setDark();
     else this.setLight();

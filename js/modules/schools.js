@@ -78,7 +78,7 @@ const Schools = {
     const types    = Utils.groupBy(all, 'schoolType');
     const _si = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     document.getElementById('school-stats').innerHTML = [
-      { label:'Total Schools',   value: all.length,                     icon: _si('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>','#D4A017') },
+      { label:'Total Schools',   value: all.length,                     icon: _si('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>','#F6C945') },
       { label:'Active Schools',  value: active,                          icon: _si('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
       { label:'Regions Covered', value: regions,                         icon: _si('<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>','#8338ec') },
       { label:'Private Schools', value: types['Private']?.length || 0,  icon: _si('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="12" y1="22" x2="12" y2="12"/>','#e8c027') },
@@ -114,7 +114,7 @@ const Schools = {
 
     if (page.length === 0) {
       tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
-        <div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <div class="text-lg font-semibold text-slate-300 mt-2">No schools found</div>
         <div class="text-sm mt-1">Try adjusting your search or filters</div>
       </div></td></tr>`;

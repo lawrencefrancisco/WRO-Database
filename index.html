@@ -22,23 +22,30 @@
     }
   </script>
 
-  <!-- Early theme + logo swap to prevent flash -->
+  <!-- Early theme init: default is LIGHT, only dark if explicitly saved -->
   <script>
-    if (localStorage.getItem('wro_ph_theme') === 'light') {
-      document.documentElement.classList.add('light-mode');
-      document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.js-theme-logo').forEach(img => {
-          img.src = 'assets/image/felta-logo-new-lightmode.png';
+    (function() {
+      const saved = localStorage.getItem('wro_ph_theme');
+      const isLight = saved !== 'dark'; // light is the default
+      if (isLight) {
+        document.documentElement.classList.add('light-mode');
+        document.addEventListener('DOMContentLoaded', () => {
+          document.querySelectorAll('.js-theme-logo').forEach(img => {
+            img.src = 'assets/image/felta-logo-new-lightmode.png';
+          });
         });
-      });
-    }
+      }
+    })();
   </script>
+
 
   <link rel="stylesheet" href="css/custom.css">
   <script src="js/core/db.js"></script>
   <script src="js/core/auth.js"></script>
   <script src="js/core/utils.js"></script>
   <script src="js/core/seed.js"></script>
+  <!-- SheetJS – client-side Excel (.xlsx) generation -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
 

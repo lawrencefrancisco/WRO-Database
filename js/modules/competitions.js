@@ -23,7 +23,7 @@ const Competitions = {
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              ${this._icon('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>', '#D4A017')}
+              ${this._icon('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>', '#F6C945')}
               Competition Management
             </h2>
             <p class="text-xs text-slate-500 mt-1">WRO Philippines seasons and competition events — statistics update automatically</p>
@@ -46,7 +46,7 @@ const Competitions = {
         <!-- Season Cards -->
         <div>
           <div class="flex items-center gap-2 mb-4">
-            ${this._icon('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', '#D4A017', 16)}
+            ${this._icon('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', '#F6C945', 16)}
             <span class="text-sm font-semibold text-slate-300">WRO Seasons</span>
             <span class="text-slate-600 text-xs ml-1">— statistics computed live from Team Management</span>
           </div>
@@ -61,7 +61,7 @@ const Competitions = {
         <div class="glass rounded-2xl overflow-hidden">
           <div class="p-4 border-b border-slate-700/50 flex items-center justify-between flex-wrap gap-3">
             <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              ${this._icon('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>', '#a89060', 14)}
+              ${this._icon('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>', '#F6C945', 14)}
               Competition Events
             </h3>
             <div class="flex items-center gap-3 flex-wrap">
@@ -77,9 +77,9 @@ const Competitions = {
               ${AUTH.can('competitions.write') ? `
               <button onclick="Competitions.openForm()"
                 class="px-4 py-2 rounded-xl text-white text-sm font-semibold transition flex items-center gap-2"
-                style="background:rgba(212,160,23,0.18);color:#D4A017;border:1px solid rgba(212,160,23,0.3);"
-                onmouseover="this.style.background='rgba(212,160,23,0.30)'"
-                onmouseout="this.style.background='rgba(212,160,23,0.18)'">
+                style="background:rgba(246,201,69,0.18);color:#F6C945;border:1px solid rgba(246,201,69,0.3);"
+                onmouseover="this.style.background='rgba(246,201,69,0.30)'"
+                onmouseout="this.style.background='rgba(246,201,69,0.18)'">
                 ${this._icon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>', 'currentColor', 14)}
                 Add Event
               </button>` : ''}
@@ -138,7 +138,7 @@ const Competitions = {
         <div class="col-span-3">
           <div class="empty-state">
             <div style="opacity:0.35;display:flex;justify-content:center">
-              ${this._icon('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', '#a89060', 48)}
+              ${this._icon('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', '#F6C945', 48)}
             </div>
             <div class="text-slate-400 mt-3 font-semibold">No seasons yet</div>
             <div class="text-slate-600 text-sm mt-1">Click "New Season" to create the first WRO season.</div>
@@ -149,13 +149,15 @@ const Competitions = {
 
     // Render cards immediately with spinners for stats
     grid.innerHTML = seasons.map(s => `
-      <div class="glass rounded-2xl p-5 border border-slate-700/30 transition-all hover:border-yellow-500/25" id="season-card-${s.id}">
+      <div class="glass rounded-2xl p-5 border border-slate-700/30 transition-all hover:border-yellow-500/40 hover:shadow-lg hover:shadow-yellow-500/5" id="season-card-${s.id}">
 
         <!-- Card Header -->
         <div class="flex items-start justify-between mb-5">
-          <div>
+          <!-- Clickable title area -->
+          <div class="flex-1 cursor-pointer" onclick="Competitions.viewSeasonDetail('${s.name.replace(/'/g, "\\'")}')"
+            title="Click to view all participants for ${s.name}">
             <div class="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-1">WRO Season</div>
-            <div class="text-2xl font-extrabold text-white leading-none">${s.name}</div>
+            <div class="text-2xl font-extrabold text-white leading-none hover:text-yellow-400 transition-colors">${s.name}</div>
             <div class="text-xs text-slate-600 mt-1">${s.year}</div>
           </div>
           <div class="flex gap-1.5">
@@ -163,9 +165,9 @@ const Competitions = {
             <button onclick="Competitions.openForm(null, '${s.name}')"
               title="Add Competition Event to ${s.name}"
               class="p-2 rounded-lg transition"
-              style="background:rgba(212,160,23,0.10);color:#D4A017;"
-              onmouseover="this.style.background='rgba(212,160,23,0.22)'"
-              onmouseout="this.style.background='rgba(212,160,23,0.10)'">
+              style="background:rgba(246,201,69,0.10);color:#F6C945;"
+              onmouseover="this.style.background='rgba(246,201,69,0.22)'"
+              onmouseout="this.style.background='rgba(246,201,69,0.10)'">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
             <button onclick="Competitions.confirmDeleteSeason('${s.id}', '${s.name}')"
@@ -179,8 +181,10 @@ const Competitions = {
           </div>
         </div>
 
-        <!-- Stats grid (placeholders; filled async) -->
-        <div class="grid grid-cols-2 gap-3" id="stats-${s.id}">
+        <!-- Stats grid (clickable — opens same modal) -->
+        <div class="grid grid-cols-2 gap-3 cursor-pointer" id="stats-${s.id}"
+          onclick="Competitions.viewSeasonDetail('${s.name.replace(/'/g, "\\'")}')"
+          title="Click to view all participants for ${s.name}">
           ${['Teams','Schools','Coaches','Students'].map(() => `
             <div class="glass-light rounded-xl p-3 text-center">
               <div class="flex justify-center mb-1"><div class="spinner" style="width:12px;height:12px;border-width:2px;"></div></div>
@@ -191,8 +195,8 @@ const Competitions = {
         <!-- Participating Categories (placeholder; filled async) -->
         <div class="mt-4 pt-4" style="border-top:1px solid rgba(100,116,139,0.18)">
           <div class="flex items-center gap-1.5 mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            <span class="text-xs font-semibold uppercase tracking-widest" style="color:#a89060">Participating Categories</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span class="text-xs font-semibold uppercase tracking-widest" style="color:#F6C945">Participating Categories</span>
           </div>
           <div id="categories-${s.id}" class="flex flex-wrap gap-1.5">
             <div class="flex items-center gap-1" style="opacity:0.5">
@@ -202,7 +206,16 @@ const Competitions = {
           </div>
         </div>
 
+        <!-- View Details hint -->
+        <div class="mt-3 pt-3 flex items-center justify-center gap-1 text-xs text-slate-600 cursor-pointer hover:text-yellow-400 transition-colors"
+          onclick="Competitions.viewSeasonDetail('${s.name.replace(/'/g, "\\'")}')"
+          title="View all participants">
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          View all participants
+        </div>
+
       </div>`).join('');
+
 
     // Load all stats in parallel — each card updates itself when ready
     await Promise.all(seasons.map(s => this._loadSeasonStats(s.name, s.id)));
@@ -213,7 +226,7 @@ const Competitions = {
   // Unknown categories fall back to a neutral slate style.
   _categoryBadge(name) {
     const palette = {
-      'RoboMission':       { bg: 'rgba(212,160,23,0.14)',  text: '#D4A017', border: 'rgba(212,160,23,0.32)' },
+      'RoboMission':       { bg: 'rgba(246,201,69,0.14)',  text: '#F6C945', border: 'rgba(246,201,69,0.32)' },
       'Future Innovators': { bg: 'rgba(79,156,249,0.14)',  text: '#4f9cf9', border: 'rgba(79,156,249,0.32)' },
       'Future Engineers':  { bg: 'rgba(45,198,83,0.14)',   text: '#2dc653', border: 'rgba(45,198,83,0.32)'  },
       'RoboSports':        { bg: 'rgba(233,30,140,0.14)',  text: '#e91e8c', border: 'rgba(233,30,140,0.32)' },
@@ -248,7 +261,7 @@ const Competitions = {
       if (!stats || stats.success === false) return;
 
       const items = [
-        { label: 'Teams',    value: stats.teams,    color: '#D4A017', icon: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>' },
+        { label: 'Teams',    value: stats.teams,    color: '#F6C945', icon: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>' },
         { label: 'Schools',  value: stats.schools,  color: '#4f9cf9', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
         { label: 'Coaches',  value: stats.coaches,  color: '#2dc653', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
         { label: 'Students', value: stats.students, color: '#e91e8c', icon: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>' },
@@ -320,7 +333,7 @@ const Competitions = {
         <tr><td colspan="6">
           <div class="empty-state">
             <div style="opacity:0.3;display:flex;justify-content:center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a89060" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
               </svg>
             </div>
@@ -628,21 +641,21 @@ const Competitions = {
 
     const { competition: c, teams, schools, coaches, judges, students } = data;
     const tabs = [
-      { key: 'teams',    label: 'Teams',    count: teams.length,    color: '#D4A017' },
+      { key: 'teams',    label: 'Teams',    count: teams.length,    color: '#F6C945' },
       { key: 'schools',  label: 'Schools',  count: schools.length,  color: '#4f9cf9' },
       { key: 'coaches',  label: 'Coaches',  count: coaches.length,  color: '#2dc653' },
       { key: 'judges',   label: 'Judges',   count: judges.length,   color: '#a890f0' },
       { key: 'students', label: 'Students', count: students.length, color: '#e91e8c' },
     ];
 
-    const _badge = (txt, color = '#a89060') =>
+    const _badge = (txt, color = '#F6C945') =>
       `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}44;white-space:nowrap">${txt}</span>`;
 
     const _statusBadge = v => {
       const m = { active:'#2dc653', inactive:'#e63946', registered:'#4f9cf9', confirmed:'#2dc653',
-                  waitlisted:'#D4A017', withdrawn:'#e63946', paid:'#2dc653', partial:'#D4A017',
-                  unpaid:'#e63946', pending:'#a89060', qualified:'#2dc653', disqualified:'#e63946' };
-      return _badge(v || '—', m[v] || '#a89060');
+                  waitlisted:'#F6C945', withdrawn:'#e63946', paid:'#2dc653', partial:'#F6C945',
+                  unpaid:'#e63946', pending:'#F6C945', qualified:'#2dc653', disqualified:'#e63946' };
+      return _badge(v || '—', m[v] || '#F6C945');
     };
 
     const _row = (label, value) => value
@@ -662,7 +675,7 @@ const Competitions = {
               <div class="text-xs text-slate-500 mt-0.5">${t.school_name || '—'}</div>
             </div>
             <div class="flex flex-wrap gap-1.5">
-              ${_badge(t.category || 'No Category', '#D4A017')}
+              ${_badge(t.category || 'No Category', '#F6C945')}
               ${_badge(t.age_group || '—', '#4f9cf9')}
               ${_statusBadge(t.registration_status)}
               ${_statusBadge(t.qualification_status)}
@@ -797,7 +810,7 @@ const Competitions = {
             <button id="comp-tab-${t.key}"
               onclick="Competitions._switchTab('${t.key}')"
               style="padding:8px 14px;border-radius:8px 8px 0 0;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;
-                     background:${i===0?'rgba(212,160,23,0.15)':'transparent'};
+                     background:${i===0?'rgba(246,201,69,0.15)':'transparent'};
                      color:${i===0?t.color:'#64748b'};
                      border-bottom:${i===0?`2px solid ${t.color}`:'2px solid transparent'}">
               ${t.label}
@@ -838,7 +851,7 @@ const Competitions = {
       const btn = document.getElementById(`comp-tab-${k}`);
       if (!btn) return;
       const isActive = k === key;
-      const color    = colors[k] || '#a89060';
+      const color    = colors[k] || '#F6C945';
       btn.style.background   = isActive ? `${color}22` : 'transparent';
       btn.style.color        = isActive ? color : '#64748b';
       btn.style.borderBottom = isActive ? `2px solid ${color}` : '2px solid transparent';
@@ -846,7 +859,360 @@ const Competitions = {
   },
 
 
-  // ── CSV Export ─────────────────────────────────────────────
+  // ── Season Detail Modal ────────────────────────────────────
+  async viewSeasonDetail(seasonName) {
+    // Show loading immediately
+    Modal.show(seasonName, `
+      <div class="flex flex-col items-center justify-center py-14 gap-3">
+        <div class="spinner" style="width:30px;height:30px;border-width:3px"></div>
+        <span class="text-slate-500 text-sm">Loading season participants…</span>
+      </div>`, '', 'max-w-5xl');
+
+    let data;
+    try {
+      data = await DB._request('GET', `/competitions/season-details?season=${encodeURIComponent(seasonName)}`);
+    } catch (_) { data = null; }
+
+    if (!data || data.success === false) {
+      Modal.show('Error', '<p class="text-red-400 text-sm">Could not load season details. Please try again.</p>', '', 'max-w-sm');
+      return;
+    }
+
+    const { teams, schools, coaches, judges, students, events } = data;
+
+    const tabs = [
+      { key: 'events',   label: 'Events',   count: events.length,   color: '#a890f0' },
+      { key: 'teams',    label: 'Teams',    count: teams.length,    color: '#F6C945' },
+      { key: 'schools',  label: 'Schools',  count: schools.length,  color: '#4f9cf9' },
+      { key: 'coaches',  label: 'Coaches',  count: coaches.length,  color: '#2dc653' },
+      { key: 'judges',   label: 'Judges',   count: judges.length,   color: '#a890f0' },
+      { key: 'students', label: 'Students', count: students.length, color: '#e91e8c' },
+    ];
+
+    const _badge = (txt, color = '#F6C945') =>
+      `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}44;white-space:nowrap">${txt}</span>`;
+
+    const _statusBadge = v => {
+      const m = { active:'#2dc653', inactive:'#e63946', upcoming:'#4f9cf9', ongoing:'#F6C945',
+                  completed:'#2dc653', cancelled:'#e63946', registered:'#4f9cf9',
+                  confirmed:'#2dc653', waitlisted:'#F6C945', withdrawn:'#e63946',
+                  paid:'#2dc653', partial:'#F6C945', unpaid:'#e63946',
+                  pending:'#F6C945', qualified:'#2dc653', disqualified:'#e63946' };
+      return _badge(v || '—', m[v] || '#F6C945');
+    };
+
+    const _row = (label, val) => val
+      ? `<div class="flex gap-2 text-sm"><span class="text-slate-500 w-28 flex-shrink-0">${label}</span><span class="text-slate-200 break-words">${val}</span></div>`
+      : '';
+
+    const _empty = msg =>
+      `<div class="text-center py-10 text-slate-500 text-sm italic">${msg || 'No records yet.'}</div>`;
+
+    // ── Events Tab ────────────────────────────────────────────
+    const eventsHTML = events.length === 0 ? _empty('No competition events in this season yet.') :
+      `<div class="space-y-3">
+        ${events.map(e => `
+          <div class="glass-light rounded-xl p-4">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div class="font-bold text-white text-sm">${e.name}</div>
+                <div class="text-xs text-slate-500 mt-0.5">${e.venue || '—'} · ${Utils.formatDate(e.date)}</div>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                ${_statusBadge(e.status)}
+                ${(e.categories || []).map(c => _badge(c, '#F6C945')).join('')}
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+    // ── Teams Tab ─────────────────────────────────────────────
+    const teamsHTML = teams.length === 0 ? _empty('No teams registered for this season.') :
+      `<div class="space-y-3">
+        ${teams.map(t => `
+          <div class="glass-light rounded-xl p-4 space-y-2">
+            <div class="flex items-start justify-between gap-2 flex-wrap">
+              <div>
+                <div class="font-bold text-white text-sm">${t.team_name}</div>
+                <div class="text-xs text-slate-500 mt-0.5">${t.school_name || '—'}</div>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                ${_badge(t.category || '—', '#F6C945')}
+                ${_badge(t.age_group || '—', '#4f9cf9')}
+                ${_statusBadge(t.registration_status)}
+                ${_statusBadge(t.qualification_status)}
+                ${_statusBadge(t.payment_status)}
+              </div>
+            </div>
+            ${t.coach_name ? `<div class="text-xs text-slate-400">Coach: <span class="text-slate-300">${t.coach_name}</span>${t.coach_mobile ? ` · ${t.coach_mobile}` : ''}</div>` : ''}
+            ${(t.members || []).length > 0 ? `
+              <div class="border-t border-slate-700/40 pt-2">
+                <div class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Members</div>
+                <div class="flex flex-wrap gap-2">
+                  ${t.members.map(m => `
+                    <div class="flex items-center gap-1.5 text-xs bg-slate-800/60 rounded-lg px-2.5 py-1">
+                      <div class="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 flex-shrink-0" style="font-size:8px">${(m.full_name||'?')[0]}</div>
+                      <span class="text-slate-200">${m.full_name}</span>
+                      ${m.grade_level ? `<span class="text-slate-500">· ${m.grade_level}</span>` : ''}
+                    </div>`).join('')}
+                </div>
+              </div>` : '<div class="text-xs text-slate-600 italic">No members assigned</div>'}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Schools Tab ────────────────────────────────────────────
+    const schoolsHTML = schools.length === 0 ? _empty('No schools participating in this season.') :
+      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        ${schools.map(s => `
+          <div class="glass-light rounded-xl p-4 space-y-1.5">
+            <div class="font-bold text-white text-sm">${s.school_name}</div>
+            ${_row('Type', s.school_type)}
+            ${_row('City', s.city)}
+            ${_row('Region', s.region)}
+            ${_row('Address', s.address)}
+            ${_row('Contact', s.contact_number)}
+            ${_row('Email', s.email)}
+            ${_row('School Head', s.school_head)}
+            ${_row('Coordinator', s.robotics_coordinator)}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Coaches Tab ────────────────────────────────────────────
+    const coachesHTML = coaches.length === 0 ? _empty('No coaches assigned for this season.') :
+      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        ${coaches.map(c => `
+          <div class="glass-light rounded-xl p-4 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <div class="font-bold text-white text-sm">${c.full_name}</div>
+              ${_badge(c.position || 'Coach', '#2dc653')}
+            </div>
+            ${_row('School', c.school_name)}
+            ${_row('Mobile', c.mobile)}
+            ${_row('Email', c.email)}
+            ${c.years_coaching ? _row('Experience', `${c.years_coaching} yr${c.years_coaching !== 1 ? 's' : ''}`) : ''}
+            ${_row('Certifications', c.certifications)}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Judges Tab ─────────────────────────────────────────────
+    const judgesHTML = judges.length === 0 ? _empty('No judges assigned for this season.') :
+      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        ${judges.map(j => `
+          <div class="glass-light rounded-xl p-4 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <div class="font-bold text-white text-sm">${j.full_name}</div>
+              ${_statusBadge(j.status)}
+            </div>
+            ${_row('Category', j.judging_category)}
+            ${_row('Gender', j.gender)}
+            ${_row('Contact', j.contact_number)}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Students Tab ───────────────────────────────────────────
+    const studentsHTML = students.length === 0 ? _empty('No students enrolled for this season.') : `
+      <div class="overflow-x-auto rounded-xl">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:rgba(22,32,56,0.95)">
+              ${['Name','Team','School','Grade','Age','Gender','Consent'].map(h =>
+                `<th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.05em;white-space:nowrap">${h}</th>`
+              ).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${students.map((s, i) => `
+              <tr style="border-top:1px solid rgba(100,116,139,0.12);background:${i%2===0?'rgba(15,23,42,0.25)':'transparent'}">
+                <td style="padding:9px 12px;color:#e2e8f0;font-weight:500;white-space:nowrap">${s.full_name}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.team_name || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.school_name || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.grade_level || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.age || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.gender || '—'}</td>
+                <td style="padding:9px 12px">${s.consent_signed ? _badge('Signed','#2dc653') : _badge('Pending','#e63946')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    const tabContents = { events: eventsHTML, teams: teamsHTML, schools: schoolsHTML,
+                          coaches: coachesHTML, judges: judgesHTML, students: studentsHTML };
+
+    const modalBody = `
+      <div class="space-y-4">
+
+        <!-- Summary counts -->
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+          ${tabs.map(t => `
+            <div class="glass-light rounded-xl p-3 text-center cursor-pointer hover:ring-1 transition"
+              style="--ring-color:${t.color}" onclick="Competitions._switchSeasonTab('${t.key}')">
+              <div class="text-xl font-extrabold" style="color:${t.color}">${t.count}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${t.label}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Tab bar -->
+        <div class="flex gap-1 border-b border-slate-700/50 overflow-x-auto" id="season-tab-bar">
+          ${tabs.map((t, i) => `
+            <button id="season-tab-${t.key}"
+              onclick="Competitions._switchSeasonTab('${t.key}')"
+              style="padding:8px 14px;border-radius:8px 8px 0 0;font-size:12px;font-weight:600;
+                     border:none;cursor:pointer;transition:all .2s;white-space:nowrap;
+                     background:${i===0?`${t.color}22`:'transparent'};
+                     color:${i===0?t.color:'#64748b'};
+                     border-bottom:${i===0?`2px solid ${t.color}`:'2px solid transparent'}">
+              ${t.label}
+              <span style="margin-left:5px;font-size:10px;background:rgba(100,116,139,0.2);border-radius:10px;padding:1px 6px">${t.count}</span>
+            </button>`).join('')}
+        </div>
+
+        <!-- Tab content -->
+        <div id="season-tab-content" class="max-h-[420px] overflow-y-auto pr-1 space-y-3">
+          ${eventsHTML}
+        </div>
+      </div>`;
+
+    Competitions._seasonTabs       = tabContents;
+    Competitions._seasonTabColors  = Object.fromEntries(tabs.map(t => [t.key, t.color]));
+    Competitions._seasonTabKeys    = tabs.map(t => t.key);
+    // Cache data for Excel export
+    Competitions._seasonExportData = { seasonName, teams, schools, coaches, judges, students, events };
+
+    Modal.show(seasonName, modalBody,
+      `<button onclick="Competitions._exportSeasonToExcel()"
+         class="px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2 transition"
+         style="background:rgba(45,198,83,0.15);color:#2dc653;border:1px solid rgba(45,198,83,0.30);"
+         onmouseover="this.style.background='rgba(45,198,83,0.28)'"
+         onmouseout="this.style.background='rgba(45,198,83,0.15)'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export to Excel
+      </button>`,
+      'max-w-5xl'
+    );
+  },
+
+  // ── Season Tab Switcher ────────────────────────────────────
+  _switchSeasonTab(key) {
+    const content = document.getElementById('season-tab-content');
+    if (!content || !Competitions._seasonTabs) return;
+    content.innerHTML = Competitions._seasonTabs[key] || '';
+    content.scrollTop = 0;
+    (Competitions._seasonTabKeys || []).forEach(k => {
+      const btn = document.getElementById(`season-tab-${k}`);
+      if (!btn) return;
+      const color    = (Competitions._seasonTabColors || {})[k] || '#F6C945';
+      const isActive = k === key;
+      btn.style.background   = isActive ? `${color}22` : 'transparent';
+      btn.style.color        = isActive ? color : '#64748b';
+      btn.style.borderBottom = isActive ? `2px solid ${color}` : '2px solid transparent';
+    });
+  },
+
+  // ── Export Season to Excel (.xlsx) ────────────────────────
+  _exportSeasonToExcel() {
+    const d = Competitions._seasonExportData;
+    if (!d) { Toast.error('No season data to export.'); return; }
+
+    if (typeof XLSX === 'undefined') {
+      Toast.error('Excel library not loaded. Please refresh the page and try again.');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    const season = d.seasonName;
+
+    // ── Helper: add a sheet from an array of row objects ──
+    const addSheet = (name, rows) => {
+      const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: 'No records' }]);
+      // Style header row (bold) — SheetJS CE supports basic cell metadata
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+        if (cell) cell.s = { font: { bold: true } };
+      }
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    };
+
+    // ── Sheet 1: Events ───────────────────────────────────
+    addSheet('Events', d.events.map(e => ({
+      'Event Name':  e.name,
+      'Season':      season,
+      'Date':        e.date ? new Date(e.date).toLocaleDateString() : '',
+      'Venue':       e.venue        || '',
+      'Status':      e.status       || '',
+      'Categories':  (e.categories  || []).join(', '),
+    })));
+
+    // ── Sheet 2: Teams ────────────────────────────────────
+    addSheet('Teams', d.teams.map(t => ({
+      'Team Name':            t.team_name,
+      'Season':               season,
+      'Category':             t.category             || '',
+      'Age Group':            t.age_group            || '',
+      'School':               t.school_name          || '',
+      'Coach':                t.coach_name           || '',
+      'Coach Mobile':         t.coach_mobile         || '',
+      'Registration Status':  t.registration_status  || '',
+      'Qualification Status': t.qualification_status || '',
+      'Payment Status':       t.payment_status       || '',
+      'Members': (t.members || []).map(m => m.full_name).join(', '),
+    })));
+
+    // ── Sheet 3: Schools ──────────────────────────────────
+    addSheet('Schools', d.schools.map(s => ({
+      'School Name':         s.school_name          || '',
+      'Type':                s.school_type          || '',
+      'City':                s.city                 || '',
+      'Region':              s.region               || '',
+      'Address':             s.address              || '',
+      'Contact Number':      s.contact_number       || '',
+      'Email':               s.email                || '',
+      'School Head':         s.school_head          || '',
+      'Robotics Coordinator':s.robotics_coordinator || '',
+    })));
+
+    // ── Sheet 4: Coaches ──────────────────────────────────
+    addSheet('Coaches', d.coaches.map(c => ({
+      'Coach Name':     c.full_name       || '',
+      'School':         c.school_name     || '',
+      'Position':       c.position        || '',
+      'Mobile':         c.mobile          || '',
+      'Email':          c.email           || '',
+      'Years Coaching': c.years_coaching  ?? '',
+      'Certifications': c.certifications  || '',
+    })));
+
+    // ── Sheet 5: Judges ───────────────────────────────────
+    addSheet('Judges', d.judges.map(j => ({
+      'Judge Name':      j.full_name        || '',
+      'Judging Category':j.judging_category || '',
+      'Gender':          j.gender           || '',
+      'Contact Number':  j.contact_number   || '',
+      'Status':          j.status           || '',
+    })));
+
+    // ── Sheet 6: Students ─────────────────────────────────
+    addSheet('Students', d.students.map(s => ({
+      'Full Name':    s.full_name    || '',
+      'Team':         s.team_name   || '',
+      'School':       s.school_name || '',
+      'Grade Level':  s.grade_level || '',
+      'Age':          s.age         ?? '',
+      'Gender':       s.gender      || '',
+      'Shirt Size':   s.shirt_size  || '',
+      'Consent Signed': s.consent_signed ? 'Yes' : 'No',
+    })));
+
+    // ── Download ──────────────────────────────────────────
+    const safeName = season.replace(/[^a-zA-Z0-9_\- ]/g, '_');
+    XLSX.writeFile(wb, `WRO_${safeName}_Export.xlsx`);
+    Toast.success(`Excel file for ${season} downloaded!`);
+  },
+
   async exportCSV() {
     const rows = (await DB.getAll('competitions')).filter(c => !c.isDeleted && !c.is_deleted);
     Utils.downloadCSV('WRO_Competitions.csv',
