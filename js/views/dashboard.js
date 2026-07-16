@@ -349,24 +349,56 @@ const Dashboard = {
   },
 
   async _renderActivity() {
-    const logs  = (await DB.getAll('audit_logs')).reverse().slice(0, 8);
-    const el    = document.getElementById('recent-activity');
+    // API returns audit_logs ORDER BY timestamp DESC — take the first 10 (most recent)
+    const logs = (await DB.getAll('audit_logs')).slice(0, 10);
+    const el   = document.getElementById('recent-activity');
     if (!el) return;
-    const _svg = (paths, color) => `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
+    const _svg = (paths, color) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
     const icons = {
       INSERT: _svg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>', '#2dc653'),
       UPDATE: _svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>', '#D4A017'),
       DELETE: _svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>', '#e63946'),
+      LOGIN:  _svg('<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>', '#4f9cf9'),
+      LOGOUT: _svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', '#a89060'),
     };
     const defaultIcon = _svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', '#a89060');
-    el.innerHTML = logs.map(l => `
-      <div class="flex items-center gap-3 p-3 glass-light rounded-xl">
-        <span class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(22,32,56,0.8)">${icons[l.action]||defaultIcon}</span>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm text-white truncate">${l.action} in ${l.table}</div>
-          <div class="text-xs text-slate-500">${l.userName} · ${Utils.formatDateTime(l.timestamp)}</div>
-        </div>
-      </div>`).join('') || '<p class="text-slate-500 text-sm">No activity yet</p>';
+
+    const actionColors = {
+      INSERT: '#2dc653', UPDATE: '#D4A017', DELETE: '#e63946',
+      LOGIN:  '#4f9cf9', LOGOUT: '#a89060',
+    };
+    const actionLabels = {
+      INSERT: 'Added',  UPDATE: 'Updated', DELETE: 'Deleted',
+      LOGIN:  'Logged in', LOGOUT: 'Logged out',
+    };
+
+    if (logs.length === 0) {
+      el.innerHTML = '<p class="text-slate-500 text-sm">No activity yet</p>';
+      return;
+    }
+
+    el.innerHTML = logs.map(l => {
+      const action    = l.action     || 'UNKNOWN';
+      const tableName = l.table_name || l.table || '—';
+      const userName  = l.user_name  || l.userName || 'System';
+      const label     = actionLabels[action] || action;
+      const color     = actionColors[action] || '#a89060';
+      const icon      = icons[action]       || defaultIcon;
+      return `
+        <div class="flex items-center gap-3 p-3 glass-light rounded-xl">
+          <span class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(22,32,56,0.8)">${icon}</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-white truncate">
+              <span style="color:${color};font-weight:600">${label}</span>
+              <span class="text-slate-400"> in </span>${tableName}
+            </div>
+            <div class="text-xs text-slate-500">${userName} · ${Utils.formatDateTime(l.timestamp)}</div>
+          </div>
+        </div>`;
+    }).join('');
   },
 
   async _renderTopSchools() {
