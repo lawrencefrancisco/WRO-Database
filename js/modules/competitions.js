@@ -607,74 +607,244 @@ const Competitions = {
     });
   },
 
-  // ── Detail View ───────────────────────────────────────────
+  // ── Detail View (Full Participants Modal) ─────────────────
   async viewDetail(id) {
-    const c = await DB.getById('competitions', id);
-    if (!c) return;
+    // Show loading modal immediately
+    Modal.show('Loading…', `
+      <div class="flex flex-col items-center justify-center py-12 gap-3">
+        <div class="spinner" style="width:28px;height:28px;border-width:3px"></div>
+        <span class="text-slate-500 text-sm">Fetching competition details…</span>
+      </div>`, '', 'max-w-5xl');
 
-    // Load live season stats to display inside the detail modal
-    let stats = null;
-    if (c.season) {
-      try {
-        stats = await DB._request(
-          'GET', `/competitions/stats?season=${encodeURIComponent(c.season)}`
-        );
-      } catch (_) { /* optional — show without stats if unavailable */ }
+    let data;
+    try {
+      data = await DB._request('GET', `/competitions/details/${id}`);
+    } catch (_) { data = null; }
+
+    if (!data || data.success === false) {
+      Modal.show('Error', `<p class="text-red-400">Could not load competition details.</p>`, '', 'max-w-md');
+      return;
     }
 
-    Modal.show(c.name, `
-      <div class="space-y-5">
+    const { competition: c, teams, schools, coaches, judges, students } = data;
+    const tabs = [
+      { key: 'teams',    label: 'Teams',    count: teams.length,    color: '#D4A017' },
+      { key: 'schools',  label: 'Schools',  count: schools.length,  color: '#4f9cf9' },
+      { key: 'coaches',  label: 'Coaches',  count: coaches.length,  color: '#2dc653' },
+      { key: 'judges',   label: 'Judges',   count: judges.length,   color: '#a890f0' },
+      { key: 'students', label: 'Students', count: students.length, color: '#e91e8c' },
+    ];
 
-        <!-- Metadata -->
-        <div class="grid grid-cols-2 gap-3 text-sm">
-          <div><span class="text-slate-500">Season:</span>
-            <span class="badge badge-purple ml-1">${c.season || '—'}</span></div>
-          <div><span class="text-slate-500">Theme:</span>
-            <span class="text-slate-200">${c.theme || '—'}</span></div>
-          <div><span class="text-slate-500">Date:</span>
-            <span class="text-slate-200">${Utils.formatDate(c.date)}</span></div>
-          <div><span class="text-slate-500">Deadline:</span>
-            <span class="text-slate-200">${Utils.formatDate(c.registrationDeadline || c.registration_deadline)}</span></div>
-          <div class="col-span-2"><span class="text-slate-500">Venue:</span>
-            <span class="text-slate-200">${c.venue || '—'}</span></div>
-          <div class="col-span-2"><span class="text-slate-500">Organizer:</span>
-            <span class="text-slate-200">${c.organizer || '—'}</span></div>
-          <div><span class="text-slate-500">Status:</span> ${Utils.statusBadge(c.status)}</div>
+    const _badge = (txt, color = '#a89060') =>
+      `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}44;white-space:nowrap">${txt}</span>`;
+
+    const _statusBadge = v => {
+      const m = { active:'#2dc653', inactive:'#e63946', registered:'#4f9cf9', confirmed:'#2dc653',
+                  waitlisted:'#D4A017', withdrawn:'#e63946', paid:'#2dc653', partial:'#D4A017',
+                  unpaid:'#e63946', pending:'#a89060', qualified:'#2dc653', disqualified:'#e63946' };
+      return _badge(v || '—', m[v] || '#a89060');
+    };
+
+    const _row = (label, value) => value
+      ? `<div class="flex gap-2 text-sm"><span class="text-slate-500 w-28 flex-shrink-0">${label}</span><span class="text-slate-200 min-w-0 break-words">${value}</span></div>`
+      : '';
+
+    const _empty = (msg = 'No records found.') =>
+      `<div class="text-center py-8 text-slate-500 text-sm italic">${msg}</div>`;
+
+    // ── Teams Tab ─────────────────────────────────────────────
+    const teamsHTML = teams.length === 0 ? _empty('No teams registered for this season.') :
+      teams.map(t => `
+        <div class="glass-light rounded-xl p-4 space-y-3">
+          <div class="flex items-start justify-between gap-2 flex-wrap">
+            <div>
+              <div class="font-bold text-white text-sm">${t.team_name}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${t.school_name || '—'}</div>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${_badge(t.category || 'No Category', '#D4A017')}
+              ${_badge(t.age_group || '—', '#4f9cf9')}
+              ${_statusBadge(t.registration_status)}
+              ${_statusBadge(t.qualification_status)}
+              ${_statusBadge(t.payment_status)}
+            </div>
+          </div>
+          ${t.coach_name ? `<div class="text-xs text-slate-400 flex items-center gap-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+            Coach: <span class="text-slate-300">${t.coach_name}</span>
+            ${t.coach_mobile ? `· ${t.coach_mobile}` : ''}
+          </div>` : ''}
+          ${(t.members || []).length > 0 ? `
+          <div class="border-t border-slate-700/40 pt-3">
+            <div class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-2">Members</div>
+            <div class="grid grid-cols-1 gap-1.5">
+              ${t.members.map(m => `
+                <div class="flex items-center gap-2 text-xs">
+                  <div class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 flex-shrink-0" style="font-size:9px">${(m.full_name||'?')[0]}</div>
+                  <span class="text-slate-200">${m.full_name}</span>
+                  ${m.grade_level ? `<span class="text-slate-500">· ${m.grade_level}</span>` : ''}
+                  ${m.student_school ? `<span class="text-slate-600">· ${m.student_school}</span>` : ''}
+                </div>`).join('')}
+            </div>
+          </div>` : '<div class="text-xs text-slate-600 italic">No members assigned</div>'}
+        </div>`).join('');
+
+    // ── Schools Tab ────────────────────────────────────────────
+    const schoolsHTML = schools.length === 0 ? _empty('No schools participating in this season.') :
+      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        ${schools.map(s => `
+          <div class="glass-light rounded-xl p-4 space-y-1.5">
+            <div class="font-bold text-white text-sm">${s.school_name}</div>
+            ${_row('Type', s.school_type)}
+            ${_row('City', s.city)}
+            ${_row('Region', s.region)}
+            ${_row('Address', s.address)}
+            ${_row('Contact', s.contact_number)}
+            ${_row('Email', s.email)}
+            ${_row('Head', s.school_head)}
+            ${_row('Coordinator', s.robotics_coordinator)}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Coaches Tab ────────────────────────────────────────────
+    const coachesHTML = coaches.length === 0 ? _empty('No coaches assigned for this season.') :
+      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        ${coaches.map(c => `
+          <div class="glass-light rounded-xl p-4 space-y-1.5">
+            <div class="flex items-start justify-between">
+              <div class="font-bold text-white text-sm">${c.full_name}</div>
+              ${_badge(c.position || 'Coach', '#2dc653')}
+            </div>
+            ${_row('School', c.school_name)}
+            ${_row('Mobile', c.mobile)}
+            ${_row('Email', c.email)}
+            ${c.years_coaching ? _row('Experience', `${c.years_coaching} year${c.years_coaching !== 1 ? 's' : ''}`) : ''}
+            ${_row('Certifications', c.certifications)}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Judges Tab ─────────────────────────────────────────────
+    const judgesHTML = judges.length === 0 ? _empty('No judges assigned for this season.') :
+      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        ${judges.map(j => `
+          <div class="glass-light rounded-xl p-4 space-y-1.5">
+            <div class="flex items-start justify-between">
+              <div class="font-bold text-white text-sm">${j.full_name}</div>
+              ${_statusBadge(j.status)}
+            </div>
+            ${_row('Category', j.judging_category)}
+            ${_row('Gender', j.gender)}
+            ${_row('Contact', j.contact_number)}
+          </div>`).join('')}
+      </div>`;
+
+    // ── Students Tab ───────────────────────────────────────────
+    const studentsHTML = students.length === 0 ? _empty('No students enrolled for this season.') : `
+      <div class="overflow-x-auto rounded-xl">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:rgba(22,32,56,0.9)">
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Name</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Team</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">School</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Grade</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Age</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Gender</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Consent</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${students.map((s, i) => `
+              <tr style="border-top:1px solid rgba(100,116,139,0.12);background:${i%2===0?'rgba(15,23,42,0.2)':'transparent'}">
+                <td style="padding:9px 12px;color:#e2e8f0;font-weight:500">${s.full_name}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.team_name || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.school_name || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.grade_level || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.age || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.gender || '—'}</td>
+                <td style="padding:9px 12px">${s.consent_signed ? _badge('Signed','#2dc653') : _badge('Pending','#e63946')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    const tabContents = { teams: teamsHTML, schools: schoolsHTML, coaches: coachesHTML, judges: judgesHTML, students: studentsHTML };
+
+    const modalBody = `
+      <div class="space-y-4" id="comp-detail-root">
+
+        <!-- Competition Header Info -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 glass-light rounded-xl text-sm">
+          <div><span class="text-slate-500">Season:</span> <span class="badge badge-purple ml-1">${c.season || '—'}</span></div>
+          <div><span class="text-slate-500">Date:</span> <span class="text-slate-200 ml-1">${Utils.formatDate(c.date)}</span></div>
+          <div><span class="text-slate-500">Status:</span> <span class="ml-1">${Utils.statusBadge(c.status)}</span></div>
+          <div class="col-span-2 md:col-span-2"><span class="text-slate-500">Venue:</span> <span class="text-slate-200 ml-1">${c.venue || '—'}</span></div>
+          <div><span class="text-slate-500">Organizer:</span> <span class="text-slate-200 ml-1">${c.organizer || '—'}</span></div>
         </div>
 
-        <!-- Live Season Statistics -->
-        ${stats ? `
-        <div>
-          <div class="text-xs text-slate-500 uppercase font-semibold tracking-widest mb-3">
-            Season Statistics — <span style="color:#D4A017">${c.season}</span>
-            <span class="text-slate-700 ml-1">(computed live)</span>
-          </div>
-          <div class="grid grid-cols-4 gap-3">
-            ${[
-              { label:'Teams',    value: stats.teams,    color:'#D4A017' },
-              { label:'Schools',  value: stats.schools,  color:'#4f9cf9' },
-              { label:'Coaches',  value: stats.coaches,  color:'#2dc653' },
-              { label:'Students', value: stats.students, color:'#e91e8c' },
-            ].map(s => `
-              <div class="glass-light rounded-xl p-3 text-center">
-                <div class="text-2xl font-extrabold" style="color:${s.color}">${s.value}</div>
-                <div class="text-xs text-slate-400 mt-0.5">${s.label}</div>
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
+        <!-- Summary Counts -->
+        <div class="grid grid-cols-5 gap-2">
+          ${tabs.map(t => `
+            <div class="glass-light rounded-xl p-3 text-center">
+              <div class="text-xl font-extrabold" style="color:${t.color}">${t.count}</div>
+              <div class="text-xs text-slate-500 mt-0.5">${t.label}</div>
+            </div>`).join('')}
+        </div>
 
-        <!-- Categories -->
-        ${(c.categories || []).length > 0 ? `
-        <div>
-          <div class="text-xs text-slate-500 uppercase font-semibold tracking-widest mb-2">Categories</div>
-          <div class="flex flex-wrap gap-2">
-            ${(c.categories || []).map(cat => `<span class="badge badge-blue">${cat}</span>`).join('')}
-          </div>
-        </div>` : ''}
+        <!-- Tab Bar -->
+        <div class="flex gap-1 border-b border-slate-700/50 pb-0" id="comp-tab-bar">
+          ${tabs.map((t, i) => `
+            <button id="comp-tab-${t.key}"
+              onclick="Competitions._switchTab('${t.key}')"
+              style="padding:8px 14px;border-radius:8px 8px 0 0;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;
+                     background:${i===0?'rgba(212,160,23,0.15)':'transparent'};
+                     color:${i===0?t.color:'#64748b'};
+                     border-bottom:${i===0?`2px solid ${t.color}`:'2px solid transparent'}">
+              ${t.label}
+              <span style="margin-left:5px;font-size:10px;background:rgba(100,116,139,0.2);border-radius:10px;padding:1px 6px">${t.count}</span>
+            </button>`).join('')}
+        </div>
 
-      </div>`, '', 'max-w-xl'
+        <!-- Tab Content -->
+        <div id="comp-tab-content" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+          ${teamsHTML}
+        </div>
+      </div>`;
+
+    // Store tab data for switching
+    Competitions._detailTabs = tabContents;
+    Competitions._detailTabColors = Object.fromEntries(tabs.map(t => [t.key, t.color]));
+
+    Modal.show(c.name, modalBody,
+      AUTH.can('competitions.write')
+        ? `<button onclick="Competitions.openForm('${c.id}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
+             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+             Edit Event
+           </button>`
+        : '',
+      'max-w-5xl'
     );
   },
+
+  // ── Tab Switcher ───────────────────────────────────────────
+  _switchTab(key) {
+    const content = document.getElementById('comp-tab-content');
+    if (!content || !Competitions._detailTabs) return;
+    content.innerHTML = Competitions._detailTabs[key] || '';
+
+    // Update tab button styles
+    const colors = Competitions._detailTabColors || {};
+    ['teams','schools','coaches','judges','students'].forEach(k => {
+      const btn = document.getElementById(`comp-tab-${k}`);
+      if (!btn) return;
+      const isActive = k === key;
+      const color    = colors[k] || '#a89060';
+      btn.style.background   = isActive ? `${color}22` : 'transparent';
+      btn.style.color        = isActive ? color : '#64748b';
+      btn.style.borderBottom = isActive ? `2px solid ${color}` : '2px solid transparent';
+    });
+  },
+
 
   // ── CSV Export ─────────────────────────────────────────────
   async exportCSV() {
