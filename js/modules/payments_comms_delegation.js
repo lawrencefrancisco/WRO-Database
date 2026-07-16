@@ -157,6 +157,7 @@ const Payments = {
     const p     = id ? await DB.getById('payments', id) : null;
     const teams = (await DB.getAll('teams')).filter(t => !t.isDeleted);
     const schools = (await DB.getAll('schools')).filter(s => !s.isDeleted);
+    const allPayments = await DB.getAll('payments');
 
     // Build team→school map for auto-detection
     const teamSchoolMap = {};
@@ -164,61 +165,87 @@ const Payments = {
     schools.forEach(s => { schoolNameMap[s.id] = s.schoolName; });
     teams.forEach(t => { if (t.schoolId) teamSchoolMap[t.id] = t.schoolId; });
 
+    // Map each team to its payment status
+    const payStatusMap = {};
+    allPayments.forEach(pay => { payStatusMap[pay.teamId] = pay.status || 'unpaid'; });
+
+    const getStatusBadge = (status) => {
+      if (status === 'paid') return `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20">Paid</span>`;
+      if (status === 'partial') return `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-500 border border-orange-500/20">Partial</span>`;
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20">Unpaid</span>`;
+    };
+
+    Payments._teamListCache = teams.map(t => {
+      const status = payStatusMap[t.id] || 'unpaid';
+      return { ...t, statusHtml: getStatusBadge(status), schoolName: schoolNameMap[t.schoolId] || 'No School' };
+    });
+
     Modal.show(id ? 'Edit Payment' : 'Record Payment', `
-      <form id="pay-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label class="form-label">Team *</label>
-          <select class="form-input" name="teamId" id="pay-team-select" required
-                  onchange="Payments._onTeamChange()">
-            <option value="">Select Team</option>
-            ${teams.map(t=>`<option value="${t.id}" ${p?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
-          </select>
+      <div class="flex flex-col md:flex-row gap-6">
+        
+        <!-- Left Sidebar: Team List -->
+        <div class="w-full md:w-1/3 flex flex-col h-[55vh]">
+          <h3 class="text-xs font-bold mb-3 uppercase tracking-widest" style="color:var(--txt-muted);">Team Payment Status</h3>
+          <input type="text" id="pay-team-search" class="form-input mb-3" placeholder="Search teams..." oninput="Payments._filterTeamList()">
+          
+          <div id="pay-team-list-container" class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+            ${Payments._renderTeamList(Payments._teamListCache, p?.teamId)}
+          </div>
         </div>
-        <div><label class="form-label">School
-          <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from team)</span>
-        </label>
-          <select class="form-input" name="schoolId" id="pay-school-select">
-            <option value="">— auto-detected —</option>
-            ${schools.map(s=>`<option value="${s.id}" ${p?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
-          </select>
-        </div>
-        <div><label class="form-label">Registration Fee (₱)</label>
-          <input class="form-input" type="number" name="registrationFee" value="${p?.registrationFee||4000}" oninput="Payments._calcBalance()">
-        </div>
-        <div><label class="form-label">Amount Paid (₱)</label>
-          <input class="form-input" type="number" name="amountPaid" value="${p?.amountPaid||0}" oninput="Payments._calcBalance()">
-        </div>
-        <div><label class="form-label">Balance (₱)</label>
-          <input class="form-input" type="number" name="balance" id="balance-field" value="${p?.balance||4000}" readonly>
-        </div>
-        <div><label class="form-label">Payment Date</label>
-          <input class="form-input" type="date" name="paymentDate" value="${p?.paymentDate||''}">
-        </div>
-        <div><label class="form-label">Payment Method</label>
-          <select class="form-input" name="paymentMethod">
-            <option value="">Select Method</option>
-            ${Seeder.PAYMENT_METHODS.map(m=>`<option ${p?.paymentMethod===m?'selected':''}>${m}</option>`).join('')}
-          </select>
-        </div>
-        <div><label class="form-label">OR Number</label>
-          <input class="form-input" name="orNumber" value="${p?.orNumber||''}">
-        </div>
-        <div><label class="form-label">Sponsorship (₱)</label>
-          <input class="form-input" type="number" name="sponsorship" value="${p?.sponsorship||0}">
-        </div>
-        <div><label class="form-label">Scholarship</label>
-          <select class="form-input" name="scholarship">
-            ${['None','Partial','Full'].map(s=>`<option ${p?.scholarship===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div><label class="form-label">Status</label>
-          <select class="form-input" name="status">
-            ${['unpaid','partial','paid'].map(s=>`<option ${p?.status===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-      </form>`,
-      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">Cancel</button>
+
+        <!-- Right Side: Form -->
+        <form id="pay-form" class="w-full md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4 h-fit">
+          <div><label class="form-label">Team *</label>
+            <select class="form-input" name="teamId" id="pay-team-select" required onchange="Payments._onTeamChange()">
+              <option value="">Select Team</option>
+              ${teams.map(t=>`<option value="${t.id}" ${p?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="form-label">School <span class="text-[10px] font-normal ml-1 opacity-70">(auto-detected)</span></label>
+            <select class="form-input" name="schoolId" id="pay-school-select">
+              <option value="">— auto-detected —</option>
+              ${schools.map(s=>`<option value="${s.id}" ${p?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="form-label">Registration Fee (₱)</label>
+            <input class="form-input" type="number" name="registrationFee" value="${p?.registrationFee||4000}" oninput="Payments._calcBalance()">
+          </div>
+          <div><label class="form-label">Amount Paid (₱)</label>
+            <input class="form-input" type="number" name="amountPaid" value="${p?.amountPaid||0}" oninput="Payments._calcBalance()">
+          </div>
+          <div><label class="form-label">Balance (₱)</label>
+            <input class="form-input" type="number" name="balance" id="balance-field" value="${p?.balance||4000}" readonly>
+          </div>
+          <div><label class="form-label">Payment Date</label>
+            <input class="form-input" type="date" name="paymentDate" value="${p?.paymentDate||''}">
+          </div>
+          <div><label class="form-label">Payment Method</label>
+            <select class="form-input" name="paymentMethod">
+              <option value="">Select Method</option>
+              ${Seeder.PAYMENT_METHODS.map(m=>`<option ${p?.paymentMethod===m?'selected':''}>${m}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="form-label">OR Number</label>
+            <input class="form-input" name="orNumber" value="${p?.orNumber||''}">
+          </div>
+          <div><label class="form-label">Sponsorship (₱)</label>
+            <input class="form-input" type="number" name="sponsorship" value="${p?.sponsorship||0}">
+          </div>
+          <div><label class="form-label">Scholarship</label>
+            <select class="form-input" name="scholarship">
+              ${['None','Partial','Full'].map(s=>`<option ${p?.scholarship===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="form-label">Status</label>
+            <select class="form-input" name="status">
+              ${['unpaid','partial','paid'].map(s=>`<option ${p?.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </form>
+      </div>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition-colors hover:bg-slate-500/10" style="border-color:var(--border-primary); color:var(--txt-primary);">Cancel</button>
        <button onclick="Payments._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Payment</button>`,
-      'max-w-3xl'
+      'max-w-5xl w-full'
     );
 
     // Store map on the module for the onchange handler
@@ -226,14 +253,70 @@ const Payments = {
     setTimeout(() => Payments._calcBalance(), 100);
   },
 
+  _renderTeamList(teams, selectedId) {
+    if (!teams.length) return `<div class="text-xs text-center mt-4" style="color:var(--txt-muted);">No teams found</div>`;
+    return teams.map(t => `
+      <div class="p-3 rounded-xl border cursor-pointer transition-all hover:border-[var(--felta-yellow)] ${t.id === selectedId ? 'border-[var(--felta-yellow)] bg-[var(--felta-yellow)]/10' : ''}" 
+           style="border-color:${t.id === selectedId ? 'var(--felta-yellow)' : 'var(--border-primary)'}; background:${t.id === selectedId ? 'rgba(246,201,69,0.05)' : 'transparent'};"
+           onclick="Payments._selectTeamFromList('${t.id}')" id="team-list-item-${t.id}">
+        <div class="flex justify-between items-start mb-1">
+          <div class="font-bold text-sm truncate pr-2" style="color:var(--txt-primary);">${t.teamName}</div>
+          <div class="shrink-0">${t.statusHtml}</div>
+        </div>
+        <div class="text-[10px] truncate" style="color:var(--txt-muted);">${t.schoolName}</div>
+      </div>
+    `).join('');
+  },
+
+  _filterTeamList() {
+    const term = document.getElementById('pay-team-search')?.value.toLowerCase() || '';
+    const filtered = Payments._teamListCache.filter(t => t.teamName.toLowerCase().includes(term) || t.schoolName.toLowerCase().includes(term));
+    const selectedId = document.getElementById('pay-team-select')?.value;
+    document.getElementById('pay-team-list-container').innerHTML = Payments._renderTeamList(filtered, selectedId);
+  },
+
+  _selectTeamFromList(teamId) {
+    const select = document.getElementById('pay-team-select');
+    if (select) {
+      select.value = teamId;
+      Payments._onTeamChange();
+    }
+    // Update active visual state
+    document.querySelectorAll('[id^="team-list-item-"]').forEach(el => {
+      el.style.borderColor = 'var(--border-primary)';
+      el.style.background = 'transparent';
+    });
+    const active = document.getElementById(`team-list-item-${teamId}`);
+    if (active) {
+      active.style.borderColor = 'var(--felta-yellow)';
+      active.style.background = 'rgba(246,201,69,0.05)';
+    }
+  },
+
   // Auto-fill school when team changes
   _onTeamChange() {
     const teamSel   = document.getElementById('pay-team-select');
     const schoolSel = document.getElementById('pay-school-select');
     if (!teamSel || !schoolSel) return;
-    const schoolId = Payments._teamSchoolMap?.[teamSel.value];
+    const teamId = teamSel.value;
+    const schoolId = Payments._teamSchoolMap?.[teamId];
     if (schoolId) {
       schoolSel.value = schoolId;
+    }
+    
+    // Sync sidebar list active state
+    document.querySelectorAll('[id^="team-list-item-"]').forEach(el => {
+      el.style.borderColor = 'var(--border-primary)';
+      el.style.background = 'transparent';
+    });
+    if (teamId) {
+      const active = document.getElementById(`team-list-item-${teamId}`);
+      if (active) {
+        active.style.borderColor = 'var(--felta-yellow)';
+        active.style.background = 'rgba(246,201,69,0.05)';
+        // Smoothly scroll the selected item into view within the container
+        active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   },
 

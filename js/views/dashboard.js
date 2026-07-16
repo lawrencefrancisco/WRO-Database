@@ -138,7 +138,7 @@ const Dashboard = {
         <div class="absolute top-0 right-0 w-20 h-20 rounded-full bg-gradient-to-br ${k.grad} opacity-15 transform translate-x-6 -translate-y-6"></div>
         <div class="kpi-icon-wrap mb-3" style="color:${k.color}">${k.icon}</div>
         <div class="text-3xl font-black" style="color:#f0e9d2;">${Utils.formatNumber(k.value)}</div>
-        <div class="text-xs mt-1" style="color:#F6C945;">${k.label}</div>
+        <div class="text-xs mt-1 font-bold" style="color:${k.color};">${k.label}</div>
       </div>`).join('');
   },
 
@@ -174,7 +174,7 @@ const Dashboard = {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { grid: { display: false }, ticks: { color: '#F6C945' } },
+            x: { grid: { display: false }, ticks: { color: gradColors } },
             y: { beginAtZero: true, grid: { color: 'rgba(246,201,69,0.1)' }, ticks: { color: '#F6C945' } }
           }
         }

@@ -63,6 +63,12 @@ router.post('/', async (req, res) => {
        d.sponsorship || 0, d.scholarship || 'None', d.status || 'unpaid']
     );
     const [rows] = await pool.execute('SELECT * FROM payments WHERE id = ?', [result.insertId]);
+
+    // Sync payment status to Team Management
+    if (teamId) {
+      await pool.execute('UPDATE teams SET payment_status = ? WHERE id = ?', [d.status || 'unpaid', teamId]);
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -91,6 +97,12 @@ router.put('/:id', async (req, res) => {
        d.sponsorship || 0, d.scholarship || 'None', d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+
+    // Sync payment status to Team Management
+    if (teamId && d.status) {
+      await pool.execute('UPDATE teams SET payment_status = ? WHERE id = ?', [d.status, teamId]);
+    }
+
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -99,11 +111,21 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    // Fetch team_id before deleting so we can sync status
+    const [pRows] = await pool.execute('SELECT team_id FROM payments WHERE id = ?', [req.params.id]);
+    const teamId = pRows[0]?.team_id;
+
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM payments WHERE id = ?', [req.params.id]);
     } else {
       await pool.execute('UPDATE payments SET is_deleted=1, deleted_at=NOW() WHERE id = ?', [req.params.id]);
     }
+
+    // Revert team payment status since payment is deleted
+    if (teamId) {
+      await pool.execute('UPDATE teams SET payment_status = "unpaid" WHERE id = ?', [teamId]);
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
