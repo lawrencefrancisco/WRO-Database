@@ -24,11 +24,12 @@ router.get('/participation', async (req, res) => {
  // Update the SELECT columns to use CAST(... AS SIGNED)
     const [participationRows] = await pool.execute(`
       SELECT
-        RIGHT(t.season, 4)                    AS year,
-        CAST(COUNT(DISTINCT t.id) AS SIGNED)  AS teams,
+        RIGHT(t.season, 4)                            AS year,
+        CAST(COUNT(DISTINCT t.id)          AS SIGNED) AS teams,
         CAST(COUNT(DISTINCT tm.student_id) AS SIGNED) AS students
       FROM   teams t
       LEFT JOIN team_members tm ON tm.team_id = t.id
+      LEFT JOIN students     s  ON s.id = tm.student_id AND s.is_deleted = 0
       WHERE  t.is_deleted = 0
         AND  t.season IS NOT NULL
         AND  t.season != ''

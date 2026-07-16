@@ -37,8 +37,9 @@ router.get('/stats', async (req, res) => {
     const [[studentRow]] = await pool.execute(
       `SELECT COUNT(DISTINCT tm.student_id) AS students
        FROM team_members tm
-       JOIN teams t ON t.id = tm.team_id
-       WHERE t.season = ? AND t.is_deleted = 0`,
+       JOIN teams   t ON t.id  = tm.team_id
+       JOIN students s ON s.id = tm.student_id
+       WHERE t.season = ? AND t.is_deleted = 0 AND s.is_deleted = 0`,
       [season]
     );
 

@@ -101,6 +101,8 @@ router.delete('/:id', async (req, res) => {
     } else {
       await pool.execute('UPDATE students SET is_deleted=1, deleted_at=NOW() WHERE id = ?', [req.params.id]);
     }
+    // Remove this student from all teams so counts stay accurate
+    await pool.execute('DELETE FROM team_members WHERE student_id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
