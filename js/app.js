@@ -315,9 +315,9 @@ const App = {
       <!-- Logo -->
       <div style="padding:16px;border-bottom:1px solid rgba(246,201,69,0.2);">
         <div class="flex items-center gap-3">
-          <img id="sidebar-logo" src="assets/image/felta-logo-new.png" alt="FELTA WRO Philippines logo"
-            class="sidebar-logo-text js-theme-logo h-12 object-contain"
-            style="filter:drop-shadow(0 1px 6px rgba(246,201,69,0.35));max-width:180px;">
+          <img id="sidebar-logo" src="assets/image/FELTA_LOGO_LIGHT.png" alt="FELTA WRO Philippines logo"
+            class="sidebar-logo-text js-theme-logo w-auto object-contain"
+            style="height: 48px; max-width: 160px; filter:drop-shadow(0 1px 6px rgba(246,201,69,0.35));">
           <div class="sidebar-logo-text" style="white-space:nowrap;">
             <div style="font-size:10px;font-weight:700;color:#F6C945;letter-spacing:0.4px;" aria-hidden="true">DATABASE SYSTEM</div>
           </div>
@@ -428,8 +428,8 @@ const ThemeManager = {
     this._swapLogos(false);
   },
   _swapLogos(isLight) {
-    const dark  = 'assets/image/felta-logo-new.png';
-    const light = 'assets/image/felta-logo-new-lightmode.png';
+    const dark  = 'assets/image/FELTA_LOGO_DARK.png';
+    const light = 'assets/image/FELTA_LOGO_LIGHT.png';
     document.querySelectorAll('.js-theme-logo').forEach(img => {
       img.src = isLight ? light : dark;
     });

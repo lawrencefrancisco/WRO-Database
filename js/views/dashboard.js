@@ -23,8 +23,9 @@ const Dashboard = {
               </p>
             </div>
             <div>
-              <img src="assets/image/felta-logo-new.png" alt="FELTA WRO"
-                style="height:56px;opacity:0.25;filter:grayscale(1) brightness(2);">
+              <img src="assets/image/FELTA_LOGO_LIGHT.png" alt="FELTA WRO"
+                class="js-theme-logo w-auto object-contain"
+                style="height: 56px; max-width: 180px; opacity: 0.25; filter: grayscale(1);">
             </div>
           </div>
         </div>

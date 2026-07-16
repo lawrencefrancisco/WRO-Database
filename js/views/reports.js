@@ -13,34 +13,37 @@ const Reports = {
 
   async _renderReports() {
     const reports = [
-      { id:'school-master',  title:'School Master List',      desc:'All registered schools with contact information', paths:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',    count: await DB.count('schools'),  action: 'generateSchoolList' },
-      { id:'coach-master',   title:'Coach Master List',       desc:'All coach profiles with school assignments',       paths:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>', count: await DB.count('coaches'),  action: 'generateCoachList' },
-      { id:'student-master', title:'Student Master List',     desc:'All student profiles with parent information',     paths:'<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>',                count: await DB.count('students'), action: 'generateStudentList' },
-      { id:'team-list',      title:'Team List',               desc:'All teams with category and registration status',  paths:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>',count: await DB.count('teams'),    action: 'generateTeamList' },
-      { id:'payment-summary',title:'Payment Summary',         desc:'Financial report with OR numbers and balances',    paths:'<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>',            count: await DB.count('payments'), action: 'generatePaymentReport' },
-      { id:'award-winners',  title:'Award Winners',           desc:'All award recipients by year and category',        paths:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',count: await DB.count('awards'),   action: 'generateAwardList' },
-      { id:'judging-sheet',  title:'Judging Report',          desc:'Score sheets and rankings by category',            paths:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',                                               count: await DB.count('judging'),  action: 'generateJudgingReport' },
-      { id:'delegation-list',title:'International Delegation',desc:'Delegates for international competition',          paths:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',                                     count: await DB.count('delegation'),action: 'generateDelegationList' },
-      { id:'participation',  title:'Participation Summary',   desc:'Schools, teams, coaches, and students stats',      paths:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',count: null,                action: 'generateParticipationReport' },
+      { id:'school-master',  color:'#4F46E5', title:'School Master List',      desc:'All registered schools with contact information', paths:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',    count: await DB.count('schools'),  action: 'generateSchoolList' },
+      { id:'coach-master',   color:'#0EA5E9', title:'Coach Master List',       desc:'All coach profiles with school assignments',       paths:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>', count: await DB.count('coaches'),  action: 'generateCoachList' },
+      { id:'student-master', color:'#10B981', title:'Student Master List',     desc:'All student profiles with parent information',     paths:'<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>',                count: await DB.count('students'), action: 'generateStudentList' },
+      { id:'team-list',      color:'#F59E0B', title:'Team List',               desc:'All teams with category and registration status',  paths:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>',count: await DB.count('teams'),    action: 'generateTeamList' },
+      { id:'payment-summary',color:'#8B5CF6', title:'Payment Summary',         desc:'Financial report with OR numbers and balances',    paths:'<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>',            count: await DB.count('payments'), action: 'generatePaymentReport' },
+      { id:'award-winners',  color:'#EC4899', title:'Award Winners',           desc:'All award recipients by year and category',        paths:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',count: await DB.count('awards'),   action: 'generateAwardList' },
+      { id:'judging-sheet',  color:'#EF4444', title:'Judging Report',          desc:'Score sheets and rankings by category',            paths:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',                                               count: await DB.count('judging'),  action: 'generateJudgingReport' },
+      { id:'delegation-list',color:'#14B8A6', title:'International Delegation',desc:'Delegates for international competition',          paths:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',                                     count: await DB.count('delegation'),action: 'generateDelegationList' },
+      { id:'participation',  color:'#F97316', title:'Participation Summary',   desc:'Schools, teams, coaches, and students stats',      paths:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',count: null,                action: 'generateParticipationReport' },
     ];
     document.getElementById('reports-grid').innerHTML = reports.map(r => `
-      <div class="glass rounded-2xl p-6 border border-slate-700/30 hover:border-indigo-500/30 transition-all">
-        <div class="flex items-start gap-4 mb-4">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${r.paths}</svg>
+      <div class="report-card glass rounded-2xl p-6 border relative overflow-hidden transition-all duration-300" style="--card-color: ${r.color};" onmouseover="this.querySelector('.report-card-bg').style.opacity='1'" onmouseout="this.querySelector('.report-card-bg').style.opacity='0'">
+        <!-- Hover Gradient Background -->
+        <div class="report-card-bg absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none" style="background: linear-gradient(135deg, ${r.color}15 0%, transparent 60%);"></div>
+        
+        <div class="flex items-start gap-4 mb-5 relative z-10">
+          <div class="report-icon-wrap w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300" style="color:${r.color}; background:${r.color}12; border-color:${r.color}25;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${r.paths}</svg>
           </div>
-          <div class="flex-1">
-            <h3 class="font-bold text-white">${r.title}</h3>
-            <p class="text-xs text-slate-400 mt-1">${r.desc}</p>
-            ${r.count !== null ? `<span class="badge badge-blue mt-2">${r.count} records</span>` : ''}
+          <div class="flex-1 min-w-0 pt-1">
+            <h3 class="font-black text-[15px] truncate transition-colors duration-300 report-card-title" data-color="${r.color}" style="color:var(--txt-primary);">${r.title}</h3>
+            <p class="text-xs leading-relaxed mt-1 line-clamp-2" style="color:var(--txt-muted);">${r.desc}</p>
+            ${r.count !== null ? `<div class="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase border" style="color:${r.color};background:${r.color}15;border-color:${r.color}30;"><span class="w-1.5 h-1.5 rounded-full" style="background:${r.color};box-shadow:0 0 6px ${r.color};"></span>${r.count} records</div>` : ''}
           </div>
         </div>
-        <div class="flex gap-2">
-          <button onclick="Reports.${r.action}('csv')" class="flex-1 py-2 rounded-xl bg-green-500/15 hover:bg-green-500/25 text-green-400 text-xs font-semibold transition border border-green-500/20 flex items-center justify-center gap-1">
-            <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/></svg> CSV
+        <div class="flex gap-3 relative z-10">
+          <button onclick="Reports.${r.action}('csv')" class="report-btn csv-btn flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border">
+            <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/></svg> CSV
           </button>
-          <button onclick="Reports.${r.action}('pdf')" class="flex-1 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold transition border border-red-500/20 flex items-center justify-center gap-1">
-            <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/></svg> PDF
+          <button onclick="Reports.${r.action}('pdf')" class="report-btn pdf-btn flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border">
+            <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/></svg> PDF
           </button>
         </div>
       </div>`).join('');

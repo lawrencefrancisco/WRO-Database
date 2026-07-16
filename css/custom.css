@@ -159,6 +159,45 @@ input[type='checkbox'] { accent-color: var(--felta-yellow); }
 .kpi-icon-wrap { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 12px; background: rgba(7,12,32,0.80); border: 1px solid rgba(246,201,69,0.15); }
 .kpi-icon-wrap svg { display: block; }
 
+/* ══ REPORT CARDS ══ */
+.report-card {
+  border-color: var(--border-primary);
+  background: var(--bg-card);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+.report-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--card-color);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--card-color) 12%, transparent), 0 8px 16px rgba(0,0,0,0.05);
+}
+.report-card:hover .report-card-bg { opacity: 1; }
+.report-card:hover .report-icon-wrap {
+  border-color: var(--card-color);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--card-color) 25%, transparent) inset;
+}
+.report-card:hover h3 { color: var(--card-color) !important; }
+
+/* Action Buttons (Solid colors by default as requested) */
+.report-btn.csv-btn { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4); color: #10B981; }
+.report-btn.csv-btn:hover { background: rgba(16,185,129,0.25); border-color: #10B981; color: #10B981; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+.report-btn.pdf-btn { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #EF4444; }
+.report-btn.pdf-btn:hover { background: rgba(239,68,68,0.25); border-color: #EF4444; color: #EF4444; box-shadow: 0 4px 12px rgba(239,68,68,0.2); }
+
+/* Light Mode Overrides for Report Cards */
+.light-mode .report-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02), inset 0 0 0 1px rgba(255,255,255,0.5);
+}
+.light-mode .report-card:hover {
+  border-color: var(--card-color);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--card-color) 18%, transparent), 0 4px 10px rgba(0,0,0,0.04);
+}
+.light-mode .report-btn.csv-btn { background: #ECFDF5; border-color: #A7F3D0; color: #059669; }
+.light-mode .report-btn.csv-btn:hover { background: #D1FAE5; border-color: #34D399; box-shadow: 0 4px 12px rgba(16,185,129,0.15); }
+.light-mode .report-btn.pdf-btn { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
+.light-mode .report-btn.pdf-btn:hover { background: #FEE2E2; border-color: #F87171; box-shadow: 0 4px 12px rgba(239,68,68,0.15); }
+
 /* ══ SIDEBAR ══ */
 #sidebar {
   transition: width 0.3s var(--ease-in-out), transform 0.32s var(--ease-in-out);
