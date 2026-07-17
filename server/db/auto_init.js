@@ -203,7 +203,7 @@ async function autoInitDatabase(pool) {
         programming_score DECIMAL(5,2)  DEFAULT 0,
         performance_score DECIMAL(5,2)  DEFAULT 0,
         total_score       DECIMAL(5,2)  DEFAULT 0,
-        rank              INT UNSIGNED  DEFAULT NULL,
+        \`rank\`            INT UNSIGNED  DEFAULT NULL,
         remarks           TEXT          DEFAULT NULL,
         status            ENUM('pending','scored','finalized') DEFAULT 'pending',
         is_deleted        TINYINT(1)    NOT NULL DEFAULT 0,
