@@ -1,11 +1,51 @@
 // ============================================================
 // WRO Philippines – Automatic Database & Schema Initializer
-// Guarantees all tables exist + seeds default admin account.
+// Guarantees all tables have the CORRECT schema.
+// If a table exists with a wrong/old schema, it is dropped
+// and recreated (safe since cloud DB has no real data yet).
 // Called BEFORE app.listen so tables are ready for all requests.
-// Uses exact schemas matching database.sql.
 // ============================================================
 
 const bcrypt = require('bcryptjs');
+
+// Check if a column exists in a table
+async function columnExists(conn, table, column) {
+  try {
+    const [rows] = await conn.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [table, column]
+    );
+    return rows[0].cnt > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Check if a table exists
+async function tableExists(conn, table) {
+  try {
+    const [rows] = await conn.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+      [table]
+    );
+    return rows[0].cnt > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Drop a table if it exists with a wrong schema (identified by missing key column)
+async function dropIfBadSchema(conn, table, requiredColumn) {
+  const exists = await tableExists(conn, table);
+  if (!exists) return; // will be created fresh
+  const hasCol = await columnExists(conn, table, requiredColumn);
+  if (!hasCol) {
+    console.log(`⚠️  Table '${table}' has wrong schema (missing '${requiredColumn}'). Dropping for recreation...`);
+    await conn.execute(`DROP TABLE IF EXISTS \`${table}\``);
+  }
+}
 
 async function autoInitDatabase(pool) {
   let conn;
@@ -15,7 +55,21 @@ async function autoInitDatabase(pool) {
 
     await conn.execute('SET FOREIGN_KEY_CHECKS = 0');
 
-    // ── 1. users ─────────────────────────────────────────────
+    // ── Step 1: Drop tables with wrong schemas from old bad auto_init ──
+    // Each check uses a column that was missing in the old incorrect schema
+    await dropIfBadSchema(conn, 'coaches',      'birthday');
+    await dropIfBadSchema(conn, 'students',     'parent_name');
+    await dropIfBadSchema(conn, 'competitions', 'name');
+    await dropIfBadSchema(conn, 'teams',        'season');
+    await dropIfBadSchema(conn, 'team_members', 'student_id');  // old had extra 'id' PK + 'role'
+    await dropIfBadSchema(conn, 'awards',       'award');
+    await dropIfBadSchema(conn, 'payments',     'or_number');
+    await dropIfBadSchema(conn, 'seasons',      'name');
+    await dropIfBadSchema(conn, 'judging',      'judging_code'); // old 'judging' was wrong table
+    await dropIfBadSchema(conn, 'delegation',   'delegation_code');
+
+    // ── Step 2: CREATE TABLE IF NOT EXISTS (correct schemas) ──────────
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -41,7 +95,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 2. schools ───────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS schools (
         id                      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -73,7 +126,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 3. coaches ───────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS coaches (
         id                  INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -102,7 +154,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 4. students ──────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS students (
         id                      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -134,7 +185,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 5. competitions ──────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS competitions (
         id                      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -159,7 +209,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 6. teams ─────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS teams (
         id                      INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -191,7 +240,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 7. team_members ──────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS team_members (
         team_id     INT UNSIGNED NOT NULL,
@@ -201,7 +249,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 8. judges ────────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS judges (
         id                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -223,7 +270,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 9. seasons ───────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS seasons (
         id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -238,7 +284,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 10. judge_assignments ────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS judge_assignments (
         id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -252,7 +297,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 11. awards ───────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS awards (
         id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -280,7 +324,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 12. payments ─────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS payments (
         id                  INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -308,7 +351,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 13. communications ───────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS communications (
         id                          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -332,7 +374,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 14. delegation ───────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS delegation (
         id                    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -360,7 +401,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 15. audit_logs ───────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS audit_logs (
         id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -380,7 +420,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 16. announcements ────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS announcements (
         id                  INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -402,7 +441,6 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // ── 17. notification_log ─────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS notification_log (
         id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -419,27 +457,50 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // Old bad 'judging' table (was meant to track judging scores) — replace with correct one
+    await dropIfBadSchema(conn, 'judging', 'judging_code');
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS judging (
+        id                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+        judging_code      VARCHAR(60)   NOT NULL,
+        team_id           INT UNSIGNED  DEFAULT NULL,
+        competition_id    INT UNSIGNED  DEFAULT NULL,
+        robot_design      DECIMAL(5,2)  DEFAULT 0,
+        project_score     DECIMAL(5,2)  DEFAULT 0,
+        programming_score DECIMAL(5,2)  DEFAULT 0,
+        performance_score DECIMAL(5,2)  DEFAULT 0,
+        total_score       DECIMAL(5,2)  DEFAULT 0,
+        \`rank\`            INT UNSIGNED  DEFAULT NULL,
+        remarks           TEXT          DEFAULT NULL,
+        status            ENUM('pending','scored','finalized') DEFAULT 'pending',
+        is_deleted        TINYINT(1)    NOT NULL DEFAULT 0,
+        deleted_at        DATETIME      DEFAULT NULL,
+        created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_judging_code (judging_code),
+        KEY idx_team        (team_id),
+        KEY idx_competition (competition_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     await conn.execute('SET FOREIGN_KEY_CHECKS = 1');
-    console.log('✅ All tables verified/created.');
+    console.log('✅ All tables verified/created with correct schemas.');
 
     // ── Column migrations (idempotent) ────────────────────────
 
     // announcements.image_url
-    try { await conn.execute('SELECT image_url FROM announcements LIMIT 1'); }
-    catch (e) {
-      if (e.code === 'ER_BAD_FIELD_ERROR') {
-        await conn.execute('ALTER TABLE announcements ADD COLUMN image_url MEDIUMTEXT DEFAULT NULL AFTER body');
-        console.log('🛠️  Added image_url to announcements.');
-      }
+    const hasImageUrl = await columnExists(conn, 'announcements', 'image_url');
+    if (!hasImageUrl) {
+      await conn.execute('ALTER TABLE announcements ADD COLUMN image_url MEDIUMTEXT DEFAULT NULL AFTER body');
+      console.log('🛠️  Added image_url to announcements.');
     }
 
     // users.school_id
-    try { await conn.execute('SELECT school_id FROM users LIMIT 1'); }
-    catch (e) {
-      if (e.code === 'ER_BAD_FIELD_ERROR') {
-        await conn.execute('ALTER TABLE users ADD COLUMN school_id INT UNSIGNED DEFAULT NULL AFTER email');
-        console.log('🛠️  Added school_id to users.');
-      }
+    const hasSchoolId = await columnExists(conn, 'users', 'school_id');
+    if (!hasSchoolId) {
+      await conn.execute('ALTER TABLE users ADD COLUMN school_id INT UNSIGNED DEFAULT NULL AFTER email');
+      console.log('🛠️  Added school_id to users.');
     }
 
     // ── Seed default accounts if empty ───────────────────────
