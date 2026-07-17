@@ -27,6 +27,13 @@ const TABLE_ROUTES = {
 
 const DB = {
 
+  // ── In-memory cache ─────────────────────────────────────
+  // Each entry: { data: Array, ts: timestamp_ms }
+  // Populated on first getAll(); automatically expired after _TTL ms.
+  // Write operations (insert/update/delete) invalidate the affected table.
+  _cache: {},
+  _TTL: 5 * 60 * 1000, // 5 minutes
+
   // ── Internal fetch helper ────────────────────────────────
   async _request(method, path, body = null) {
     const session = AUTH ? AUTH.currentUser() : null;
@@ -61,19 +68,56 @@ const DB = {
     return TABLE_ROUTES[table] || table;
   },
 
+  // ── Cache helpers ────────────────────────────────────────
+
+  /**
+   * Invalidate the cache for a single table.
+   * Call this after any write that affects the table.
+   */
+  invalidate(table) {
+    if (this._cache[table]) {
+      delete this._cache[table];
+      console.debug(`[DB] Cache invalidated: ${table}`);
+    }
+  },
+
+  /**
+   * Invalidate all cached tables (e.g. after login or bulk import).
+   */
+  invalidateAll() {
+    this._cache = {};
+    console.debug('[DB] Full cache cleared');
+  },
+
   // ── CRUD Operations ─────────────────────────────────────
+
+  /** Get all records from a table — serves from cache when available */
+  async getAll(table) {
+    const entry = this._cache[table];
+    const now   = Date.now();
+
+    // Return cached data if it exists and hasn't expired
+    if (entry && (now - entry.ts) < this._TTL) {
+      return entry.data;
+    }
+
+    // Cache miss or stale — fetch fresh data
+    const data = await this._request('GET', `/${this._route(table)}`);
+    const rows = Array.isArray(data) ? data : [];
+
+    // Store in cache
+    this._cache[table] = { data: rows, ts: now };
+    return rows;
+  },
 
   /** Insert a new record */
   async insert(table, record) {
     const result = await this._request('POST', `/${this._route(table)}`, record);
-    if (result) this._logAudit('INSERT', table, result.id);
+    if (result) {
+      this.invalidate(table);
+      this._logAudit('INSERT', table, result.id);
+    }
     return result;
-  },
-
-  /** Get all records from a table */
-  async getAll(table) {
-    const data = await this._request('GET', `/${this._route(table)}`);
-    return Array.isArray(data) ? data : [];
   },
 
   /** Get a single record by ID */
@@ -95,7 +139,7 @@ const DB = {
 
   /**
    * Query with a client-side filter function.
-   * Fetches all records then applies filterFn locally.
+   * Fetches all records (from cache) then applies filterFn locally.
    * This keeps all existing module code working without changes.
    */
   async query(table, filterFn) {
@@ -106,31 +150,40 @@ const DB = {
   /** Update a record by ID */
   async update(table, id, changes) {
     const result = await this._request('PUT', `/${this._route(table)}/${id}`, changes);
-    if (result) this._logAudit('UPDATE', table, id);
+    if (result) {
+      this.invalidate(table);
+      this._logAudit('UPDATE', table, id);
+    }
     return result;
   },
 
   /** Soft delete a record */
   async delete(table, id) {
     const result = await this._request('DELETE', `/${this._route(table)}/${id}`);
-    if (result?.success) this._logAudit('DELETE', table, id);
+    if (result?.success) {
+      this.invalidate(table);
+      this._logAudit('DELETE', table, id);
+    }
     return result?.success || false;
   },
 
   /** Hard delete – permanently removes the record */
   async hardDelete(table, id) {
     const result = await this._request('DELETE', `/${this._route(table)}/${id}?hard=true`);
+    if (result?.success) {
+      this.invalidate(table);
+    }
     return result?.success || false;
   },
 
-  /** Count records (fetches all, then counts non-deleted) */
+  /** Count records (uses cached getAll, then counts non-deleted) */
   async count(table, filterFn = null) {
     const rows = await this.getAll(table);
     const active = rows.filter(r => !r.isDeleted && !r.is_deleted);
     return filterFn ? active.filter(filterFn).length : active.length;
   },
 
-  /** Search across multiple fields (client-side after fetch) */
+  /** Search across multiple fields (client-side after cached fetch) */
   async search(table, query, fields) {
     const q    = query.toLowerCase();
     const rows = await this.getAll(table);
@@ -175,7 +228,9 @@ const DB = {
   },
 
   clearTable(table) {
-    console.warn(`[DB] clearTable(${table}) is not supported in server mode.`);
+    // In server mode, "clearing" means invalidating the local cache
+    this.invalidate(table);
+    console.warn(`[DB] clearTable(${table}) invalidated the local cache. Server data is unchanged.`);
   },
 
   // ── Column name normaliser ───────────────────────────────
@@ -217,9 +272,7 @@ const DB = {
       judge_name:             'judgeName',
       final_score:            'finalScore',
       judging_category:       'judgingCategory',
-      contact_number:         'contactNumber',
       team_id:                'teamId',
-      school_id:              'schoolId',
       has_trophy:             'hasTrophy',
       has_medal:              'hasMedal',
       has_certificate:        'hasCertificate',
@@ -286,6 +339,8 @@ const DB = {
 };
 
 // ── Patch _request to auto-normalise all response rows ────────
+// The cache stores already-normalised rows, so normalisation only
+// happens once per table per cache lifetime.
 const _origRequest = DB._request.bind(DB);
 DB._request = async function(method, path, body = null) {
   const data = await _origRequest(method, path, body);

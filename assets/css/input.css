@@ -1,0 +1,73 @@
+/* ============================================================
+   WRO Philippines DBMS – Tailwind CSS Entry Point (v4)
+   Compiled to: assets/css/output.css
+   Run:  npm run build:css
+   Watch: npm run watch:css
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* ── Tell Tailwind v4 exactly where to scan for class names ────
+   Without @source directives, the CLI misses JS module files
+   that build HTML strings via template literals. Explicit paths
+   guarantee every class used anywhere is included.             */
+@source "../../**/*.html";
+@source "../../js/**/*.js";
+@source "../../css/**/*.css";
+
+/* ── Custom WRO / FELTA colour tokens (v4 @theme) ─────────── */
+@theme {
+  --color-felta-yellow: #FFC72C;
+  --color-felta-navy:   #142057;
+
+  --color-gold-300: #f6d860;
+  --color-gold-400: #e8c027;
+  --color-gold-500: #D4A017;
+  --color-gold-600: #b8860b;
+  --color-gold-700: #8B6914;
+
+  --color-navy-600: #1e2d4a;
+  --color-navy-700: #162038;
+  --color-navy-800: #101a2e;
+  --color-navy-900: #0b1220;
+  --color-navy-950: #060c18;
+
+  --color-wro-red:    #E8384F;
+  --color-wro-orange: #F07830;
+  --color-wro-yellow: #FFC72C;
+  --color-wro-green:  #2EC97C;
+  --color-wro-teal:   #1E9EBF;
+  --color-wro-blue:   #1D6FA4;
+  --color-wro-purple: #6C4FBF;
+
+  --font-family-sans: Inter, system-ui, sans-serif;
+}
+
+/* ── Safelist for dynamically interpolated class fragments ─────
+   Classes assembled at runtime from JS variables (e.g. gradient
+   fragments like `from-yellow-700 to-yellow-900` from dashboard
+   KPI cards, gender-based avatar colours in students/teams, and
+   badge colour variants from utils.statusBadge) cannot be found
+   by the static scanner. Each @source inline() line forces the
+   named utilities to be emitted regardless.                    */
+
+/* KPI gradient bands – dashboard.js lines 186-191 */
+@source inline("from-yellow-700 to-yellow-900 from-amber-600 to-amber-900 from-orange-700 to-orange-900 from-blue-700 to-blue-900 from-red-700 to-red-900 from-green-700 to-green-900");
+
+/* Avatar / team member gradient combos – coaches.js, students.js, teams.js, users.js */
+@source inline("from-indigo-500 to-purple-600 from-pink-500 to-rose-600 from-blue-500 to-cyan-600");
+
+/* Gradient direction utilities used with the above fragments */
+@source inline("bg-gradient-to-br bg-gradient-to-r bg-gradient-to-b bg-gradient-to-tr");
+
+/* Pagination states – utils.js renderPagination */
+@source inline("bg-indigo-600 hover:bg-slate-700 hover:text-white text-slate-400 text-slate-500 text-slate-600");
+
+/* Common structural classes that appear only in JS template strings */
+@source inline("w-9 h-9 w-16 h-16 w-28 max-h-[90vh] min-h-screen min-w-0 min-h-0");
+@source inline("divide-slate-700/50 divide-slate-800 border-slate-700/50");
+@source inline("bg-black/70 bg-black/50 bg-red-500/20 backdrop-blur-sm shadow-2xl");
+@source inline("-translate-y-1/2 hover:opacity-80 hover:bg-slate-600 hover:bg-slate-800 hover:bg-slate-700");
+@source inline("xl:grid-cols-6 md:grid-cols-2 md:grid-cols-3 md:hidden");
+@source inline("py-0.5 px-2 rounded-full text-xs font-medium");
+@source inline("aria-hidden pointer-events-none pointer-events-auto");

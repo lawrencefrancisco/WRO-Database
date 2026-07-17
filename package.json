@@ -1,0 +1,27 @@
+{
+  "name": "wro-database",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/css/input.css -o ./assets/css/output.css --minify",
+    "watch:css": "tailwindcss -i ./assets/css/input.css -o ./assets/css/output.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lawrencefrancisco/WRO-Database.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lawrencefrancisco/WRO-Database/issues"
+  },
+  "homepage": "https://github.com/lawrencefrancisco/WRO-Database#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

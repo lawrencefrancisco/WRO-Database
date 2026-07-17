@@ -22,10 +22,33 @@ const Dashboard = {
                 ${new Date().toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
               </p>
             </div>
-            <div>
+            <div class="flex flex-col items-end gap-3">
               <img src="assets/image/FELTA_LOGO_LIGHT.png" alt="FELTA WRO"
                 class="js-theme-logo w-auto object-contain"
                 style="height: 56px; max-width: 180px; opacity: 0.25; filter: grayscale(1);">
+              <!-- Refresh Data Button -->
+              <button id="dashboard-refresh-btn"
+                onclick="Dashboard.refresh()"
+                title="Clear cache and reload all dashboard data"
+                aria-label="Refresh dashboard data"
+                style="
+                  display: flex; align-items: center; gap: 6px;
+                  padding: 6px 14px; border-radius: 10px; border: none; cursor: pointer;
+                  background: rgba(246,201,69,0.15); color: #F6C945;
+                  font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+                  transition: background 0.2s, transform 0.15s;
+                "
+                onmouseover="this.style.background='rgba(246,201,69,0.28)'"
+                onmouseout="this.style.background='rgba(246,201,69,0.15)'">
+                <svg id="dashboard-refresh-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                  style="flex-shrink:0;transition:transform 0.4s ease;">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                Refresh Data
+              </button>
             </div>
           </div>
         </div>
@@ -115,6 +138,39 @@ const Dashboard = {
     this._renderActivity();
     await this._renderTopSchools();
     this._renderFinancial();
+  },
+
+  /**
+   * Clears the entire DB cache and fully re-renders the Dashboard.
+   * Triggered by the "Refresh Data" button in the welcome banner.
+   */
+  async refresh() {
+    const btn  = document.getElementById('dashboard-refresh-btn');
+    const icon = document.getElementById('dashboard-refresh-icon');
+
+    // Disable button and spin the icon during refresh
+    if (btn)  btn.disabled = true;
+    if (icon) {
+      icon.style.transition = 'transform 0.6s linear';
+      icon.style.transform  = 'rotate(360deg)';
+    }
+
+    // Allow the spin animation to start before the synchronous work begins
+    await new Promise(r => setTimeout(r, 80));
+
+    try {
+      DB.invalidateAll();
+      await this.render();
+      if (typeof Toast !== 'undefined') {
+        Toast.success('Dashboard data refreshed!');
+      }
+    } catch (err) {
+      console.error('[Dashboard] Refresh error:', err);
+      if (typeof Toast !== 'undefined') {
+        Toast.error('Failed to refresh. Please try again.');
+      }
+    }
+    // Button re-enables automatically because render() replaces the DOM
   },
 
   async _renderKPIs() {
