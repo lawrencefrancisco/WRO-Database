@@ -31,7 +31,7 @@ const AUTH = {
   },
 
   _SESSION_KEY: 'wro_ph_session',
-  _API_BASE:    '[https://wro-database.onrender.com](https://wro-database.onrender.com)/api',
+  _API_BASE:    'https://wro-database.onrender.com/api',
 
   /** Login via API – returns { success, user/error } */
   async login(username, password) {

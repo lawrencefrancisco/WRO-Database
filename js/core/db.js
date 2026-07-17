@@ -4,7 +4,7 @@
 // All methods remain async so existing module code needs no changes.
 // ============================================================
 
-const API_BASE = '[https://wro-database.onrender.com](https://wro-database.onrender.com)/api';
+const API_BASE = 'https://wro-database.onrender.com/api';
 
 // Map table names used by modules → API path segments
 const TABLE_ROUTES = {

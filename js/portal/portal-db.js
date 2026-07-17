@@ -5,7 +5,7 @@
 // ============================================================
 
 const PORTAL_DB = {
-  _BASE: '[https://wro-database.onrender.com](https://wro-database.onrender.com)/api',
+  _BASE: 'https://wro-database.onrender.com/api',
 
   _headers() {
     return {
