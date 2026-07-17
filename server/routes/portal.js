@@ -90,8 +90,8 @@ router.get('/teams', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT t.id, t.team_name, t.category, t.age_group, t.robot_platform, t.programming_language,
               t.registration_status, t.payment_status, t.qualification_status, t.status,
-              c.first_name AS coach_first, c.last_name AS coach_last,
-              comp.competition_name
+              c.full_name AS coach_name,
+              comp.name AS competition_name
        FROM teams t
        LEFT JOIN coaches c ON c.id = t.coach_id
        LEFT JOIN competitions comp ON comp.id = t.competition_id
@@ -116,8 +116,9 @@ router.get('/payments', async (req, res) => {
     if (!schoolId) return res.json([]);
 
     const [rows] = await pool.execute(
-      `SELECT p.id, p.amount_paid, p.status, p.payment_method, p.payment_date,
-              p.reference_number, p.notes, t.team_name, t.category
+      `SELECT p.id, p.amount_paid, p.balance, p.registration_fee, p.status,
+              p.payment_method, p.payment_date, p.or_number, p.scholarship,
+              t.team_name, t.category
        FROM payments p
        JOIN teams t ON t.id = p.team_id
        WHERE t.school_id = ? AND p.is_deleted = 0
