@@ -6,6 +6,7 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const pool    = require('./db/pool');
+const autoInitDatabase = require('./db/auto_init');
 const chatRoute = require('./routes/chat');
 
 const app  = express();
@@ -72,17 +73,24 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, error: 'Internal server error.' });
 });
 
-// ── Start server ──────────────────────────────────────────────
-app.listen(PORT, async () => {
+// ── Start server (init DB first, THEN accept requests) ────────
+async function start() {
   try {
-    // Test DB connection
+    // 1. Verify DB is reachable
     await pool.execute('SELECT 1');
-    console.log(`✅ WRO Philippines API Server running on port ${PORT}`);
-    console.log(`📦 Connected to MySQL database: ${process.env.DB_NAME || 'wro_philippines'}`);
+    console.log(`📦 Connected to MySQL database: ${process.env.DB_NAME || 'defaultdb'}`);
+
+    // 2. Create tables + seed users BEFORE the server accepts any connections
+    await autoInitDatabase(pool);
+
+    // 3. Only now start listening
+    app.listen(PORT, () => {
+      console.log(`✅ WRO Philippines API Server running on port ${PORT}`);
+    });
   } catch (err) {
-    console.error('❌ Database connection failed:', err.message);
-    console.error('   Make sure MySQL is running and the database exists.');
-    console.error('   Run: mysql -u root -e "CREATE DATABASE IF NOT EXISTS wro_philippines;"');
-    console.error('   Then import: mysql -u root wro_philippines < server/database.sql');
+    console.error('❌ Startup failed:', err.message);
+    process.exit(1); // Force Render to restart the service if DB is unavailable
   }
-});
+}
+
+start();
