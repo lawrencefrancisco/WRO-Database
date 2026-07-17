@@ -160,9 +160,17 @@
 
 
     <!-- Footer -->
-    <p class="text-center text-xs mt-4" style="color:#2d3a52;">
-      FELTA Multimedia · WRO Philippines © 2025 · Database System v2.0
-    </p>
+    <div class="text-center space-y-2 mt-4">
+      <p class="text-xs" style="color:var(--txt-muted);">
+        Not an administrator?
+        <a href="portal-login.html" class="font-semibold transition-colors hover:opacity-80" style="color:var(--felta-yellow);">
+          Standard User Portal →
+        </a>
+      </p>
+      <p class="text-xs" style="color:#2d3a52;">
+        FELTA Multimedia · WRO Philippines © 2025 · Database System v2.0
+      </p>
+    </div>
   </div>
 
   <script>
@@ -188,7 +196,12 @@
         document.getElementById('login-text').textContent = 'Welcome!';
         setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
       } else {
-        errEl.textContent = result.error;
+        // If a standard user tries to log in here, show a portal link
+        if (result.redirect) {
+          errEl.innerHTML = result.error + ` <a href="${result.redirect}" style="color:#F6C945;font-weight:700;text-decoration:underline;">Go to Standard User Portal →</a>`;
+        } else {
+          errEl.textContent = result.error;
+        }
         errEl.classList.remove('hidden');
         btn.disabled = false;
         document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;

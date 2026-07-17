@@ -46,15 +46,19 @@ router.post('/', requireRole('SUPER_ADMIN'), async (req, res) => {
     const d        = req.body;
     const userCode = d.userCode || d.user_code || `USER_${Date.now()}`;
     const hash     = await bcrypt.hash(d.password, 10);
+    // Validate role
+    const validRoles = ['SUPER_ADMIN', 'EVENT_ADMIN', 'STANDARD_USER'];
+    const role = validRoles.includes(d.role) ? d.role : 'STANDARD_USER';
+    const schoolId = d.schoolId || null;
 
     const [result] = await pool.execute(
-      `INSERT INTO users (user_code, username, password_hash, name, role, email, is_active,
+      `INSERT INTO users (user_code, username, password_hash, name, role, email, school_id, is_active,
        created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,NOW(),NOW())`,
-      [userCode, d.username, hash, d.name, d.role, d.email, d.isActive ? 1 : 1]
+       VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())`,
+      [userCode, d.username, hash, d.name, role, d.email, schoolId, 1]
     );
     const [rows] = await pool.execute(
-      'SELECT id, user_code, username, name, role, email, is_active FROM users WHERE id = ?',
+      'SELECT id, user_code, username, name, role, email, school_id, is_active FROM users WHERE id = ?',
       [result.insertId]
     );
     res.status(201).json(rows[0]);
@@ -68,24 +72,27 @@ router.post('/', requireRole('SUPER_ADMIN'), async (req, res) => {
 router.put('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
   try {
     const d = req.body;
+    const validRoles = ['SUPER_ADMIN', 'EVENT_ADMIN', 'STANDARD_USER'];
+    const role = validRoles.includes(d.role) ? d.role : 'STANDARD_USER';
+    const schoolId = d.schoolId || null;
     if (d.password) {
       const hash = await bcrypt.hash(d.password, 10);
       await pool.execute(
         `UPDATE users SET username=?, password_hash=?, name=?, role=?, email=?,
-         is_active=?, updated_at=NOW() WHERE id = ?`,
-        [d.username, hash, d.name, d.role, d.email,
-         d.isActive ? 1 : 0, req.params.id]
+         school_id=?, is_active=?, updated_at=NOW() WHERE id = ?`,
+        [d.username, hash, d.name, role, d.email,
+         schoolId, d.isActive ? 1 : 0, req.params.id]
       );
     } else {
       await pool.execute(
         `UPDATE users SET username=?, name=?, role=?, email=?,
-         is_active=?, updated_at=NOW() WHERE id = ?`,
-        [d.username, d.name, d.role, d.email,
-         d.isActive ? 1 : 0, req.params.id]
+         school_id=?, is_active=?, updated_at=NOW() WHERE id = ?`,
+        [d.username, d.name, role, d.email,
+         schoolId, d.isActive ? 1 : 0, req.params.id]
       );
     }
     const [rows] = await pool.execute(
-      'SELECT id, user_code, username, name, role, email, is_active FROM users WHERE id = ?',
+      'SELECT id, user_code, username, name, role, email, school_id, is_active FROM users WHERE id = ?',
       [req.params.id]
     );
     res.json(rows[0]);

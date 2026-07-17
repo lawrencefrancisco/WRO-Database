@@ -44,24 +44,29 @@ router.post('/login', async (req, res) => {
 
     // userId is now the integer surrogate PK; user_code carries the readable code
     const payload = {
-      userId:   user.id,        // INT surrogate PK — used for FK references
-      userCode: user.user_code, // business code — for display only
+      userId:   user.id,
+      userCode: user.user_code,
       name:     user.name,
       role:     user.role,
       email:    user.email,
+      schoolId: user.school_id || null,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '8h',
     });
 
-    // Update last login using the integer surrogate PK
+    // Update last login
     await pool.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+
+    // Determine which portal the user should be redirected to
+    const isStandardUser = user.role === 'STANDARD_USER';
 
     res.json({
       success: true,
       token,
       user: payload,
+      portal: isStandardUser ? 'standard' : 'admin',
     });
   } catch (err) {
     console.error('[Auth] Login error:', err);

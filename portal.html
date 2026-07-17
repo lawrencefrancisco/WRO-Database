@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Mobile-first: viewport with notch support -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#111f35">
+
+  <title>WRO Philippines – Standard User Portal</title>
+  <meta name="description" content="WRO Philippines Standard User Portal – View your school, teams, and competition updates.">
+
+  <!-- Early theme init (before render to avoid flash) -->
+  <script>
+    (function() {
+      if (localStorage.getItem('wro_ph_theme') !== 'dark') {
+        document.documentElement.classList.add('light-mode');
+      }
+    })();
+  </script>
+
+  <!-- Portal CSS (mobile-first, standalone) -->
+  <link rel="stylesheet" href="css/portal.css">
+
+  <!-- ── Portal Core ── -->
+  <script src="js/portal/portal-auth.js"></script>
+  <script src="js/portal/portal-db.js"></script>
+
+  <!-- ── Portal Modules ── -->
+  <script src="js/portal/modules/portal-dashboard.js"></script>
+  <script src="js/portal/modules/portal-teams.js"></script>
+  <script src="js/portal/modules/portal-announcements.js"></script>
+  <script src="js/portal/modules/portal-profile.js"></script>
+
+  <!-- ── Portal App Controller ── -->
+  <script src="js/portal/portal-app.js"></script>
+</head>
+
+<body class="portal-body">
+  <div class="portal-layout">
+
+    <!-- ── Sidebar (drawer on mobile, fixed on desktop) ─── -->
+    <aside id="portal-sidebar" role="navigation" aria-label="Main navigation"></aside>
+
+    <!-- ── Overlay (mobile only) ─────────────────────────── -->
+    <div id="portal-overlay" aria-hidden="true"></div>
+
+    <!-- ── Main ──────────────────────────────────────────── -->
+    <div id="portal-main">
+
+      <!-- Topbar -->
+      <header id="portal-topbar" role="banner"></header>
+
+      <!-- Page content -->
+      <main id="portal-content" role="main">
+        <div class="p-loading"><div class="p-spinner"></div></div>
+      </main>
+
+    </div>
+
+    <!-- ── Bottom Navigation (mobile primary nav) ─────────── -->
+    <nav id="portal-bottom-nav" role="navigation" aria-label="Quick navigation"></nav>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => PortalApp.init());
+  </script>
+</body>
+</html>

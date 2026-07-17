@@ -8,9 +8,7 @@ const AUTH = {
   ROLES: {
     SUPER_ADMIN:   { label: 'Super Administrator', color: 'purple', icon: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#8338ec' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12 6l4 6 5-4-2 10H5L3 8l5 4 4-6z'/></svg>` },
     EVENT_ADMIN:   { label: 'Event Administrator', color: 'blue',   icon: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#1d6fa4' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='2'/></svg>` },
-    JUDGE:         { label: 'Judge',               color: 'yellow', icon: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#F6C945' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>` },
-    COACH:         { label: 'Coach',               color: 'green',  icon: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#2dc653' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/><path d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/><path d='M4 22h16'/><path d='M18 2H6v7a6 6 0 0 0 12 0V2z'/></svg>` },
-    VOLUNTEER:     { label: 'Volunteer',            color: 'gray',   icon: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#F6C945' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>` },
+    STANDARD_USER: { label: 'Standard User',       color: 'green',  icon: `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#2dc653' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>` },
   },
 
   PERMISSIONS: {
@@ -29,26 +27,7 @@ const AUTH = {
       'reports.read','reports.write',
       'users.read',
     ],
-    JUDGE: [
-      'teams.read',
-      'judging.read','judging.write',
-      'awards.read',
-    ],
-    COACH: [
-      'schools.read',
-      'coaches.read',
-      'students.read','students.write',
-      'teams.read','teams.write',
-      'competitions.read',
-      'payments.read',
-      'awards.read',
-      'communications.read',
-    ],
-    VOLUNTEER: [
-      'teams.read',
-      'students.read',
-      'competitions.read',
-    ],
+    STANDARD_USER: [], // No admin permissions – uses Standard User Portal instead
   },
 
   _SESSION_KEY: 'wro_ph_session',
@@ -67,6 +46,16 @@ const AUTH = {
       if (!res.ok || !data.success) {
         return { success: false, error: data.error || 'Invalid username or password.' };
       }
+
+      // Block Standard Users from the Admin Portal
+      if (data.portal === 'standard') {
+        return {
+          success: false,
+          error: 'This portal is for administrators only. Standard Users should use the Standard User Portal.',
+          redirect: 'portal-login.html',
+        };
+      }
+
 
       // Store user + JWT token in sessionStorage
       const session = {
