@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost',
+  origin: process.env.CORS_ORIGIN || 'http://[https://wro-database.onrender.com](https://wro-database.onrender.com)',
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -77,7 +77,7 @@ app.listen(PORT, async () => {
   try {
     // Test DB connection
     await pool.execute('SELECT 1');
-    console.log(`✅ WRO Philippines API Server running on http://localhost:${PORT}`);
+    console.log(`✅ WRO Philippines API Server running on http://[https://wro-database.onrender.com](https://wro-database.onrender.com):${PORT}`);
     console.log(`📦 Connected to MySQL database: ${process.env.DB_NAME || 'wro_philippines'}`);
   } catch (err) {
     console.error('❌ Database connection failed:', err.message);
