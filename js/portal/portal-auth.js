@@ -7,7 +7,7 @@
 const PORTAL_AUTH = {
 
   _SESSION_KEY: 'wro_ph_portal_session',
-  _API_BASE:    'http://localhost:3000/api',
+  _API_BASE:    '[https://wro-database.onrender.com](https://wro-database.onrender.com)/api',
 
   /** Login via API – only accepts STANDARD_USER role */
   async login(username, password) {
