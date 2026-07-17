@@ -13,7 +13,7 @@ router.use(authMiddleware);
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT * FROM announcements WHERE is_deleted = 0 ORDER BY created_at DESC'
+      'SELECT id, announcement_code, title, body, image_url, category, recipients, status, publish_at, created_by, created_at, updated_at FROM announcements WHERE is_deleted = 0 ORDER BY created_at DESC'
     );
     res.json(rows);
   } catch (err) {
@@ -25,7 +25,8 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT * FROM announcements WHERE id = ? AND is_deleted = 0', [req.params.id]
+      'SELECT id, announcement_code, title, body, image_url, category, recipients, status, publish_at, created_by, created_at, updated_at FROM announcements WHERE id = ? AND is_deleted = 0',
+      [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     res.json(rows[0]);
@@ -40,13 +41,17 @@ router.post('/', async (req, res) => {
     const d    = req.body;
     const code = d.announcementCode || `ANN_${Date.now()}`;
     const [result] = await pool.execute(
-      `INSERT INTO announcements (announcement_code, title, body, category, recipients,
+      `INSERT INTO announcements (announcement_code, title, body, image_url, category, recipients,
        status, publish_at, created_by, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [code, d.title, d.body || '', d.category || 'general', d.recipients || 'all',
+       VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+      [code, d.title, d.body || '', d.imageUrl || null,
+       d.category || 'general', d.recipients || 'all',
        d.status || 'draft', d.publishAt || null, d.createdBy || null]
     );
-    const [rows] = await pool.execute('SELECT * FROM announcements WHERE id = ?', [result.insertId]);
+    const [rows] = await pool.execute(
+      'SELECT id, announcement_code, title, body, image_url, category, recipients, status, publish_at, created_by, created_at, updated_at FROM announcements WHERE id = ?',
+      [result.insertId]
+    );
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -59,12 +64,16 @@ router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
     await pool.execute(
-      `UPDATE announcements SET title=?, body=?, category=?, recipients=?,
+      `UPDATE announcements SET title=?, body=?, image_url=?, category=?, recipients=?,
        status=?, publish_at=?, updated_at=NOW() WHERE id = ?`,
-      [d.title, d.body || '', d.category || 'general', d.recipients || 'all',
+      [d.title, d.body || '', d.imageUrl !== undefined ? d.imageUrl : null,
+       d.category || 'general', d.recipients || 'all',
        d.status || 'draft', d.publishAt || null, req.params.id]
     );
-    const [rows] = await pool.execute('SELECT * FROM announcements WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.execute(
+      'SELECT id, announcement_code, title, body, image_url, category, recipients, status, publish_at, created_by, created_at, updated_at FROM announcements WHERE id = ?',
+      [req.params.id]
+    );
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

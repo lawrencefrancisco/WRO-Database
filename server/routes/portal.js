@@ -56,7 +56,7 @@ router.get('/dashboard', async (req, res) => {
     }
 
     [announcements] = await pool.execute(
-      "SELECT id, title, category, created_at FROM announcements WHERE status = 'published' AND is_deleted = 0 ORDER BY created_at DESC LIMIT 5"
+      "SELECT id, title, image_url, category, created_at FROM announcements WHERE status = 'published' AND is_deleted = 0 ORDER BY created_at DESC LIMIT 5"
     );
 
     const paid    = teams.filter(t => t.payment_status === 'paid').length;
@@ -135,7 +135,7 @@ router.get('/payments', async (req, res) => {
 router.get('/announcements', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      "SELECT id, announcement_code, title, body, category, recipients, status, created_at FROM announcements WHERE status = 'published' AND is_deleted = 0 ORDER BY created_at DESC"
+      "SELECT id, announcement_code, title, body, image_url, category, recipients, status, created_at FROM announcements WHERE status = 'published' AND is_deleted = 0 ORDER BY created_at DESC"
     );
     res.json(rows);
   } catch (err) {

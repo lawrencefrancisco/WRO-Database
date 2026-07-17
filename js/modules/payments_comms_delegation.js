@@ -435,7 +435,7 @@ const Communications = {
   async _renderAnnouncements(el) {
     const all = (await DB.getAll('announcements')).filter(a => !a.isDeleted);
     const catColors = { general:'#1d6fa4', payment:'#2dc653', qualification:'#e8c027', delegation:'#8338ec', competition:'#e63946' };
-    const catIcon   = { general:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', payment:'<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>', qualification:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>', delegation:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', competition:'<path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/><path d="M4 22h16"/>'}; 
+    const catIcon   = { general:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', payment:'<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>', qualification:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>', delegation:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', competition:'<path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/><path d="M4 22h16"/>'};
     const statusBg  = { draft:'rgba(107,116,148,0.15)', published:'rgba(45,198,83,0.12)', archived:'rgba(107,116,148,0.12)' };
     const statusClr = { draft:'#6B7494', published:'#2dc653', archived:'#6B7494' };
 
@@ -452,39 +452,49 @@ const Communications = {
           </div>`).join('')}
       </div>
 
-      <!-- Announcement list -->
-      <div class="space-y-3">
+      <!-- Announcement Cards -->
+      <div class="space-y-4">
         ${all.length === 0 ? `<div class="glass rounded-2xl p-12 text-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(246,201,69,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <p style="color:var(--txt-muted);">No announcements yet. Click <strong>New Announcement</strong> to create one.</p>
-        </div>` : all.map(a => `
-          <div class="glass rounded-2xl p-5 border transition-all hover:-translate-y-0.5" style="border-color:var(--border-subtle);">
-            <div class="flex items-start justify-between gap-4">
+        </div>` : all.map(a => {
+          const img = a.imageUrl || a.image_url;
+          return `
+          <div class="glass rounded-2xl border transition-all hover:-translate-y-0.5" style="border-color:var(--border-subtle);overflow:hidden;">
+            ${img ? `
+            <!-- Image banner -->
+            <div style="width:100%;max-height:240px;overflow:hidden;background:#0b1524;">
+              <img src="${img}" alt="Announcement poster"
+                style="width:100%;max-height:240px;object-fit:contain;display:block;background:#0b1524;">
+            </div>` : ''}
+            <div class="flex items-start justify-between gap-4 p-5">
               <div class="flex items-start gap-3 flex-1 min-w-0">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${catColors[a.category] || '#1d6fa4'}20;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${catColors[a.category] || '#1d6fa4'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${catIcon[a.category] || catIcon.general}</svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <h3 class="font-bold text-base truncate" style="color:var(--txt-primary);">${a.title}</h3>
+                  <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                    <h3 class="font-bold text-base" style="color:var(--txt-primary);">${a.title}</h3>
                     <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style="background:${statusBg[a.status]||statusBg.draft}; color:${statusClr[a.status]||statusClr.draft};">${a.status}</span>
                     <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style="background:${catColors[a.category]||'#1d6fa4'}20; color:${catColors[a.category]||'#1d6fa4'};">${a.category}</span>
                   </div>
-                  <p class="text-sm line-clamp-2" style="color:var(--txt-muted);">${a.body || '—'}</p>
-                  <div class="flex flex-wrap gap-4 mt-2 text-xs" style="color:var(--txt-muted);">
+                  <p class="text-sm" style="color:var(--txt-muted);line-height:1.6;">${a.body || '—'}</p>
+                  <div class="flex flex-wrap gap-4 mt-2.5 text-xs" style="color:var(--txt-muted);">
                     <span>To: <strong style="color:var(--txt-secondary);">${Utils.capitalize(a.recipients || 'all')}</strong></span>
                     <span>${new Date(a.createdAt || a.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</span>
+                    ${img ? `<span style="color:#8338ec;">📷 Has image</span>` : ''}
                   </div>
                 </div>
               </div>
-              ${AUTH.can('communications.write') ? `
-              <div class="flex gap-2 shrink-0">
-                ${a.status === 'draft' ? `<button onclick="Communications.publishAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(45,198,83,0.15);color:#2dc653;">Publish</button>` : ''}
-                <button onclick="Communications.openAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(246,201,69,0.12);color:var(--felta-yellow);">Edit</button>
-                <button onclick="Communications.deleteAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(230,57,70,0.12);color:#e63946;">Delete</button>
-              </div>` : ''}
             </div>
-          </div>`).join('')}
+            ${AUTH.can('communications.write') ? `
+            <div class="flex gap-2 px-5 pb-4 border-t pt-3" style="border-color:var(--border-subtle);">
+              ${a.status === 'draft' ? `<button onclick="Communications.publishAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(45,198,83,0.15);color:#2dc653;">Publish</button>` : ''}
+              <button onclick="Communications.openAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(246,201,69,0.12);color:var(--felta-yellow);">Edit</button>
+              <button onclick="Communications.deleteAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(230,57,70,0.12);color:#e63946;">Delete</button>
+            </div>` : ''}
+          </div>`;
+        }).join('')}
       </div>`;
   },
 
@@ -572,10 +582,13 @@ const Communications = {
 
   async openAnnouncement(id = null) {
     const a = id ? await DB.getById('announcements', id) : null;
+    const existingImg = a?.imageUrl || a?.image_url || null;
+
     Modal.show(id ? 'Edit Announcement' : 'New Announcement', `
       <form id="ann-form" class="space-y-4">
         <div><label class="form-label">Title *</label>
           <input class="form-input" name="title" required placeholder="Announcement title" value="${a?.title || ''}"></div>
+
         <div class="grid grid-cols-2 gap-4">
           <div><label class="form-label">Category</label>
             <select class="form-input" name="category">
@@ -586,8 +599,38 @@ const Communications = {
               ${['all','schools','coaches','teams','judges','volunteers','delegates'].map(r=>`<option value="${r}" ${a?.recipients===r?'selected':''}>${Utils.capitalize(r)}</option>`).join('')}
             </select></div>
         </div>
+
         <div><label class="form-label">Message *</label>
           <textarea class="form-input" name="body" rows="5" placeholder="Write your announcement here...">${a?.body || ''}</textarea></div>
+
+        <!-- ── Image Uploader ─────────────────────────── -->
+        <div>
+          <label class="form-label">Poster / Banner Image <span style="font-weight:400;text-transform:none;opacity:0.6;">(optional · max 2 MB)</span></label>
+          <!-- Drop Zone -->
+          <div id="ann-drop-zone"
+            onclick="document.getElementById('ann-img-input').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--felta-yellow)';"
+            ondragleave="this.style.borderColor='var(--border-subtle)';"
+            ondrop="Communications._onImgDrop(event)"
+            style="border:2px dashed var(--border-subtle);border-radius:12px;padding:1.25rem;text-align:center;cursor:pointer;transition:border-color 0.2s;position:relative;">
+            <input type="file" id="ann-img-input" accept="image/*" style="display:none" onchange="Communications._onImgPick(event)">
+            <div id="ann-drop-prompt">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--txt-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.5rem"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <p style="color:var(--txt-muted);font-size:0.8rem;">Click to upload or drag &amp; drop an image</p>
+              <p style="color:var(--txt-muted);font-size:0.7rem;opacity:0.6;margin-top:0.25rem;">PNG, JPG, WEBP · max 2 MB · aspect ratio preserved</p>
+            </div>
+            <div id="ann-img-preview-wrap" style="display:${existingImg ? 'block' : 'none'}">
+              <img id="ann-img-preview" src="${existingImg || ''}" alt="Preview"
+                style="max-height:200px;max-width:100%;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">
+              <div style="margin-top:0.75rem;display:flex;gap:0.5rem;justify-content:center;">
+                <button type="button" onclick="Communications._replaceImg()" style="padding:0.35rem 0.8rem;border-radius:8px;border:1px solid var(--border-subtle);background:transparent;color:var(--txt-muted);font-size:0.75rem;cursor:pointer;">Replace</button>
+                <button type="button" onclick="Communications._removeImg()" style="padding:0.35rem 0.8rem;border-radius:8px;border:none;background:rgba(230,57,70,0.12);color:#e63946;font-size:0.75rem;cursor:pointer;">Remove</button>
+              </div>
+            </div>
+          </div>
+          <div id="ann-img-error" style="color:#e63946;font-size:0.75rem;margin-top:0.35rem;display:none;"></div>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
           <div><label class="form-label">Status</label>
             <select class="form-input" name="status">
@@ -601,14 +644,70 @@ const Communications = {
        <button onclick="Communications._saveAnnouncement('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold">Save</button>`,
       'max-w-2xl'
     );
+
+    // Store existing image for later save
+    Communications._pendingImage = existingImg;
+  },
+
+  _onImgPick(event) {
+    const file = event.target.files[0];
+    Communications._loadImageFile(file);
+  },
+
+  _onImgDrop(event) {
+    event.preventDefault();
+    document.getElementById('ann-drop-zone').style.borderColor = 'var(--border-subtle)';
+    const file = event.dataTransfer.files[0];
+    Communications._loadImageFile(file);
+  },
+
+  _loadImageFile(file) {
+    const errEl = document.getElementById('ann-img-error');
+    errEl.style.display = 'none';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      errEl.textContent = 'Please upload an image file (PNG, JPG, WEBP).'; errEl.style.display = 'block'; return;
+    }
+    if (file.size > 2.5 * 1024 * 1024) {
+      errEl.textContent = 'Image is too large. Please use an image under 2 MB.'; errEl.style.display = 'block'; return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result;
+      Communications._pendingImage = base64;
+      const preview = document.getElementById('ann-img-preview');
+      const wrap    = document.getElementById('ann-img-preview-wrap');
+      const prompt  = document.getElementById('ann-drop-prompt');
+      if (preview) preview.src = base64;
+      if (wrap)    wrap.style.display    = 'block';
+      if (prompt)  prompt.style.display  = 'none';
+    };
+    reader.readAsDataURL(file);
+  },
+
+  _replaceImg() {
+    document.getElementById('ann-img-input')?.click();
+  },
+
+  _removeImg() {
+    Communications._pendingImage = null;
+    const preview = document.getElementById('ann-img-preview');
+    const wrap    = document.getElementById('ann-img-preview-wrap');
+    const prompt  = document.getElementById('ann-drop-prompt');
+    if (preview) preview.src = '';
+    if (wrap)    wrap.style.display   = 'none';
+    if (prompt)  prompt.style.display = 'block';
   },
 
   async _saveAnnouncement(id) {
     const form = document.getElementById('ann-form');
     const data = Object.fromEntries(new FormData(form));
     if (!data.title?.trim()) { Toast.error('Title is required.'); return; }
+    // Attach the pending image (base64 string, null to clear, or undefined to leave unchanged)
+    data.imageUrl = Communications._pendingImage !== undefined ? Communications._pendingImage : null;
     if (id) { await DB.update('announcements', id, data); Toast.success('Announcement updated!'); }
     else     { await DB.insert('announcements', data);    Toast.success('Announcement created!'); }
+    Communications._pendingImage = undefined;
     Modal.close();
     await this._renderTab();
   },
