@@ -14,11 +14,13 @@ const TABLE_ROUTES = {
   teams:          'teams',
   competitions:   'competitions',
   seasons:        'seasons',
-  judging:        'judging',   // judges master-data table (route stays /api/judging)
+  judging:        'judging',
   awards:         'awards',
   payments:       'payments',
   communications: 'communications',
   delegation:     'delegation',
+  announcements:  'announcements',
+  notifications:  'notifications',
   users:          'users',
   audit_logs:     'audit-logs',
 };

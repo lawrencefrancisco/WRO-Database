@@ -67,6 +67,16 @@ router.post('/', async (req, res) => {
     // Sync payment status to Team Management
     if (teamId) {
       await pool.execute('UPDATE teams SET payment_status = ? WHERE id = ?', [d.status || 'unpaid', teamId]);
+      // Auto-log notification
+      const [teamRow] = await pool.execute('SELECT team_name, school_id FROM teams WHERE id = ? LIMIT 1', [teamId]);
+      const teamName  = teamRow[0]?.team_name || `Team #${teamId}`;
+      await pool.execute(
+        `INSERT INTO notification_log (event_type, title, message, team_id, school_id, triggered_by, created_at)
+         VALUES (?,?,?,?,?,?,NOW())`,
+        ['payment', `Payment ${d.status || 'unpaid'} – ${teamName}`,
+         `Payment of ₱${d.amountPaid || 0} recorded for ${teamName}. Status: ${d.status || 'unpaid'}.`,
+         teamId, teamRow[0]?.school_id || null, 'Payments Module']
+      );
     }
 
     res.status(201).json(rows[0]);

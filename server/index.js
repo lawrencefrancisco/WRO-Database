@@ -34,6 +34,8 @@ app.use('/api/awards',         require('./routes/awards'));
 app.use('/api/payments',       require('./routes/payments'));
 app.use('/api/communications', require('./routes/communications'));
 app.use('/api/delegation',     require('./routes/delegation'));
+app.use('/api/announcements',  require('./routes/announcements'));
+app.use('/api/notifications',  require('./routes/notifications'));
 app.use('/api/dashboard',      require('./routes/dashboard'));
 app.use('/api/users',          require('./routes/users'));
 

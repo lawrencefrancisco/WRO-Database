@@ -361,78 +361,293 @@ const Payments = {
 window.Payments = Payments;
 
 // ============================================================
-// Module 9 – Communications
+// Module 9 – Communications (Full Rewrite)
 // ============================================================
 
 const Communications = {
+  _tab: 'announcements',
+
   async render() {
-    const all    = (await DB.getAll('communications')).filter(c => !c.isDeleted);
-    const _teamsMap = await DB.getLookup('teams');
-    const sent   = all.filter(c => c.registrationConfirmation).length;
-    const certs  = all.filter(c => c.certificateSent).length;
-    const content= document.getElementById('page-content');
-    const _sic = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-    content.innerHTML = `
+    document.getElementById('page-content').innerHTML = `
       <div class="page-view space-y-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          ${[
-            { label:'Total Records',       value: all.length, icon: _sic('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 0 2 2z"/>','#F6C945') },
-            { label:'Confirmations Sent',  value: sent,       icon: _sic('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
-            { label:'Certificates Sent',   value: certs,      icon: _sic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>','#e8c027') },
-            { label:'Feedback Received',   value: all.filter(c=>c.feedbackSubmitted).length, icon: _sic('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 0 2 2z"/>','#8338ec') },
-          ].map(s=>`
-            <div class="kpi-card rounded-xl p-4">
-              <div class="mb-2">${s.icon}</div>
-              <div class="text-2xl font-bold text-white">${s.value}</div>
-              <div class="text-xs text-slate-400 mt-1">${s.label}</div>
-            </div>`).join('')}
+
+        <!-- Header -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-black" style="color:var(--txt-primary);">Communications Hub</h1>
+            <p class="text-sm mt-1" style="color:var(--txt-muted);">Manage announcements, notifications & team communication status</p>
+          </div>
+          <button onclick="Communications.openAnnouncement()" class="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Announcement
+          </button>
         </div>
-        <div class="glass rounded-2xl overflow-hidden">
-          <div class="p-4 border-b border-slate-700/50 flex justify-between items-center">
-            <h3 class="text-sm font-semibold text-white">Communication Records</h3>
-            <button onclick="Communications.exportCSV()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold transition flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export</button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead>
-                <tr><th>Team</th><th>Reg Confirmation</th><th>Payment Confirmation</th><th>Certificate</th><th>Announcement</th><th>Feedback</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                ${all.slice(0,30).map(c => {
+
+        <!-- Tabs -->
+        <div class="flex gap-1 p-1 rounded-xl" style="background:var(--bg-surface); border:1px solid var(--border-subtle);">
+          ${[['announcements','Announcements','<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'],
+             ['history','Notification History','<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
+             ['tracker','Team Status Tracker','<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/>']
+          ].map(([id, label, paths]) => `
+            <button id="comm-tab-${id}" onclick="Communications._switchTab('${id}')"
+              class="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2
+                ${Communications._tab === id ? 'text-white' : ''}"
+              style="${Communications._tab === id
+                ? 'background:var(--felta-yellow); color:#07120c;'
+                : 'color:var(--txt-muted);'}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>
+              ${label}
+            </button>`).join('')}
+        </div>
+
+        <!-- Tab Content -->
+        <div id="comm-content"></div>
+      </div>`;
+
+    await this._renderTab();
+  },
+
+  async _switchTab(tab) {
+    this._tab = tab;
+    // Update tab button styles
+    ['announcements','history','tracker'].forEach(id => {
+      const btn = document.getElementById(`comm-tab-${id}`);
+      if (!btn) return;
+      if (id === tab) {
+        btn.style.background = 'var(--felta-yellow)';
+        btn.style.color = '#07120c';
+      } else {
+        btn.style.background = '';
+        btn.style.color = 'var(--txt-muted)';
+      }
+    });
+    await this._renderTab();
+  },
+
+  async _renderTab() {
+    const el = document.getElementById('comm-content');
+    if (!el) return;
+    if (this._tab === 'announcements') await this._renderAnnouncements(el);
+    else if (this._tab === 'history') await this._renderHistory(el);
+    else await this._renderTracker(el);
+  },
+
+  async _renderAnnouncements(el) {
+    const all = (await DB.getAll('announcements')).filter(a => !a.isDeleted);
+    const catColors = { general:'#1d6fa4', payment:'#2dc653', qualification:'#e8c027', delegation:'#8338ec', competition:'#e63946' };
+    const catIcon   = { general:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', payment:'<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>', qualification:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>', delegation:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', competition:'<path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/><path d="M4 22h16"/>'}; 
+    const statusBg  = { draft:'rgba(107,116,148,0.15)', published:'rgba(45,198,83,0.12)', archived:'rgba(107,116,148,0.12)' };
+    const statusClr = { draft:'#6B7494', published:'#2dc653', archived:'#6B7494' };
+
+    const published = all.filter(a => a.status === 'published').length;
+    const drafts    = all.filter(a => a.status === 'draft').length;
+
+    el.innerHTML = `
+      <!-- Stats row -->
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        ${[{l:'Total',v:all.length,c:'#F6C945'},{l:'Published',v:published,c:'#2dc653'},{l:'Drafts',v:drafts,c:'#e8c027'}].map(s=>`
+          <div class="glass rounded-xl p-4 flex items-center gap-3">
+            <div class="text-2xl font-black" style="color:${s.c};">${s.v}</div>
+            <div class="text-sm" style="color:var(--txt-muted);">${s.l}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- Announcement list -->
+      <div class="space-y-3">
+        ${all.length === 0 ? `<div class="glass rounded-2xl p-12 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(246,201,69,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p style="color:var(--txt-muted);">No announcements yet. Click <strong>New Announcement</strong> to create one.</p>
+        </div>` : all.map(a => `
+          <div class="glass rounded-2xl p-5 border transition-all hover:-translate-y-0.5" style="border-color:var(--border-subtle);">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3 flex-1 min-w-0">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${catColors[a.category] || '#1d6fa4'}20;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${catColors[a.category] || '#1d6fa4'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${catIcon[a.category] || catIcon.general}</svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 class="font-bold text-base truncate" style="color:var(--txt-primary);">${a.title}</h3>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style="background:${statusBg[a.status]||statusBg.draft}; color:${statusClr[a.status]||statusClr.draft};">${a.status}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style="background:${catColors[a.category]||'#1d6fa4'}20; color:${catColors[a.category]||'#1d6fa4'};">${a.category}</span>
+                  </div>
+                  <p class="text-sm line-clamp-2" style="color:var(--txt-muted);">${a.body || '—'}</p>
+                  <div class="flex flex-wrap gap-4 mt-2 text-xs" style="color:var(--txt-muted);">
+                    <span>To: <strong style="color:var(--txt-secondary);">${Utils.capitalize(a.recipients || 'all')}</strong></span>
+                    <span>${new Date(a.createdAt || a.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</span>
+                  </div>
+                </div>
+              </div>
+              ${AUTH.can('communications.write') ? `
+              <div class="flex gap-2 shrink-0">
+                ${a.status === 'draft' ? `<button onclick="Communications.publishAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(45,198,83,0.15);color:#2dc653;">Publish</button>` : ''}
+                <button onclick="Communications.openAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(246,201,69,0.12);color:var(--felta-yellow);">Edit</button>
+                <button onclick="Communications.deleteAnnouncement('${a.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(230,57,70,0.12);color:#e63946;">Delete</button>
+              </div>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>`;
+  },
+
+  async _renderHistory(el) {
+    const logs = await DB._request('GET', '/notifications');
+    const rows = Array.isArray(logs) ? logs : [];
+    const eventColors = { payment:'#2dc653', qualification:'#e8c027', system:'#1d6fa4', delegation:'#8338ec', general:'#F6C945' };
+
+    el.innerHTML = `
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold" style="color:var(--txt-primary);">Event Notification Log</h3>
+        ${rows.some(r=>!r.is_read) ? `<button onclick="Communications.markAllRead()" class="text-xs px-3 py-1.5 rounded-lg font-semibold" style="background:rgba(246,201,69,0.12);color:var(--felta-yellow);">Mark All Read</button>` : ''}
+      </div>
+      <div class="glass rounded-2xl overflow-hidden">
+        ${rows.length === 0 ? `<div class="p-12 text-center" style="color:var(--txt-muted);">No notifications logged yet. Events like payments and qualifications will appear here automatically.</div>` :
+          `<div class="divide-y" style="border-color:var(--border-subtle);">
+            ${rows.map(n => `
+              <div class="flex items-start gap-4 p-4 transition-all ${!n.is_read ? 'bg-[var(--felta-yellow)]/[0.03]' : ''}">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background:${eventColors[n.event_type]||'#1d6fa4'}20;">
+                  <div class="w-2 h-2 rounded-full" style="background:${eventColors[n.event_type]||'#1d6fa4'};"></div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-0.5">
+                    <span class="font-semibold text-sm" style="color:var(--txt-primary);">${n.title}</span>
+                    ${!n.is_read ? `<span class="w-1.5 h-1.5 rounded-full bg-[var(--felta-yellow)] shrink-0"></span>` : ''}
+                  </div>
+                  <p class="text-xs" style="color:var(--txt-muted);">${n.message || ''}</p>
+                  <div class="flex gap-3 mt-1 text-[10px]" style="color:var(--txt-muted);">
+                    ${n.team_name ? `<span>Team: <strong style="color:var(--txt-secondary);">${n.team_name}</strong></span>` : ''}
+                    <span>${new Date(n.created_at).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+                    <span>via ${n.triggered_by || 'System'}</span>
+                  </div>
+                </div>
+                ${!n.is_read ? `<button onclick="Communications.markRead('${n.id}')" class="text-[10px] px-2 py-1 rounded shrink-0 transition" style="background:var(--bg-surface);color:var(--txt-muted);">Read</button>` : ''}
+              </div>`).join('')}
+          </div>`}
+      </div>`;
+  },
+
+  async _renderTracker(el) {
+    const all       = (await DB.getAll('communications')).filter(c => !c.isDeleted);
+    const _teamsMap = await DB.getLookup('teams');
+
+    el.innerHTML = `
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold" style="color:var(--txt-primary);">Team Communication Status</h3>
+        <button onclick="Communications.exportCSV()" class="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition" style="background:var(--bg-surface);color:var(--txt-muted);border:1px solid var(--border-subtle);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>Team</th>
+              <th class="text-center">Reg. Confirmed</th>
+              <th class="text-center">Payment Confirmed</th>
+              <th class="text-center">Certificate Sent</th>
+              <th class="text-center">Announcement</th>
+              <th class="text-center">Feedback</th>
+              ${AUTH.can('communications.write') ? '<th>Actions</th>' : ''}
+            </tr></thead>
+            <tbody>
+              ${all.length === 0 ? `<tr><td colspan="7"><div class="empty-state" style="color:var(--txt-muted);">No communication records. Records are auto-created when teams are qualified.</div></td></tr>` :
+                all.map(c => {
                   const team = _teamsMap[c.teamId];
-                  return `
-                    <tr class="table-row">
-                      <td class="font-semibold text-white text-sm">${team?.teamName||c.teamId}</td>
-                      <td class="text-center">${c.registrationConfirmation ? '<span class="text-green-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'20 6 9 17 4 12\'/></svg></span>' : '<span class="text-red-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'18\' y1=\'6\' x2=\'6\' y2=\'18\'/><line x1=\'6\' y1=\'6\' x2=\'18\' y2=\'18\'/></svg></span>'}</td>
-                      <td class="text-center">${c.paymentConfirmation ? '<span class="text-green-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'20 6 9 17 4 12\'/></svg></span>' : '<span class="text-red-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'18\' y1=\'6\' x2=\'6\' y2=\'18\'/><line x1=\'6\' y1=\'6\' x2=\'18\' y2=\'18\'/></svg></span>'}</td>
-                      <td class="text-center">${c.certificateSent ? '<span class="text-green-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'20 6 9 17 4 12\'/></svg></span>' : '<span class="text-yellow-500"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><circle cx=\'12\' cy=\'12\' r=\'10\'/><line x1=\'12\' y1=\'8\' x2=\'12\' y2=\'12\'/><line x1=\'12\' y1=\'16\' x2=\'12.01\' y2=\'16\'/></svg></span>'}</td>
-                      <td class="text-center">${c.announcementReceived ? '<span class="text-green-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'20 6 9 17 4 12\'/></svg></span>' : '<span class="text-red-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><line x1=\'18\' y1=\'6\' x2=\'6\' y2=\'18\'/><line x1=\'6\' y1=\'6\' x2=\'18\' y2=\'18\'/></svg></span>'}</td>
-                      <td class="text-center">${c.feedbackSubmitted ? '<span class="text-green-400"><svg xmlns=\'http://www.w3.org/2000/svg\' width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'20 6 9 17 4 12\'/></svg></span>' : '<span class="text-slate-600">—</span>'}</td>
-                      <td>
-                        ${AUTH.can('communications.write') ? `
-                        <button onclick="Communications.toggleCert('${c.id}',${!c.certificateSent})" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center gap-1"><svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/></svg> Toggle Cert</button>
-                        ` : ''}
-                      </td>
-                    </tr>`;
+                  const chk = `<span style="color:#2dc653;"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg></span>`;
+                  const xmk = `<span style="color:#e63946;"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></span>`;
+                  return `<tr class="table-row">
+                    <td class="font-semibold text-sm" style="color:var(--txt-primary);">${team?.teamName || c.teamId}</td>
+                    <td class="text-center">${c.registrationConfirmation ? chk : xmk}</td>
+                    <td class="text-center">${c.paymentConfirmation ? chk : xmk}</td>
+                    <td class="text-center">${c.certificateSent ? chk : `<span style="color:#e8c027;"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg></span>`}</td>
+                    <td class="text-center">${c.announcementReceived ? chk : xmk}</td>
+                    <td class="text-center">${c.feedbackSubmitted ? chk : `<span style="color:var(--txt-muted);">—</span>`}</td>
+                    ${AUTH.can('communications.write') ? `<td><button onclick="Communications.toggleCert('${c.id}',${!c.certificateSent})" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(131,56,236,0.15);color:#8338ec;">Toggle Cert</button></td>` : ''}
+                  </tr>`;
                 }).join('')}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </table>
         </div>
       </div>`;
   },
 
+  async openAnnouncement(id = null) {
+    const a = id ? await DB.getById('announcements', id) : null;
+    Modal.show(id ? 'Edit Announcement' : 'New Announcement', `
+      <form id="ann-form" class="space-y-4">
+        <div><label class="form-label">Title *</label>
+          <input class="form-input" name="title" required placeholder="Announcement title" value="${a?.title || ''}"></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="form-label">Category</label>
+            <select class="form-input" name="category">
+              ${['general','payment','qualification','delegation','competition'].map(c=>`<option value="${c}" ${a?.category===c?'selected':''}>${Utils.capitalize(c)}</option>`).join('')}
+            </select></div>
+          <div><label class="form-label">Recipients</label>
+            <select class="form-input" name="recipients">
+              ${['all','schools','coaches','teams','judges','volunteers','delegates'].map(r=>`<option value="${r}" ${a?.recipients===r?'selected':''}>${Utils.capitalize(r)}</option>`).join('')}
+            </select></div>
+        </div>
+        <div><label class="form-label">Message *</label>
+          <textarea class="form-input" name="body" rows="5" placeholder="Write your announcement here...">${a?.body || ''}</textarea></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="form-label">Status</label>
+            <select class="form-input" name="status">
+              ${['draft','published','archived'].map(s=>`<option value="${s}" ${a?.status===s?'selected':''}>${Utils.capitalize(s)}</option>`).join('')}
+            </select></div>
+          <div><label class="form-label">Publish At (optional)</label>
+            <input class="form-input" type="datetime-local" name="publishAt" value="${a?.publishAt||a?.publish_at||''}"></div>
+        </div>
+      </form>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition" style="border-color:var(--border-primary);color:var(--txt-primary);">Cancel</button>
+       <button onclick="Communications._saveAnnouncement('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold">Save</button>`,
+      'max-w-2xl'
+    );
+  },
+
+  async _saveAnnouncement(id) {
+    const form = document.getElementById('ann-form');
+    const data = Object.fromEntries(new FormData(form));
+    if (!data.title?.trim()) { Toast.error('Title is required.'); return; }
+    if (id) { await DB.update('announcements', id, data); Toast.success('Announcement updated!'); }
+    else     { await DB.insert('announcements', data);    Toast.success('Announcement created!'); }
+    Modal.close();
+    await this._renderTab();
+  },
+
+  async publishAnnouncement(id) {
+    await DB.update('announcements', id, { status: 'published' });
+    Toast.success('Announcement published!');
+    await this._renderTab();
+  },
+
+  async deleteAnnouncement(id) {
+    if (!confirm('Delete this announcement?')) return;
+    await DB.delete('announcements', id);
+    Toast.success('Announcement deleted.');
+    await this._renderTab();
+  },
+
+  async markRead(id) {
+    await DB._request('PUT', `/notifications/${id}/read`);
+    await this._renderTab();
+  },
+
+  async markAllRead() {
+    await DB._request('PUT', '/notifications/mark-all-read');
+    Toast.success('All notifications marked as read.');
+    await this._renderTab();
+  },
+
   async toggleCert(id, value) {
     await DB.update('communications', id, { certificateSent: value });
-    Toast.success(`Certificate status updated.`);
-    await this.render();
+    Toast.success('Certificate status updated.');
+    await this._renderTab();
   },
 
   async exportCSV() {
     const all = (await DB.getAll('communications')).filter(c => !c.isDeleted);
     Utils.downloadCSV('WRO_Communications.csv',
       ['ID','Team ID','Reg Confirmation','Payment Confirmation','Certificate Sent','Feedback'],
-      all.map(c => [c.id,c.teamId,c.registrationConfirmation,c.paymentConfirmation,c.certificateSent,c.feedbackSubmitted])
+      all.map(c => [c.id, c.teamId, c.registrationConfirmation, c.paymentConfirmation, c.certificateSent, c.feedbackSubmitted])
     );
     Toast.success('Communications exported!');
   },
@@ -441,84 +656,369 @@ const Communications = {
 window.Communications = Communications;
 
 // ============================================================
-// Module 10 – International Delegation
+// Module 10 – International Delegation (Full Rewrite)
 // ============================================================
 
 const Delegation = {
+  _selectedTeamId: null,
+  _filter: 'all',
+
   async render() {
-    const all     = (await DB.getAll('delegation')).filter(d => !d.isDeleted);
-    const _teamsMap = await DB.getLookup('teams');
+    const [all, teams, schools, coaches] = await Promise.all([
+      DB.getAll('delegation').then(d => d.filter(x => !x.isDeleted)),
+      DB.getAll('teams').then(t => t.filter(x => !x.isDeleted)),
+      DB.getAll('schools').then(s => s.filter(x => !x.isDeleted)),
+      DB.getAll('coaches').then(c => c.filter(x => !x.isDeleted)),
+    ]);
+    this._teamsMap   = Object.fromEntries(teams.map(t=>[t.id||t._id||t.id,t]));
+    this._schoolsMap = Object.fromEntries(schools.map(s=>[s.id,s]));
+    this._coachesMap = Object.fromEntries(coaches.map(c=>[c.id,c]));
+    this._allDelegations = all;
+
+    const qualified = teams.filter(t => t.qualificationStatus === 'qualified').length;
+    const ready     = all.filter(d => ['approved','confirmed'].includes(d.passportStatus) && ['approved','not required'].includes(d.visaStatus)).length;
+    const pending   = all.filter(d => d.status === 'pending').length;
+    const passportOk = all.filter(d => d.passportStatus === 'approved').length;
+    const visaOk     = all.filter(d => d.visaStatus === 'approved').length;
+    const avgPct = all.length > 0
+      ? Math.round(all.reduce((sum,d) => sum + this._calcProgress(d), 0) / all.length)
+      : 0;
+
     const content = document.getElementById('page-content');
-    const _sid = (d,c) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
     content.innerHTML = `
       <div class="page-view space-y-6">
-        <div class="glass rounded-2xl p-6 border border-blue-500/20" style="background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.05));">
-          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(29,111,164,0.15);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1d6fa4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </div>
-            <div>
-              <h2 class="text-xl font-bold text-white">International Delegation Management</h2>
-              <p class="text-slate-400 text-sm mt-1">Only for teams qualified for international competition</p>
-            </div>
+
+        <!-- Header -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-black" style="color:var(--txt-primary);">International Delegation</h1>
+            <p class="text-sm mt-1" style="color:var(--txt-muted);">Manage travel requirements for qualified teams</p>
           </div>
+          ${AUTH.can('delegation.write') ? `
+          <button onclick="Delegation.openForm()" class="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Delegation
+          </button>` : ''}
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           ${[
-            { label:'Total Delegates', value: all.length,                                       icon: _sid('<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>','#1d6fa4') },
-            { label:'Passport OK',     value: all.filter(d=>d.passportStatus==='approved').length, icon: _sid('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>','#2dc653') },
-            { label:'Visa Approved',   value: all.filter(d=>d.visaStatus==='approved').length,    icon: _sid('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>','#e8c027') },
-            { label:'Confirmed',       value: all.filter(d=>d.status==='confirmed').length,       icon: _sid('<polyline points="20 6 9 17 4 12"/>','#2dc653') },
+            {l:'Total',      v:all.length,    c:'#1d6fa4', icon:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'},
+            {l:'Qualified',  v:qualified,     c:'#e8c027', icon:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>'},
+            {l:'Ready',      v:ready,         c:'#2dc653', icon:'<polyline points="20 6 9 17 4 12"/>'},
+            {l:'Pending',    v:pending,       c:'#F6C945', icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'},
+            {l:'Passport OK',v:passportOk,   c:'#8338ec', icon:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'},
+            {l:'Visa OK',    v:visaOk,        c:'#e63946', icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
           ].map(s=>`
             <div class="kpi-card rounded-xl p-4">
-              <div class="mb-2">${s.icon}</div>
-              <div class="text-2xl font-bold text-white">${s.value}</div>
-              <div class="text-xs text-slate-400 mt-1">${s.label}</div>
+              <div class="mb-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${s.c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${s.icon}</svg></div>
+              <div class="text-2xl font-black" style="color:var(--txt-primary);">${s.v}</div>
+              <div class="text-xs mt-1 font-semibold" style="color:${s.c};">${s.l}</div>
             </div>`).join('')}
         </div>
-        ${AUTH.can('delegation.read') ? `
-        <div class="glass rounded-2xl overflow-hidden">
-          <div class="p-4 border-b border-slate-700/50 flex justify-between">
-            <h3 class="text-sm font-semibold text-white">Delegation Records</h3>
-            <button onclick="Delegation.exportCSV()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export</button>
+
+        <!-- Avg completion bar -->
+        ${all.length > 0 ? `
+        <div class="glass rounded-2xl p-5">
+          <div class="flex justify-between text-sm mb-2">
+            <span style="color:var(--txt-muted);">Average Delegation Completion</span>
+            <span class="font-bold" style="color:#F6C945;">${avgPct}%</span>
           </div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead>
-                <tr><th>Team</th><th>Destination</th><th>Year</th><th>Passport</th><th>Visa</th><th>Flight</th><th>Hotel</th><th>Dietary</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                ${all.map(d => {
-                  const team = _teamsMap[d.teamId];
-                  return `
-                    <tr class="table-row">
-                      <td class="font-semibold text-white text-sm">${team?.teamName||'—'}</td>
-                      <td><span class="badge badge-blue flex items-center gap-1"><svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg> ${d.destinationCountry}</span></td>
-                      <td class="text-sm text-slate-300">${d.wroYear}</td>
-                      <td>${Utils.statusBadge(d.passportStatus)}</td>
-                      <td>${Utils.statusBadge(d.visaStatus)}</td>
-                      <td class="text-xs text-slate-400">${d.flight||'—'}</td>
-                      <td class="text-xs text-slate-400">${d.hotel||'—'}</td>
-                      <td class="text-xs text-slate-400">${d.dietaryRestrictions||'None'}</td>
-                      <td>${Utils.statusBadge(d.status)}</td>
-                    </tr>`;
-                }).join('')}
-                ${all.length === 0 ? `<tr><td colspan="9"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div><div class="text-slate-400 mt-2">No delegation records</div></div></td></tr>` : ''}
-              </tbody>
-            </table>
+          <div class="progress-bar"><div class="progress-fill" style="width:${avgPct}%;"></div></div>
+        </div>` : ''}
+
+        <!-- Filter + Two-Panel Layout -->
+        <div class="flex flex-col lg:flex-row gap-6">
+
+          <!-- Left: Team List -->
+          <div class="w-full lg:w-80 shrink-0 space-y-3">
+            <div class="flex gap-2">
+              <input id="del-search" type="text" class="form-input flex-1" placeholder="Search teams…" oninput="Delegation._filterList()">
+              <select id="del-filter" class="form-input w-auto text-sm" onchange="Delegation._filterList()">
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div id="del-team-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+              ${this._renderTeamList(all)}
+            </div>
           </div>
-        </div>` : '<div class="glass rounded-2xl p-8 text-center text-slate-400">Access restricted.</div>'}
+
+          <!-- Right: Detail Panel -->
+          <div id="del-detail" class="flex-1">
+            <div class="glass rounded-2xl p-10 text-center h-full flex flex-col items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(246,201,69,0.25)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="mb-4"><path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              <p class="text-base font-semibold" style="color:var(--txt-muted);">Select a delegation from the list</p>
+              <p class="text-sm mt-1" style="color:var(--txt-muted);">Click any team to view and manage its requirements</p>
+            </div>
+          </div>
+        </div>
       </div>`;
+  },
+
+  _calcProgress(d) {
+    const checks = [
+      d.passportStatus === 'approved',
+      ['approved','not required'].includes(d.visaStatus),
+      d.parentConsent == 1,
+      !!d.flight,
+      !!d.hotel,
+      !!d.emergencyContact,
+      d.dietaryRestrictions && d.dietaryRestrictions !== 'None',
+      d.status === 'confirmed',
+    ];
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  },
+
+  _renderTeamList(delegations) {
+    if (!delegations || delegations.length === 0) {
+      return `<div class="glass rounded-xl p-6 text-center text-sm" style="color:var(--txt-muted);">No delegation records. Add delegations or qualify a team to start.</div>`;
+    }
+    const statusClr = { pending:'#F6C945', confirmed:'#2dc653', cancelled:'#e63946' };
+    return delegations.map(d => {
+      const team = this._teamsMap?.[d.teamId];
+      const pct  = this._calcProgress(d);
+      const isSelected = String(d.id) === String(this._selectedTeamId);
+      return `
+        <div class="p-4 rounded-xl border cursor-pointer transition-all hover:-translate-y-0.5"
+          style="border-color:${isSelected ? 'var(--felta-yellow)' : 'var(--border-subtle)'};
+                 background:${isSelected ? 'rgba(246,201,69,0.05)' : 'transparent'};"
+          onclick="Delegation.selectDelegation('${d.id}')" id="del-item-${d.id}">
+          <div class="flex justify-between items-start mb-2">
+            <div class="font-bold text-sm" style="color:var(--txt-primary);">${team?.teamName || `Team #${d.teamId}`}</div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" style="background:${statusClr[d.status]||'#6B7494'}20;color:${statusClr[d.status]||'#6B7494'};">${d.status}</span>
+          </div>
+          <div class="text-[11px] mb-2" style="color:var(--txt-muted);">${d.destinationCountry || 'TBD'} · ${d.wroYear || '—'}</div>
+          <div class="flex items-center gap-2">
+            <div class="flex-1 h-1.5 rounded-full" style="background:var(--border-subtle);">
+              <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${pct>=80?'#2dc653':pct>=50?'#F6C945':'#e63946'};"></div>
+            </div>
+            <span class="text-[10px] font-bold" style="color:${pct>=80?'#2dc653':pct>=50?'#F6C945':'#e63946'};">${pct}%</span>
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  _filterList() {
+    const term   = document.getElementById('del-search')?.value.toLowerCase() || '';
+    const filter = document.getElementById('del-filter')?.value || 'all';
+    let list = this._allDelegations || [];
+    if (filter !== 'all') list = list.filter(d => d.status === filter);
+    if (term) list = list.filter(d => {
+      const t = this._teamsMap?.[d.teamId];
+      return (t?.teamName||'').toLowerCase().includes(term) || (d.destinationCountry||'').toLowerCase().includes(term);
+    });
+    const el = document.getElementById('del-team-list');
+    if (el) el.innerHTML = this._renderTeamList(list);
+  },
+
+  async selectDelegation(id) {
+    this._selectedTeamId = id;
+    // Update sidebar highlight
+    document.querySelectorAll('[id^="del-item-"]').forEach(el => {
+      el.style.borderColor = 'var(--border-subtle)';
+      el.style.background = 'transparent';
+    });
+    const active = document.getElementById(`del-item-${id}`);
+    if (active) { active.style.borderColor = 'var(--felta-yellow)'; active.style.background = 'rgba(246,201,69,0.05)'; }
+    
+    const d     = this._allDelegations?.find(x => String(x.id) === String(id));
+    const team  = this._teamsMap?.[d?.teamId];
+    const school = this._schoolsMap?.[d?.schoolId || team?.schoolId];
+    const coach  = this._coachesMap?.[team?.coachId];
+    const detail = document.getElementById('del-detail');
+    if (!d || !detail) return;
+
+    const pct = this._calcProgress(d);
+    const pctColor = pct >= 80 ? '#2dc653' : pct >= 50 ? '#F6C945' : '#e63946';
+
+    const REQ = [
+      { key:'passportStatus',   label:'Passport',          val:d.passportStatus,   type:'status', statuses:['submitted','processing','approved','expired'] },
+      { key:'visaStatus',       label:'Visa',              val:d.visaStatus,       type:'status', statuses:['not required','applied','approved','denied'] },
+      { key:'parentConsent',    label:'Parent Consent',    val:d.parentConsent==1, type:'bool' },
+      { key:'flight',           label:'Flight Details',    val:d.flight,           type:'text' },
+      { key:'hotel',            label:'Hotel Details',     val:d.hotel,            type:'text' },
+      { key:'emergencyContact', label:'Emergency Contact', val:d.emergencyContact, type:'text' },
+      { key:'dietaryRestrictions', label:'Dietary Info',  val:d.dietaryRestrictions!=='None'?d.dietaryRestrictions:null, type:'text' },
+      { key:'status',           label:'Delegation Status', val:d.status,           type:'status', statuses:['pending','confirmed','cancelled'] },
+    ];
+
+    const statusColor = { submitted:'#F6C945', processing:'#1d6fa4', approved:'#2dc653', expired:'#e63946', 'not required':'#6B7494', applied:'#F6C945', denied:'#e63946', pending:'#F6C945', confirmed:'#2dc653', cancelled:'#e63946' };
+
+    detail.innerHTML = `
+      <div class="glass rounded-2xl overflow-hidden">
+        <!-- Header -->
+        <div class="p-6 border-b" style="border-color:var(--border-subtle);">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-black" style="color:var(--txt-primary);">${team?.teamName || `Delegation #${d.id}`}</h2>
+              <div class="flex flex-wrap gap-3 mt-1 text-sm" style="color:var(--txt-muted);">
+                ${school ? `<span>🏫 ${school.schoolName}</span>` : ''}
+                ${coach  ? `<span>👤 Coach ${coach.firstName} ${coach.lastName}</span>` : ''}
+                <span>🌍 ${d.destinationCountry || 'TBD'}</span>
+                <span>📅 WRO ${d.wroYear || '—'}</span>
+              </div>
+            </div>
+            ${AUTH.can('delegation.write') ? `
+            <div class="flex gap-2">
+              <button onclick="Delegation.openForm('${d.id}')" class="px-4 py-2 rounded-xl text-sm font-semibold transition" style="background:rgba(246,201,69,0.12);color:var(--felta-yellow);">Edit</button>
+              <button onclick="Delegation.exportCSV()" class="px-4 py-2 rounded-xl text-sm font-semibold transition" style="background:var(--bg-surface);color:var(--txt-muted);border:1px solid var(--border-subtle);">Export</button>
+            </div>` : ''}
+          </div>
+          <!-- Progress bar -->
+          <div class="mt-5">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span style="color:var(--txt-muted);">Requirements Completion</span>
+              <span class="font-bold" style="color:${pctColor};">${pct}%</span>
+            </div>
+            <div class="h-2 rounded-full" style="background:var(--border-subtle);">
+              <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${pctColor};"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requirement Rows -->
+        <div class="divide-y" style="border-color:var(--border-subtle);">
+          ${REQ.map(r => {
+            const isDone = r.type==='bool' ? r.val===true : (r.type==='status' ? ['approved','confirmed','not required'].includes(r.val) : !!r.val);
+            const dotClr = isDone ? '#2dc653' : (r.val ? '#F6C945' : '#e63946');
+            return `
+            <div class="flex items-center justify-between p-4 gap-4 transition-all hover:bg-white/[0.02]">
+              <div class="flex items-center gap-3">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style="background:${dotClr}18;">
+                  ${isDone
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${dotClr}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+                    : `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${dotClr}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`}
+                </div>
+                <div>
+                  <div class="text-sm font-semibold" style="color:var(--txt-primary);">${r.label}</div>
+                  <div class="text-xs mt-0.5" style="color:var(--txt-muted);">
+                    ${r.type==='bool' ? (r.val ? 'Submitted' : 'Not submitted') :
+                      r.type==='status' ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase" style="background:${statusColor[r.val]||'#6B7494'}18;color:${statusColor[r.val]||'#6B7494'};">${r.val||'—'}</span>` :
+                      (r.val || '<em>Not provided</em>')}
+                  </div>
+                </div>
+              </div>
+              ${AUTH.can('delegation.write') ? `
+              <div class="flex gap-2 shrink-0">
+                ${r.type==='status' ? r.statuses.filter(s=>s!==r.val).slice(0,2).map(s=>`
+                  <button onclick="Delegation.updateField('${d.id}','${r.key}','${s}')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition" style="background:${statusColor[s]||'#6B7494'}18;color:${statusColor[s]||'#6B7494'};">→ ${Utils.capitalize(s)}</button>`).join('') : ''}
+                ${r.type==='bool' ? `<button onclick="Delegation.updateField('${d.id}','${r.key}',${!r.val})" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition" style="background:${r.val?'rgba(230,57,70,0.12)':'rgba(45,198,83,0.12)'};color:${r.val?'#e63946':'#2dc653'};">${r.val?'Revoke':'Confirm'}</button>` : ''}
+                ${r.type==='text' ? `<button onclick="Delegation.editTextField('${d.id}','${r.key}','${r.label}')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition" style="background:rgba(246,201,69,0.1);color:var(--felta-yellow);">Edit</button>` : ''}
+              </div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  },
+
+  async updateField(id, field, value) {
+    await DB.update('delegation', id, { [field]: value });
+    Toast.success('Updated successfully!');
+    // Refresh the delegation data and re-render detail
+    this._allDelegations = (await DB.getAll('delegation')).filter(x => !x.isDeleted);
+    const d = this._allDelegations.find(x => String(x.id) === String(id));
+    if (d) {
+      const listEl = document.getElementById('del-team-list');
+      if (listEl) listEl.innerHTML = this._renderTeamList(this._allDelegations);
+      await this.selectDelegation(id);
+    }
+  },
+
+  async editTextField(id, field, label) {
+    const d = this._allDelegations?.find(x => String(x.id) === String(id));
+    Modal.show(`Edit ${label}`, `
+      <div class="space-y-3">
+        <label class="form-label">${label}</label>
+        <input id="del-text-field" class="form-input w-full" value="${d?.[field] || ''}" placeholder="Enter ${label}…">
+      </div>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border" style="border-color:var(--border-primary);color:var(--txt-primary);">Cancel</button>
+       <button onclick="Delegation._saveTextField('${id}','${field}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold">Save</button>`,
+      'max-w-md'
+    );
+  },
+
+  async _saveTextField(id, field) {
+    const val = document.getElementById('del-text-field')?.value || '';
+    await this.updateField(id, field, val);
+    Modal.close();
+  },
+
+  async openForm(id = null) {
+    const d    = id ? await DB.getById('delegation', id) : null;
+    const teams = (await DB.getAll('teams')).filter(t => !t.isDeleted);
+
+    Modal.show(id ? 'Edit Delegation' : 'Add Delegation', `
+      <form id="del-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><label class="form-label">Team *</label>
+          <select class="form-input" name="teamId" required>
+            <option value="">Select Team</option>
+            ${teams.map(t=>`<option value="${t.id}" ${d?.teamId==t.id?'selected':''}>${t.teamName}</option>`).join('')}
+          </select></div>
+        <div><label class="form-label">Destination Country</label>
+          <input class="form-input" name="destinationCountry" value="${d?.destinationCountry||''}" placeholder="e.g. Turkey"></div>
+        <div><label class="form-label">WRO Year</label>
+          <input class="form-input" type="number" name="wroYear" value="${d?.wroYear||new Date().getFullYear()}"></div>
+        <div><label class="form-label">Shirt Size</label>
+          <select class="form-input" name="shirtSize">
+            ${['XS','S','M','L','XL','XXL'].map(s=>`<option ${d?.shirtSize===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        <div><label class="form-label">Passport Status</label>
+          <select class="form-input" name="passportStatus">
+            ${['submitted','processing','approved','expired'].map(s=>`<option ${d?.passportStatus===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        <div><label class="form-label">Passport Expiry</label>
+          <input class="form-input" type="date" name="passportExpiry" value="${d?.passportExpiry||''}"></div>
+        <div><label class="form-label">Visa Status</label>
+          <select class="form-input" name="visaStatus">
+            ${['not required','applied','approved','denied'].map(s=>`<option ${d?.visaStatus===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        <div><label class="form-label">Dietary Restrictions</label>
+          <input class="form-input" name="dietaryRestrictions" value="${d?.dietaryRestrictions||'None'}" placeholder="None"></div>
+        <div class="md:col-span-2"><label class="form-label">Flight Details</label>
+          <input class="form-input" name="flight" value="${d?.flight||''}" placeholder="Flight number, date, airline…"></div>
+        <div class="md:col-span-2"><label class="form-label">Hotel Details</label>
+          <input class="form-input" name="hotel" value="${d?.hotel||''}" placeholder="Hotel name and address…"></div>
+        <div class="md:col-span-2"><label class="form-label">Emergency Contact</label>
+          <input class="form-input" name="emergencyContact" value="${d?.emergencyContact||''}" placeholder="Name, relationship, phone…"></div>
+        <div><label class="form-label">Parent Consent</label>
+          <select class="form-input" name="parentConsent">
+            <option value="0" ${!d?.parentConsent?'selected':''}>Not Submitted</option>
+            <option value="1" ${d?.parentConsent==1?'selected':''}>Submitted</option>
+          </select></div>
+        <div><label class="form-label">Status</label>
+          <select class="form-input" name="status">
+            ${['pending','confirmed','cancelled'].map(s=>`<option ${d?.status===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+      </form>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border" style="border-color:var(--border-primary);color:var(--txt-primary);">Cancel</button>
+       <button onclick="Delegation._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold">Save</button>`,
+      'max-w-3xl'
+    );
+  },
+
+  async _save(id) {
+    const form = document.getElementById('del-form');
+    const data = Object.fromEntries(new FormData(form));
+    if (!data.teamId) { Toast.error('Team is required.'); return; }
+    data.parentConsent = data.parentConsent === '1';
+    if (id) { await DB.update('delegation', id, data); Toast.success('Delegation updated!'); }
+    else     { await DB.insert('delegation', data);    Toast.success('Delegation created!'); }
+    Modal.close();
+    await this.render();
   },
 
   async exportCSV() {
     const all = (await DB.getAll('delegation')).filter(d => !d.isDeleted);
     const _teamsMap = await DB.getLookup('teams');
     Utils.downloadCSV('WRO_Delegation.csv',
-      ['ID','Team','Country','Year','Passport Status','Visa Status','Flight','Hotel','Dietary','Status'],
+      ['ID','Team','Country','Year','Passport Status','Visa Status','Parent Consent','Flight','Hotel','Dietary','Emergency Contact','Shirt Size','Status'],
       all.map(d => {
         const t = _teamsMap[d.teamId];
-        return [d.id,t?.teamName||'',d.destinationCountry,d.wroYear,d.passportStatus,d.visaStatus,d.flight,d.hotel,d.dietaryRestrictions,d.status];
+        return [d.id, t?.teamName||'', d.destinationCountry, d.wroYear, d.passportStatus, d.visaStatus, d.parentConsent?'Yes':'No', d.flight||'', d.hotel||'', d.dietaryRestrictions||'', d.emergencyContact||'', d.shirtSize||'', d.status];
       })
     );
     Toast.success('Delegation data exported!');
@@ -526,3 +1026,4 @@ const Delegation = {
 };
 
 window.Delegation = Delegation;
+
