@@ -23,13 +23,12 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const path = require('path');
 
-// Tell Express to serve your static frontend files (images, css, html)
-app.use(express.static(path.join(__dirname, '../assets')));
+// Tell Express to serve your static frontend files directly from the root directory
+app.use(express.static(path.join(__dirname, '../')));
 
-// Serve your login/index page on the root URL path
+// Serve your login page on the root URL path
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../assets/index.html')); 
-    // ^ Change 'index.html' if your login file has a different name (like login.html)
+    res.sendFile(path.join(__dirname, '../index.html')); 
 });
 
 // ── Routes ────────────────────────────────────────────────────
