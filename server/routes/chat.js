@@ -1,19 +1,21 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const { GoogleGenAI } = require('@google/genai');
 
-// ── Gemini client (uses your key from .env) ───────────────────
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// ── Gemini client ───────────────────────────────────────────────
+const ai = new GoogleGenAI({});
 
 // ── Model fallback chain ──────────────────────────────────────
 // When a model is overloaded (503), Felix automatically tries the next one.
 const MODEL_FALLBACKS = {
+    'gemini-3.5-flash': ['gemini-3.5-flash', 'gemini-2.5-flash'],
+    'gemini-3.1-pro-preview': ['gemini-3.1-pro-preview', 'gemini-2.5-flash'],
     'gemini-2.5-flash': ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'],
-    'gemini-2.5-pro': ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro'],
-    'gemini-2.5-flash-lite-preview-06-17': ['gemini-2.5-flash-lite-preview-06-17', 'gemini-1.5-flash'],
-    'gemini-1.5-flash': ['gemini-1.5-flash', 'gemini-1.5-flash-8b'],
-    'gemini-1.5-pro': ['gemini-1.5-pro', 'gemini-1.5-flash'],
+    'gemini-2.5-flash-lite': ['gemini-2.5-flash-lite', 'gemini-2.5-flash'],
+    'gemini-2.5-pro': ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    'gemini-1.5-flash': ['gemini-1.5-flash', 'gemini-2.5-flash'],
+    'gemini-1.5-pro': ['gemini-1.5-pro', 'gemini-2.5-flash'],
 };
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 
@@ -89,7 +91,7 @@ You are Felix — helpful, precise, and always ready to help people understand a
 
 // ── Helper: try generating with automatic model fallback ──────
 async function generateWithFallback(primaryModel, contents, systemInstruction) {
-    const chain = MODEL_FALLBACKS[primaryModel] || [primaryModel, 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+    const chain = MODEL_FALLBACKS[primaryModel] || [primaryModel, 'gemini-2.5-flash'];
     let lastError;
 
     for (const model of chain) {
@@ -115,7 +117,9 @@ async function generateWithFallback(primaryModel, contents, systemInstruction) {
             const isRetryable = msg.includes('503')
                 || msg.includes('UNAVAILABLE')
                 || msg.includes('overloaded')
-                || msg.includes('high demand');
+                || msg.includes('high demand')
+                || msg.includes('not found')
+                || msg.includes('404');
 
             console.warn(`[Felix Chat] ⚠️ Model ${model} failed (retryable=${isRetryable}): ${msg.slice(0, 120)}`);
             lastError = err;
@@ -230,8 +234,8 @@ router.post('/', async (req, res) => {
         let friendlyError = 'Felix ran into a problem. Please try again in a moment.';
         const msg = error?.message || '';
 
-        if (msg.includes('API_KEY') || msg.includes('API key')) {
-            friendlyError = '⚠️ The Gemini API key is missing or invalid. Please check your .env file.';
+        if (msg.includes('API_KEY') || msg.includes('API key') || msg.includes('authentication credentials') || msg.includes('UNAUTHENTICATED')) {
+            friendlyError = '⚠️ The Gemini API key in your .env file is invalid or expired. Please generate a new key from Google AI Studio and update your .env file.';
         } else if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
             friendlyError = '⚠️ The AI daily quota has been reached. Please wait and try again tomorrow.';
         } else if (msg.includes('503') || msg.includes('UNAVAILABLE') || msg.includes('high demand')) {
