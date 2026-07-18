@@ -57,7 +57,7 @@ const PortalDashboard = {
           <div class="p-actions-grid">
 
             <!-- My Teams -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('teams')" style="background:linear-gradient(145deg,#152236,#1a2c45);">
+            <button class="p-action-tile" onclick="PortalRouter.navigate('teams')">
               <div class="p-action-glow" style="background:#F6C945;"></div>
               <div class="p-action-icon-wrap" style="background:rgba(246,201,69,0.12);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/></svg>
@@ -72,7 +72,7 @@ const PortalDashboard = {
             </button>
 
             <!-- Announcements -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('announcements')" style="background:linear-gradient(145deg,#152236,#1a2c45);">
+            <button class="p-action-tile" onclick="PortalRouter.navigate('announcements')">
               <div class="p-action-glow" style="background:#1d6fa4;"></div>
               <div class="p-action-icon-wrap" style="background:rgba(29,111,164,0.12);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d6fa4" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -87,7 +87,7 @@ const PortalDashboard = {
             </button>
 
             <!-- Payment Status -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('teams')" style="background:linear-gradient(145deg,#152236,#1a2c45);">
+            <button class="p-action-tile" onclick="PortalRouter.navigate('teams')">
               <div class="p-action-glow" style="background:#2dc653;"></div>
               <div class="p-action-icon-wrap" style="background:rgba(45,198,83,0.10);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2dc653" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
@@ -102,7 +102,7 @@ const PortalDashboard = {
             </button>
 
             <!-- My Profile -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('profile')" style="background:linear-gradient(145deg,#152236,#1a2c45);">
+            <button class="p-action-tile" onclick="PortalRouter.navigate('profile')">
               <div class="p-action-glow" style="background:#8338ec;"></div>
               <div class="p-action-icon-wrap" style="background:rgba(131,56,236,0.10);">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8338ec" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>

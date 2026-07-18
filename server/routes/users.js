@@ -95,6 +95,15 @@ router.put('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
       'SELECT id, user_code, username, name, role, email, school_id, is_active FROM users WHERE id = ?',
       [req.params.id]
     );
+
+    if (role === 'STANDARD_USER' && schoolId) {
+      await pool.execute(
+        `INSERT INTO notification_log (event_type, title, message, school_id, triggered_by, created_at)
+         VALUES (?,?,?,?,?,NOW())`,
+        ['user_update', 'Account Updated', `Your account details were updated by an administrator.`, schoolId, req.user.username || 'Admin']
+      );
+    }
+
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

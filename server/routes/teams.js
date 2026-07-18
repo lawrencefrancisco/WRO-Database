@@ -199,6 +199,14 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    if (schoolId) {
+      await pool.execute(
+        `INSERT INTO notification_log (event_type, title, message, team_id, school_id, triggered_by, created_at)
+         VALUES (?,?,?,?,?,?,NOW())`,
+        ['team_update', 'Team Updated', `The team "${d.teamName}" has been updated by an administrator.`, teamId, schoolId, req.user.username || 'Admin']
+      );
+    }
+
     res.json(rows[0]);
   } catch (err) {
     await conn.rollback();

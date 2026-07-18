@@ -14,6 +14,7 @@
 :root {
   /* ── Primary yellow: #F6C945 ── */
   --felta-yellow:    #F6C945;
+
   --felta-yellow-l:  #FAD966;
   --felta-yellow-d:  #C9A012;
   --felta-yellow-dk: #9A7B00;
@@ -70,6 +71,27 @@ body { background: var(--bg-base); color: var(--txt-primary); line-height: 1.6; 
   scrollbar-color: var(--felta-yellow-d) var(--bg-surface);
 }
 
+/* ══ LIGHT MODE TOKENS ══ */
+html.light-mode {
+  --bg-base:    #F0F4F8;
+  --bg-surface: #ffffff;
+  --bg-card:    #ffffff;
+  --bg-panel:   rgba(255, 255, 255, 0.95);
+  --bg-hover:   rgba(29, 65, 120, 0.06);
+  --bg-active:  rgba(29, 65, 120, 0.12);
+  --txt-primary:   #0B132B;
+  --txt-secondary: #334155;
+  --txt-muted:     #64748B;
+  /* Ensure borders are highly visible */
+  --border-primary: rgba(29, 65, 120, 0.25);
+  --border-subtle:  rgba(29, 65, 120, 0.18);
+  --border-surface: rgba(29, 65, 120, 0.25);
+  --shadow-sm:   0 2px 8px rgba(29, 65, 120, 0.08);
+  --shadow-md:   0 8px 24px -6px rgba(29, 65, 120, 0.12);
+  --shadow-lg:   0 20px 48px -12px rgba(29, 65, 120, 0.15);
+  --shadow-glow: 0 0 30px rgba(246,201,69,0.3);
+}
+
 /* ══ GLASSMORPHISM ══ */
 @layer components {
 .glass {
@@ -80,6 +102,19 @@ body { background: var(--bg-base); color: var(--txt-primary); line-height: 1.6; 
 }
 .glass-light { background: rgba(20, 30, 70, 0.55); backdrop-filter: blur(12px); border: 1px solid var(--border-subtle); }
 .glass-surface { background: rgba(17, 28, 71, 0.90); backdrop-filter: blur(16px); border: 1px solid var(--border-surface); }
+
+html.light-mode .glass {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border-primary);
+}
+html.light-mode .glass-light {
+  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid var(--border-subtle);
+}
+html.light-mode .glass-surface {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-surface);
+}
 
 /* ══ TYPOGRAPHY ══ */
 .gradient-text {
@@ -240,7 +275,18 @@ input[type='checkbox'] { accent-color: var(--felta-yellow); }
 .wro-rainbow-bar { height: 3px; background: linear-gradient(90deg, var(--wro-red) 0%, var(--wro-orange) 17%, var(--wro-yellow) 34%, var(--wro-green) 50%, var(--wro-teal) 67%, var(--wro-blue) 83%, var(--wro-purple) 100%); }
 
 /* ══ LOGIN PAGE ══ */
+.login-bg::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: url('../assets/image/login-background.jpg') center/cover no-repeat;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+.light-mode .login-bg::before { opacity: 0.04; }
+
 .login-bg {
+  position: relative;
   background:
     radial-gradient(ellipse at 10% 50%, rgba(246,201,69,0.10) 0%, transparent 55%),
     radial-gradient(ellipse at 90% 15%, rgba(20,32,87,0.90) 0%, transparent 55%),
@@ -372,7 +418,8 @@ body.sidebar-open {
   background:
     radial-gradient(ellipse at 12% 50%, rgba(246,201,69,0.10) 0%, transparent 55%),
     radial-gradient(ellipse at 88% 20%, rgba(29,111,164,0.06) 0%, transparent 55%),
-    linear-gradient(150deg, #EDF1FB 0%, #F8FAFF 50%, #E8EEF9 100%);
+    linear-gradient(150deg, rgba(237,241,251,0.85) 0%, rgba(248,250,255,0.85) 50%, rgba(232,238,249,0.85) 100%),
+    #EDF1FB;
 }
 .light-mode .orb-1 { background: rgba(246,201,69,0.12); }
 .light-mode .orb-2 { background: rgba(29,111,164,0.07); }

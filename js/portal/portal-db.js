@@ -5,7 +5,7 @@
 // ============================================================
 
 const PORTAL_DB = {
-  _BASE: 'https://wro-database.onrender.com/api',
+  _BASE: 'http://localhost:3000/api',
 
   _headers() {
     return {
@@ -38,6 +38,9 @@ const PORTAL_DB = {
   teams()         { return this.get('/portal/teams'); },
   payments()      { return this.get('/portal/payments'); },
   announcements() { return this.get('/portal/announcements'); },
+  notifications() { return this.get('/portal/notifications'); },
+  markNotificationRead(id) { return this.put(`/portal/notifications/${id}/read`, {}); },
+  markAllNotificationsRead() { return this.put('/portal/notifications/read-all', {}); },
   updateProfile(data) { return this.put('/portal/profile', data); },
 };
 

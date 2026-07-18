@@ -62,11 +62,11 @@ const PortalTeams = {
                 <div class="p-team-body">
                   <div class="p-team-row">
                     <span class="p-team-lbl">Coach</span>
-                    <span class="p-team-val">${t.coach_first ? `${t.coach_first} ${t.coach_last}` : '—'}</span>
+                    <span class="p-team-val">${t.coach_name || '—'}</span>
                   </div>
                   <div class="p-team-row">
                     <span class="p-team-lbl">Competition</span>
-                    <span class="p-team-val">${t.competition_name || '—'}</span>
+                    <span class="p-team-val">${t.season || '—'}</span>
                   </div>
                   <div class="p-team-row">
                     <span class="p-team-lbl">Platform</span>

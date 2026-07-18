@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>WRO Philippines – Database System Login</title>
+  <title>WRO Philippines – Admin Sign In</title>
   <meta name="description" content="WRO Philippines Integrated Database System – Official platform for managing participants, competitions, and records.">
 
   <!-- Tailwind CSS (static build) -->
   <link rel="stylesheet" href="assets/css/output.css">
 
-
   <!-- Early theme init: default is LIGHT, only dark if explicitly saved -->
   <script>
     (function() {
       const saved = localStorage.getItem('wro_ph_theme');
-      const isLight = saved !== 'dark'; // light is the default
+      const isLight = saved !== 'dark';
       if (isLight) {
         document.documentElement.classList.add('light-mode');
       }
@@ -26,7 +25,6 @@
     })();
   </script>
 
-
   <link rel="stylesheet" href="css/custom.css">
   <script src="js/core/db.js"></script>
   <script src="js/core/auth.js"></script>
@@ -36,128 +34,404 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
-
+    /* ── Input icon wrapper ── */
     .input-wrap { position: relative; }
     .input-wrap .input-icon {
       position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
       pointer-events: none; display: flex; align-items: center;
     }
+
+    /* ── Login page body ── */
+    body.login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Low opacity background image ── */
+    body.login-page::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: url('assets/image/login-background.jpg') center/cover no-repeat;
+      opacity: 0.06;
+      pointer-events: none;
+      z-index: 0;
+    }
+    html.light-mode body.login-page::before { opacity: 0.04; }
+
+    /* ── Dark mode background ── */
+    body.login-page {
+      background:
+        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.13) 0%, transparent 52%),
+        radial-gradient(ellipse at 92% 12%, rgba(20,32,87,0.95) 0%, transparent 55%),
+        radial-gradient(ellipse at 55% 92%, rgba(30,108,180,0.10) 0%, transparent 50%),
+        #070c20;
+    }
+
+    /* ── Light mode background ── */
+    html.light-mode body.login-page {
+      background:
+        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.09) 0%, transparent 52%),
+        radial-gradient(ellipse at 92% 12%, rgba(29,111,164,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 55% 92%, rgba(246,201,69,0.06) 0%, transparent 50%),
+        linear-gradient(155deg, #EAF0FC 0%, #F5F8FF 45%, #E6EDF8 100%);
+    }
+
+    /* ── Animated background orbs ── */
+    .login-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      animation: orbFloat 10s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .login-orb-1 {
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(246,201,69,0.11), transparent 70%);
+      top: -160px; left: -160px;
+      animation-delay: 0s;
+    }
+    .login-orb-2 {
+      width: 380px; height: 380px;
+      background: radial-gradient(circle, rgba(29,111,164,0.10), transparent 70%);
+      bottom: -100px; right: -100px;
+      animation-delay: -4s;
+    }
+    .login-orb-3 {
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(240,120,48,0.07), transparent 70%);
+      top: 40%; left: 65%;
+      animation-delay: -7s;
+    }
+    html.light-mode .login-orb-1 { background: radial-gradient(circle, rgba(246,201,69,0.14), transparent 70%); }
+    html.light-mode .login-orb-2 { background: radial-gradient(circle, rgba(29,111,164,0.09), transparent 70%); }
+    html.light-mode .login-orb-3 { background: radial-gradient(circle, rgba(240,120,48,0.08), transparent 70%); }
+
+    @keyframes orbFloat {
+      0%, 100% { transform: translateY(0) scale(1); }
+      33% { transform: translateY(-24px) scale(1.04); }
+      66% { transform: translateY(12px) scale(0.97); }
+    }
+
+    /* ── Dot grid overlay ── */
+    .dot-grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(rgba(246,201,69,0.7) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.020;
+    }
+    html.light-mode .dot-grid { opacity: 0.013; }
+
+    /* ── Login card container ── */
+    .login-card-wrap {
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 10;
+      animation: cardEntrance 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    @keyframes cardEntrance {
+      from { opacity: 0; transform: translateY(44px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── The card itself ── */
+    .login-card {
+      background: rgba(13, 20, 56, 0.82);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(246,201,69,0.18);
+      border-radius: 20px;
+      padding: 2.2rem 2rem;
+      box-shadow:
+        0 0 0 1px rgba(246,201,69,0.08),
+        0 8px 48px rgba(0,0,0,0.60),
+        0 0 80px rgba(246,201,69,0.07);
+    }
+    html.light-mode .login-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      border: 1px solid rgba(182,140,30,0.18);
+      box-shadow:
+        0 0 0 1px rgba(182,140,30,0.08),
+        0 10px 48px rgba(10,20,60,0.11),
+        0 2px 12px rgba(10,20,60,0.06);
+    }
+
+    /* ── Admin badge ── */
+    .admin-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(246,201,69,0.12);
+      border: 1px solid rgba(246,201,69,0.28);
+      color: #F6C945;
+      padding: 0.28rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.70rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    html.light-mode .admin-badge {
+      background: rgba(182,140,30,0.10);
+      border-color: rgba(182,140,30,0.26);
+      color: #8B6914;
+    }
+
+    /* ── Status pill ── */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 0.35rem 1rem;
+      border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .status-pill { background: rgba(20,30,70,0.60); border: 1px solid rgba(246,201,69,0.14); color: #F6C945; }
+    html.light-mode .status-pill { background: rgba(246,201,69,0.08); border: 1px solid rgba(182,140,30,0.18); color: #8B6914; }
+
+    /* ── Pulse dot ── */
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #F6C945;
+      box-shadow: 0 0 0 0 rgba(246,201,69,0.5);
+      animation: dotPulse 2.2s ease-in-out infinite;
+    }
+    html.light-mode .status-dot { background: #D4A017; }
+    @keyframes dotPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(246,201,69,0.5); }
+      50%       { box-shadow: 0 0 0 7px rgba(246,201,69,0); }
+    }
+
+    /* ── Divider ── */
+    .form-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.20), transparent);
+      margin: 1.5rem 0;
+    }
+    html.light-mode .form-divider {
+      background: linear-gradient(90deg, transparent, rgba(182,140,30,0.18), transparent);
+    }
+
+    /* ── Form inputs override for dark mode ── */
+    .login-input {
+      background: rgba(5, 9, 28, 0.85);
+      border: 1px solid rgba(246,201,69,0.16);
+      color: #EEF0F8;
+      border-radius: 12px;
+      padding: 11px 14px 11px 40px;
+      width: 100%;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-input:focus {
+      outline: none;
+      border-color: #F6C945;
+      box-shadow: 0 0 0 3px rgba(246,201,69,0.14);
+    }
+    .login-input::placeholder { color: rgba(107,116,148,0.7); }
+    html.light-mode .login-input {
+      background: #ffffff;
+      border: 1px solid rgba(182,140,30,0.24);
+      color: #0D1B3E;
+      box-shadow: inset 0 1px 3px rgba(10,20,60,0.04);
+    }
+    html.light-mode .login-input:focus {
+      border-color: #F6C945;
+      box-shadow: 0 0 0 3px rgba(246,201,69,0.16);
+    }
+    html.light-mode .login-input::placeholder { color: #9EB3CE; }
+
+    /* ── Label ── */
+    .login-label {
+      display: block;
+      font-size: 11px; font-weight: 700;
+      color: rgba(107,116,148,0.9);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    html.light-mode .login-label { color: #5A6E96; }
+
+    /* ── Input icon color ── */
+    .input-icon { color: rgba(107,116,148,0.7); }
+    html.light-mode .input-icon { color: #9EB3CE; }
+
+    /* ── Eye toggle button ── */
+    .eye-btn {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: rgba(107,116,148,0.7);
+      display: flex; align-items: center;
+      transition: color 0.18s;
+    }
+    .eye-btn:hover { color: #F6C945; }
+    html.light-mode .eye-btn { color: #9EB3CE; }
+    html.light-mode .eye-btn:hover { color: #D4A017; }
+
+    /* ── Submit button ── */
+    .admin-submit-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: linear-gradient(135deg, #F6C945 0%, #C9A012 100%);
+      color: #07100e;
+      box-shadow: 0 4px 20px rgba(246,201,69,0.35), 0 1px 4px rgba(0,0,0,0.25);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: 1.4rem;
+    }
+    .admin-submit-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(246,201,69,0.55), 0 2px 8px rgba(0,0,0,0.25);
+      background: linear-gradient(135deg, #FAD966 0%, #F6C945 100%);
+    }
+    .admin-submit-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+    .admin-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Error box ── */
+    .login-error {
+      margin-top: 0.9rem;
+      color: #E8384F;
+      background: rgba(232,56,79,0.10);
+      border: 1px solid rgba(232,56,79,0.24);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+    html.light-mode .login-error {
+      background: rgba(232,56,79,0.07);
+      border-color: rgba(232,56,79,0.20);
+    }
+
+    /* ── Footer text ── */
+    .login-footer { margin-top: 1.2rem; text-align: center; }
+    .login-footer p { font-size: 12px; color: rgba(107,116,148,0.8); margin-bottom: 4px; }
+    html.light-mode .login-footer p { color: #7A90B4; }
+    .login-footer a { color: #F6C945; font-weight: 700; text-decoration: none; transition: opacity 0.18s; }
+    .login-footer a:hover { opacity: 0.75; }
+    html.light-mode .login-footer a { color: #C9A012; }
+    .copyright-text { font-size: 11px; color: rgba(107,116,148,0.5) !important; margin-top: 2px; }
+    html.light-mode .copyright-text { color: #A3B5CE !important; }
+
+    /* ── Page title text ── */
+    .login-title { color: #EEF0F8; font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
+    html.light-mode .login-title { color: #0D1B3E; }
+    .login-subtitle { color: rgba(107,116,148,0.85); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; }
+    html.light-mode .login-subtitle { color: #7A90B4; }
   </style>
 </head>
 
-<body class="login-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+<body class="login-page">
 
-  <!-- Background Orbs -->
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-
-  <!-- Dot grid -->
-  <div class="fixed inset-0 pointer-events-none"
-       style="background-image:radial-gradient(rgba(245,200,0,0.9) 1px,transparent 1px);background-size:34px 34px;opacity:0.022;">
-  </div>
+  <!-- Background layers -->
+  <div class="login-orb login-orb-1"></div>
+  <div class="login-orb login-orb-2"></div>
+  <div class="login-orb login-orb-3"></div>
+  <div class="dot-grid"></div>
 
   <!-- Toast -->
   <div id="toast-container"></div>
 
-  <!-- Login Card -->
-  <div class="login-card w-full max-w-md relative z-10">
+  <!-- Login card -->
+  <div class="login-card-wrap">
+    <div class="login-card">
 
-    <div class="glass rounded-2xl p-8 mb-4 gold-glow">
-
-      <!-- Logo & Branding -->
-      <div class="text-center mb-7">
-        <div class="flex justify-center mb-5 w-full">
-          <img src="assets/image/FELTA_LOGO_LIGHT.png" alt="FELTA WRO Philippines"
-               class="h-24 md:h-28 w-auto object-contain js-theme-logo"
-               style="max-width: 100%; filter: drop-shadow(0 2px 16px rgba(246,201,69,0.35));">
+      <!-- Header: Logo + branding -->
+      <div style="text-align:center; margin-bottom:1.6rem;">
+        <div style="display:flex; justify-content:center; margin-bottom:1.1rem;">
+          <img src="assets/image/FELTA_LOGO_DARK.png" alt="FELTA WRO Philippines"
+               class="js-theme-logo"
+               style="height:88px; width:auto; object-fit:contain; max-width:100%;
+                      filter:drop-shadow(0 2px 14px rgba(246,201,69,0.30));">
         </div>
 
-        <!-- Rainbow bar -->
-        <div class="wro-rainbow-bar rounded-full mb-5"></div>
+        <!-- WRO Rainbow bar -->
+        <div class="wro-rainbow-bar rounded-full" style="margin-bottom:1.1rem;"></div>
 
-        <!-- Title block -->
-        <div class="space-y-1">
-          <h1 class="text-xl md:text-2xl font-black tracking-tight" style="color:var(--txt-primary);">
-            Integrated Database System
-          </h1>
-          <p class="text-xs md:text-sm font-semibold tracking-widest" style="color:var(--txt-muted);">
-            OFFICIAL COMPETITION MANAGEMENT PLATFORM
-          </p>
+        <!-- Admin badge + title -->
+        <div style="margin-bottom:0.85rem;">
+          <span class="admin-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Administrator Portal
+          </span>
         </div>
+        <h1 class="login-title">Integrated Database System</h1>
+        <p class="login-subtitle">Official Competition Management Platform</p>
 
-        <!-- Live status -->
-        <div class="flex items-center justify-center gap-2 mt-5 px-4 py-2 rounded-xl inline-flex glass-light" style="display:inline-flex;">
-          <div class="pulse-dot"></div>
-          <span class="text-xs font-bold uppercase tracking-wider" style="color:var(--felta-yellow);">System Online</span>
+        <!-- Status pill -->
+        <div style="margin-top:1rem;">
+          <span class="status-pill">
+            <span class="status-dot"></span>
+            System Online
+          </span>
         </div>
       </div>
 
+      <!-- Divider -->
+      <div class="form-divider"></div>
+
       <!-- Login Form -->
-      <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4" autocomplete="on" novalidate>
+      <form id="login-form" onsubmit="handleLogin(event)" autocomplete="on" novalidate>
 
         <!-- Username -->
-        <div>
-          <label class="form-label text-xs uppercase tracking-wider font-bold mb-1.5 block text-left" for="username">Username</label>
+        <div style="margin-bottom:1rem;">
+          <label class="login-label" for="username">Username</label>
           <div class="input-wrap">
-            <span class="input-icon" style="color:var(--txt-muted);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </span>
-            <input id="username" type="text" class="form-input w-full rounded-xl py-3 text-sm font-medium transition-all" style="padding-left:40px;"
+            <input id="username" type="text" class="login-input"
               placeholder="Enter your username" autocomplete="username" required>
           </div>
         </div>
 
         <!-- Password -->
         <div>
-          <label class="form-label text-xs uppercase tracking-wider font-bold mb-1.5 block text-left mt-4" for="password">Password</label>
+          <label class="login-label" for="password">Password</label>
           <div class="input-wrap">
-            <span class="input-icon" style="color:var(--txt-muted);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </span>
-            <input id="password" type="password" class="form-input w-full rounded-xl py-3 text-sm font-medium transition-all" style="padding-left:40px;padding-right:44px;"
+            <input id="password" type="password" class="login-input"
+              style="padding-right:44px;"
               placeholder="Enter your password" autocomplete="current-password" required>
-            <button type="button" id="pwd-toggle" onclick="togglePwd()"
-              class="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80"
-              style="color:var(--txt-muted);background:none;border:none;cursor:pointer;display:flex;align-items:center;">
-              <span id="pwd-eye" style="display:flex;align-items:center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <button type="button" id="pwd-toggle" onclick="togglePwd()" class="eye-btn" aria-label="Toggle password visibility">
+              <span id="pwd-eye">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </span>
             </button>
           </div>
         </div>
 
-
-
-        <!-- Submit Button -->
-        <button type="submit" id="login-btn"
-          class="btn-primary w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 mt-6 transition-all">
+        <!-- Submit button -->
+        <button type="submit" id="login-btn" class="admin-submit-btn">
           <span id="login-icon" style="display:flex;align-items:center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           </span>
           <span id="login-text">Sign In</span>
         </button>
 
         <!-- Error message -->
-        <div id="login-error" class="hidden text-center text-sm p-3 rounded-xl"
-          style="color:#E8384F;background:rgba(232,56,79,0.10);border:1px solid rgba(232,56,79,0.24);">
-        </div>
+        <div id="login-error" class="login-error"></div>
       </form>
     </div>
 
-
-
     <!-- Footer -->
-    <div class="text-center space-y-2 mt-4">
-      <p class="text-xs" style="color:var(--txt-muted);">
+    <div class="login-footer">
+      <p>
         Not an administrator?
-        <a href="portal-login.html" class="font-semibold transition-colors hover:opacity-80" style="color:var(--felta-yellow);">
-          Standard User Portal →
-        </a>
+        <a href="portal-login.html">Standard User Portal →</a>
       </p>
-      <p class="text-xs" style="color:#2d3a52;">
-        FELTA Multimedia · WRO Philippines © 2025 · Database System v2.0
-      </p>
+      <p class="copyright-text">FELTA Multimedia · WRO Philippines © 2025 · Database System v2.0</p>
     </div>
   </div>
 
@@ -176,7 +450,7 @@
       btn.disabled = true;
       document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>`;
       document.getElementById('login-text').textContent = 'Signing in...';
-      errEl.classList.add('hidden');
+      errEl.style.display = 'none';
 
       const result = await AUTH.login(username, password);
       if (result.success) {
@@ -184,29 +458,27 @@
         document.getElementById('login-text').textContent = 'Welcome!';
         setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
       } else {
-        // If a standard user tries to log in here, show a portal link
         if (result.redirect) {
           errEl.innerHTML = result.error + ` <a href="${result.redirect}" style="color:#F6C945;font-weight:700;text-decoration:underline;">Go to Standard User Portal →</a>`;
         } else {
           errEl.textContent = result.error;
         }
-        errEl.classList.remove('hidden');
+        errEl.style.display = 'block';
         btn.disabled = false;
         document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;
         document.getElementById('login-text').textContent = 'Sign In';
       }
     }
 
-
-
     function togglePwd() {
       const pwd = document.getElementById('password');
       const eye = document.getElementById('pwd-eye');
-      const icon_open  = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`;
+      const icon_open   = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`;
       const icon_closed = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>`;
-      if (pwd.type === 'password') { pwd.type = 'text'; eye.innerHTML = icon_closed; }
-      else { pwd.type = 'password'; eye.innerHTML = icon_open; }
+      if (pwd.type === 'password') { pwd.type = 'text';     eye.innerHTML = icon_closed; }
+      else                         { pwd.type = 'password'; eye.innerHTML = icon_open;   }
     }
   </script>
+
 </body>
 </html>
