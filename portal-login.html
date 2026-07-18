@@ -47,6 +47,17 @@
       position: relative;
     }
 
+    /* ── Low opacity background image ── */
+    body.login-page::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: url('assets/image/login-background.jpg') center/cover no-repeat;
+      opacity: 0.06;
+      pointer-events: none;
+      z-index: 0;
+    }
+    html.light-mode body.login-page::before { opacity: 0.04; }
+
     /* ── Dark mode background (blue-accented) ── */
     body.login-page {
       background:
