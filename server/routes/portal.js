@@ -174,4 +174,66 @@ router.put('/profile', async (req, res) => {
   }
 });
 
+// ── GET /api/portal/notifications ─────────────────────────────
+// Returns notification history for the user's school
+router.get('/notifications', async (req, res) => {
+  try {
+    const [userRows] = await pool.execute(
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+    );
+    const schoolId = userRows[0]?.school_id || null;
+    if (!schoolId) return res.json([]);
+
+    const [rows] = await pool.execute(
+      `SELECT n.*, t.team_name
+       FROM notification_log n
+       LEFT JOIN teams t ON t.id = n.team_id
+       WHERE n.school_id = ?
+       ORDER BY n.created_at DESC`,
+      [schoolId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── PUT /api/portal/notifications/:id/read ────────────────────
+// Marks a specific notification as read
+router.put('/notifications/:id/read', async (req, res) => {
+  try {
+    const [userRows] = await pool.execute(
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+    );
+    const schoolId = userRows[0]?.school_id || null;
+
+    const [result] = await pool.execute(
+      'UPDATE notification_log SET is_read=1, read_at=NOW() WHERE id = ? AND school_id = ?', 
+      [req.params.id, schoolId]
+    );
+    res.json({ success: result.affectedRows > 0 });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── PUT /api/portal/notifications/read-all ────────────────────
+// Marks all notifications as read for the user's school
+router.put('/notifications/read-all', async (req, res) => {
+  try {
+    const [userRows] = await pool.execute(
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+    );
+    const schoolId = userRows[0]?.school_id || null;
+
+    await pool.execute(
+      'UPDATE notification_log SET is_read=1, read_at=NOW() WHERE school_id = ? AND is_read=0',
+      [schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

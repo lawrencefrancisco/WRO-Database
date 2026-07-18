@@ -48,6 +48,7 @@ const PortalApp = {
       .on('dashboard',     () => PortalDashboard.render())
       .on('teams',         () => PortalTeams.render())
       .on('announcements', () => PortalAnnouncements.render())
+      .on('notifications', () => PortalNotifications.render())
       .on('profile',       () => PortalProfile.render());
 
     this._renderTopbar();
@@ -87,6 +88,11 @@ const PortalApp = {
       icon:  '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     },
     {
+      route: 'notifications',
+      label: 'History',
+      icon:  '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    },
+    {
       route: 'profile',
       label: 'Profile',
       icon:  '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -118,8 +124,13 @@ const PortalApp = {
         </div>
       </div>
 
-      <!-- Right: avatar -->
+      <!-- Right: theme toggle + avatar -->
       <div class="p-topbar-right">
+        <button class="p-theme-toggle" onclick="PortalApp.toggleTheme()" aria-label="Toggle theme" style="background:none; border:none; color:var(--p-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
         <div class="p-topbar-avatar" onclick="PortalRouter.navigate('profile')" title="${u?.name || 'Profile'}">
           ${(u?.name || 'U').charAt(0).toUpperCase()}
         </div>
@@ -201,6 +212,14 @@ const PortalApp = {
     document.getElementById('portal-sidebar').classList.remove('open');
     document.getElementById('portal-overlay').classList.remove('visible');
     document.body.style.overflow = '';
+  },
+
+  toggleTheme() {
+    const isLight = document.documentElement.classList.toggle('light-mode');
+    localStorage.setItem('wro_ph_theme', isLight ? 'light' : 'dark');
+    document.querySelectorAll('.js-theme-logo').forEach(img => {
+      img.src = isLight ? 'assets/image/FELTA_LOGO_LIGHT.png' : 'assets/image/FELTA_LOGO_DARK.png';
+    });
   },
 };
 

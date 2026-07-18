@@ -38,6 +38,9 @@ const PORTAL_DB = {
   teams()         { return this.get('/portal/teams'); },
   payments()      { return this.get('/portal/payments'); },
   announcements() { return this.get('/portal/announcements'); },
+  notifications() { return this.get('/portal/notifications'); },
+  markNotificationRead(id) { return this.put(`/portal/notifications/${id}/read`, {}); },
+  markAllNotificationsRead() { return this.put('/portal/notifications/read-all', {}); },
   updateProfile(data) { return this.put('/portal/profile', data); },
 };
 
