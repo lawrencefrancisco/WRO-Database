@@ -147,7 +147,9 @@ html.light-mode .glass-surface {
   background: rgba(7, 12, 32, 0.90); border: 1px solid rgba(245, 200, 0, 0.18);
   color: var(--txt-primary); border-radius: 10px; padding: 10px 14px; width: 100%;
   font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s;
+  color-scheme: dark;
 }
+.form-input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
 .form-input:focus { outline: none; border-color: var(--felta-yellow); box-shadow: 0 0 0 3px rgba(245,200,0,0.14); }
 .form-input::placeholder { color: var(--txt-muted); }
 .form-input option { background: var(--bg-surface); color: var(--txt-primary); }
@@ -481,11 +483,14 @@ body.sidebar-open {
 
 /* ── Forms ── */
 .light-mode .form-input {
-  background-color: #ffffff;
-  color: #0D1B3E;
-  border: 1px solid rgba(182,140,30,0.26);
+  background: #ffffff; 
+  border: 1px solid rgba(182,140,30,0.26); 
   box-shadow: inset 0 1px 3px rgba(10,20,60,0.04);
+  color: #0D1B3E;
+  color-scheme: light;
 }
+.light-mode .form-input[type="date"] { cursor: pointer; }
+.light-mode .form-input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
 .light-mode .form-input:focus { border-color: #F6C945; box-shadow: 0 0 0 3px rgba(246,201,69,0.18); }
 .light-mode .form-input::placeholder { color: #8FA3C4; }
 .light-mode .form-input option { background: #fff; color: #0D1B3E; }
