@@ -93,8 +93,14 @@ const PortalApp = {
     },
   ],
 
+  _getLogoSrc() {
+    const isLight = localStorage.getItem('wro_ph_theme') !== 'dark';
+    return isLight ? 'assets/image/FELTA_LOGO_LIGHT.png' : 'assets/image/FELTA_LOGO_DARK.png';
+  },
+
   _renderTopbar() {
     const u = this._user;
+    const logoSrc = this._getLogoSrc();
     document.getElementById('portal-topbar').innerHTML = `
       <!-- Hamburger (mobile/tablet only) -->
       <button class="p-hamburger" onclick="PortalApp.openSidebar()" aria-label="Open menu">
@@ -105,7 +111,7 @@ const PortalApp = {
 
       <!-- Brand -->
       <div class="p-topbar-brand">
-        <img src="assets/image/FELTA_LOGO_LIGHT.png" alt="WRO PH" class="p-topbar-logo js-theme-logo">
+        <img src="${logoSrc}" alt="WRO PH" class="p-topbar-logo js-theme-logo">
         <div>
           <div class="p-topbar-name">WRO Philippines</div>
           <div class="p-topbar-sub">Standard User Portal</div>
@@ -122,6 +128,7 @@ const PortalApp = {
 
   _renderSidebar() {
     const u = this._user;
+    const logoSrc = this._getLogoSrc();
     const navItems = this.NAV.map(item => `
       <button class="p-sidebar-item" data-route="${item.route}"
         onclick="PortalRouter.navigate('${item.route}')">
@@ -133,7 +140,7 @@ const PortalApp = {
       <!-- Header -->
       <div class="p-sidebar-header">
         <div class="p-sidebar-brand">
-          <img src="assets/image/FELTA_LOGO_LIGHT.png" alt="WRO PH" class="p-sidebar-logo js-theme-logo">
+          <img src="${logoSrc}" alt="WRO PH" class="p-sidebar-logo js-theme-logo">
           <div>
             <div class="p-sidebar-title">WRO Philippines</div>
             <div class="p-sidebar-sub">Standard Portal</div>
