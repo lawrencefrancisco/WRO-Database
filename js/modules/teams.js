@@ -250,10 +250,14 @@ const Teams = {
             ${['registered','confirmed','waitlisted','withdrawn'].map(s=>`<option ${t?.registrationStatus===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
-        <div><label class="form-label">Payment Status</label>
-          <select class="form-input" name="paymentStatus">
-            ${['unpaid','partial','paid'].map(s=>`<option ${t?.paymentStatus===s?'selected':''}>${s}</option>`).join('')}
-          </select>
+        <div>
+          <label class="form-label">Payment Status
+            <span class="text-xs font-normal ml-1" style="color:var(--txt-muted);text-transform:none;letter-spacing:0;">(managed in Payment Management)</span>
+          </label>
+          <div class="form-input flex items-center gap-2" style="background:rgba(0,0,0,0.06);cursor:default;user-select:none;pointer-events:none;opacity:0.85;">
+            ${Utils.statusBadge(t?.paymentStatus || 'unpaid')}
+            <span class="text-xs" style="color:var(--txt-muted);">Read-only — update via Payment Management</span>
+          </div>
         </div>
         <div><label class="form-label">Qualification Status</label>
           <select class="form-input" name="qualificationStatus">
@@ -305,6 +309,9 @@ const Teams = {
     const data    = Object.fromEntries(new FormData(form));
     const members = [...form.querySelectorAll('input[name="members"]:checked')].map(cb => cb.value);
     data.members  = members;
+    // Payment status is managed exclusively in Payment Management — never send it from here
+    delete data.paymentStatus;
+    delete data.payment_status;
     if (!data.teamName.trim()) { Toast.error('Team name is required.'); return; }
     if (id) { await DB.update('teams', id, data); Toast.success('Team updated!'); }
     else    { await DB.insert('teams', data);     Toast.success('Team created!'); }
