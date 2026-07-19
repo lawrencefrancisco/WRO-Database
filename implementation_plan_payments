@@ -1,0 +1,117 @@
+# Payment Deduplication & Audit Log
+
+## Problem Summary
+
+1. **Duplicate payments**: `Payments._save()` always calls `DB.insert()` when `id` is null, even if a payment already exists for that team. The unique key is **`team_id`** — each team should have at most one active payment record.
+
+2. **No payment audit trail**: There is no `payment_logs` table, no server route for it, and no UI to view history. The existing `notification_log` is general-purpose and doesn't carry financial diff details.
+
+---
+
+## Proposed Changes
+
+### 1. Database — New `payment_logs` table
+
+#### [NEW] SQL migration (run once)
+```sql
+CREATE TABLE payment_logs (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  payment_id      INT UNSIGNED NOT NULL,
+  team_id         INT UNSIGNED,
+  action          VARCHAR(64) NOT NULL,        -- 'created' | 'updated' | 'status_changed'
+  prev_status     VARCHAR(32),
+  new_status      VARCHAR(32),
+  prev_amount     DECIMAL(12,2),
+  new_amount      DECIMAL(12,2),
+  prev_balance    DECIMAL(12,2),
+  new_balance     DECIMAL(12,2),
+  payment_date    DATE,
+  or_number       VARCHAR(128),
+  payment_method  VARCHAR(64),
+  notes           TEXT,
+  performed_by    VARCHAR(128) NOT NULL,
+  created_at      DATETIME NOT NULL DEFAULT NOW()
+);
+```
+
+---
+
+### 2. Backend — `server/routes/payments.js`
+
+#### [MODIFY] `POST /api/payments` — upsert logic
+- Before inserting, query: `SELECT id FROM payments WHERE team_id = ? AND is_deleted = 0 LIMIT 1`
+- If a record exists → **UPDATE** it (same as PUT) and write a `payment_logs` entry with `action = 'updated'`
+- If no record exists → **INSERT** and write a `payment_logs` entry with `action = 'created'`
+- Response always returns the final row (consistent for both branches)
+
+#### [MODIFY] `PUT /api/payments/:id` — add audit log
+- Fetch the existing row **before** the UPDATE to capture previous values
+- After updating, write a `payment_logs` entry with action = `'updated'` (or `'status_changed'` if only status differs)
+
+#### [NEW] `GET /api/payments/logs` — fetch payment history
+- Returns all rows from `payment_logs` ordered by `created_at DESC`
+- Optionally filter by `?paymentId=` or `?teamId=`
+
+#### [NEW] `GET /api/payments/:id/logs` — logs for one payment
+- Returns `payment_logs` rows where `payment_id = :id`
+
+---
+
+### 3. Backend — `server/routes/payments.js` helper
+
+Add a shared `_writeLog(conn, data)` helper inside the file to keep both POST and PUT DRY.
+
+---
+
+### 4. Frontend — `js/modules/payments_comms_delegation.js`
+
+#### `Payments._save(id)` — smart upsert
+- When `id` is **null** (new record), check if a payment already exists for the selected `teamId` using the cached payments list
+- If found: confirm with the user (or auto-proceed), then call `DB.update(existingId, data)` instead of `DB.insert()`
+- Show a toast: *"Payment record updated (existing record found for this team)"*
+
+#### `Payments.openForm(id)` — pre-fill existing record
+- When a team is selected from the dropdown/list and `id` is null, check if there's an existing payment for that team and **pre-fill the form** with existing values automatically
+- Show a notice banner: *"⚠ An existing payment record was found for this team. Saving will update it."*
+
+#### `Payments.openHistory(paymentId)` — new method
+- Fetches `GET /api/payments/:id/logs`
+- Displays a modal with a timeline of all changes: action badge, before/after values, date, admin
+
+#### Table actions — add History button
+- Add a clock/history icon button next to the existing edit button in each payment row
+
+#### `Payments.render()` — no structural change needed
+
+---
+
+### 5. Database — `js/core/db.js`
+
+Add `payment_logs` → `'payment-logs'` to `TABLE_ROUTES` (for completeness, even though the history fetch uses `_request` directly).
+
+---
+
+## Verification Plan
+
+### Automated
+- None (no test suite exists)
+
+### Manual
+1. In Payment Management, click **Record Payment** → select a team that already has a payment → confirm the form pre-fills with existing values and shows a warning banner
+2. Save → verify only one record exists in the table (no duplicate row)
+3. Click the **History** button → verify a log entry shows the action, before/after amounts and status, timestamp and admin name
+4. Edit an existing payment → change amount → save → verify the history now has two entries for that payment
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Confirmation UX**: When a user clicks "+ Record Payment" and selects a team that already has a payment, should the system:
+> - **(A) Auto-detect and pre-fill** silently (just show a yellow warning banner in the form), or
+> - **(B) Show a confirmation dialog** before proceeding?
+>
+> The plan defaults to **(A)** — auto-detect + banner, which is less disruptive.
+
+> [!NOTE]
+> The `payment_logs` table needs to be created in MySQL before the server changes go live. A migration SQL snippet is included above — you will need to run it once in phpMyAdmin or via MySQL CLI.
