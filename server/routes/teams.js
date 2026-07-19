@@ -101,7 +101,9 @@ router.post('/', async (req, res) => {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [teamCode, d.season, competitionId, d.teamName, d.category, d.ageGroup || null,
        schoolId, coachId, d.robotPlatform || null, d.programmingLanguage || null,
-       d.registrationStatus || 'registered', d.paymentStatus || 'unpaid',
+       d.registrationStatus || 'registered',
+       // payment_status is managed exclusively by Payment Management — always default to 'unpaid' on insert
+       'unpaid',
        d.qualificationStatus || 'pending', d.status || 'active']
     );
     const newId = result.insertId;
@@ -146,6 +148,10 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Preserve the existing payment_status — it is managed exclusively by Payment Management
+    const [existingTeam] = await conn.execute('SELECT payment_status FROM teams WHERE id = ? LIMIT 1', [teamId]);
+    const currentPaymentStatus = existingTeam[0]?.payment_status || 'unpaid';
+
     await conn.execute(
       `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?,
        age_group=?, school_id=?, coach_id=?, robot_platform=?, programming_language=?,
@@ -153,7 +159,7 @@ router.put('/:id', async (req, res) => {
        WHERE id = ?`,
       [d.season, competitionId, d.teamName, d.category,
        d.ageGroup || null, schoolId, coachId, d.robotPlatform || null,
-       d.programmingLanguage || null, d.registrationStatus, d.paymentStatus,
+       d.programmingLanguage || null, d.registrationStatus, currentPaymentStatus,
        d.qualificationStatus, d.status, teamId]
     );
 
