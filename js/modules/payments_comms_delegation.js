@@ -138,8 +138,9 @@ const Payments = {
           <td>
             <div class="flex gap-2">
               ${AUTH.can('payments.write') ? `
-              <button onclick="Payments.openForm('${p.id}')" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/></svg></button>
+              <button onclick="Payments.openForm('${p.id}')" title="Edit" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/></svg></button>
               ` : ''}
+              <button onclick="Payments.openHistory('${p.id}')" title="Payment History" class="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg></button>
             </div>
           </td>
         </tr>`;
@@ -153,11 +154,14 @@ const Payments = {
   _onSearch: Utils.debounce(async function(v) { Payments._search = v; Payments._page = 1; await Payments._loadTable(); }, 300),
   async _onFilter() { this._filterStatus = document.getElementById('pay-status')?.value||''; this._page=1; await this._loadTable(); },
 
+  // Cache of payments keyed by teamId, populated in openForm
+  _paymentsByTeam: {},
+
   async openForm(id = null) {
     const p     = id ? await DB.getById('payments', id) : null;
     const teams = (await DB.getAll('teams')).filter(t => !t.isDeleted);
     const schools = (await DB.getAll('schools')).filter(s => !s.isDeleted);
-    const allPayments = await DB.getAll('payments');
+    const allPayments = (await DB.getAll('payments')).filter(pay => !pay.isDeleted);
 
     // Build team→school map for auto-detection
     const teamSchoolMap = {};
@@ -165,7 +169,12 @@ const Payments = {
     schools.forEach(s => { schoolNameMap[s.id] = s.schoolName; });
     teams.forEach(t => { if (t.schoolId) teamSchoolMap[t.id] = t.schoolId; });
 
-    // Map each team to its payment status
+    // Map each team to its existing payment (for duplicate detection)
+    const paymentsByTeam = {};
+    allPayments.forEach(pay => { paymentsByTeam[pay.teamId] = pay; });
+    Payments._paymentsByTeam = paymentsByTeam;
+
+    // Map each team to its payment status (for sidebar badge)
     const payStatusMap = {};
     allPayments.forEach(pay => { payStatusMap[pay.teamId] = pay.status || 'unpaid'; });
 
@@ -194,54 +203,62 @@ const Payments = {
         </div>
 
         <!-- Right Side: Form -->
-        <form id="pay-form" class="w-full md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4 h-fit">
-          <div><label class="form-label">Team *</label>
-            <select class="form-input" name="teamId" id="pay-team-select" required onchange="Payments._onTeamChange()">
-              <option value="">Select Team</option>
-              ${teams.map(t=>`<option value="${t.id}" ${p?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
-            </select>
+        <div class="w-full md:w-2/3 flex flex-col gap-4">
+          <!-- Existing-payment warning banner (hidden by default) -->
+          <div id="pay-existing-banner" style="display:none;" class="flex items-start gap-3 px-4 py-3 rounded-xl border" style="background:rgba(234,179,8,0.08); border-color:rgba(234,179,8,0.3);">
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#eab308' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='mt-0.5 shrink-0'><path d='M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>
+            <p class="text-xs leading-relaxed" style="color:#eab308;">⚠ An existing payment record was found for this team. <strong>Saving will update it</strong> instead of creating a duplicate.</p>
           </div>
-          <div><label class="form-label">School <span class="text-[10px] font-normal ml-1 opacity-70">(auto-detected)</span></label>
-            <select class="form-input" name="schoolId" id="pay-school-select">
-              <option value="">— auto-detected —</option>
-              ${schools.map(s=>`<option value="${s.id}" ${p?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
-            </select>
-          </div>
-          <div><label class="form-label">Registration Fee (₱)</label>
-            <input class="form-input" type="number" name="registrationFee" value="${p?.registrationFee||4000}" oninput="Payments._calcBalance()">
-          </div>
-          <div><label class="form-label">Amount Paid (₱)</label>
-            <input class="form-input" type="number" name="amountPaid" value="${p?.amountPaid||0}" oninput="Payments._calcBalance()">
-          </div>
-          <div><label class="form-label">Balance (₱)</label>
-            <input class="form-input" type="number" name="balance" id="balance-field" value="${p?.balance||4000}" readonly>
-          </div>
-          <div><label class="form-label">Payment Date</label>
-            <input class="form-input" type="date" name="paymentDate" value="${p?.paymentDate||''}">
-          </div>
-          <div><label class="form-label">Payment Method</label>
-            <select class="form-input" name="paymentMethod">
-              <option value="">Select Method</option>
-              ${Seeder.PAYMENT_METHODS.map(m=>`<option ${p?.paymentMethod===m?'selected':''}>${m}</option>`).join('')}
-            </select>
-          </div>
-          <div><label class="form-label">OR Number</label>
-            <input class="form-input" name="orNumber" value="${p?.orNumber||''}">
-          </div>
-          <div><label class="form-label">Sponsorship (₱)</label>
-            <input class="form-input" type="number" name="sponsorship" value="${p?.sponsorship||0}">
-          </div>
-          <div><label class="form-label">Scholarship</label>
-            <select class="form-input" name="scholarship">
-              ${['None','Partial','Full'].map(s=>`<option ${p?.scholarship===s?'selected':''}>${s}</option>`).join('')}
-            </select>
-          </div>
-          <div><label class="form-label">Status</label>
-            <select class="form-input" name="status">
-              ${['unpaid','partial','paid'].map(s=>`<option ${p?.status===s?'selected':''}>${s}</option>`).join('')}
-            </select>
-          </div>
-        </form>
+
+          <form id="pay-form" class="grid grid-cols-1 md:grid-cols-2 gap-4 h-fit">
+            <div><label class="form-label">Team *</label>
+              <select class="form-input" name="teamId" id="pay-team-select" required onchange="Payments._onTeamChange()">
+                <option value="">Select Team</option>
+                ${teams.map(t=>`<option value="${t.id}" ${p?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="form-label">School <span class="text-[10px] font-normal ml-1 opacity-70">(auto-detected)</span></label>
+              <select class="form-input" name="schoolId" id="pay-school-select">
+                <option value="">— auto-detected —</option>
+                ${schools.map(s=>`<option value="${s.id}" ${p?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="form-label">Registration Fee (₱)</label>
+              <input class="form-input" type="number" name="registrationFee" value="${p?.registrationFee||4000}" oninput="Payments._calcBalance()">
+            </div>
+            <div><label class="form-label">Amount Paid (₱)</label>
+              <input class="form-input" type="number" name="amountPaid" value="${p?.amountPaid||0}" oninput="Payments._calcBalance()">
+            </div>
+            <div><label class="form-label">Balance (₱)</label>
+              <input class="form-input" type="number" name="balance" id="balance-field" value="${p?.balance||4000}" readonly>
+            </div>
+            <div><label class="form-label">Payment Date</label>
+              <input class="form-input" type="date" name="paymentDate" value="${p?.paymentDate||''}">
+            </div>
+            <div><label class="form-label">Payment Method</label>
+              <select class="form-input" name="paymentMethod">
+                <option value="">Select Method</option>
+                ${Seeder.PAYMENT_METHODS.map(m=>`<option ${p?.paymentMethod===m?'selected':''}>${m}</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="form-label">OR Number</label>
+              <input class="form-input" name="orNumber" value="${p?.orNumber||''}">
+            </div>
+            <div><label class="form-label">Sponsorship (₱)</label>
+              <input class="form-input" type="number" name="sponsorship" value="${p?.sponsorship||0}">
+            </div>
+            <div><label class="form-label">Scholarship</label>
+              <select class="form-input" name="scholarship">
+                ${['None','Partial','Full'].map(s=>`<option ${p?.scholarship===s?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="form-label">Status</label>
+              <select class="form-input" name="status">
+                ${['unpaid','partial','paid'].map(s=>`<option ${p?.status===s?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </div>
+          </form>
+        </div>
       </div>`,
       `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition-colors hover:bg-slate-500/10" style="border-color:var(--border-primary); color:var(--txt-primary);">Cancel</button>
        <button onclick="Payments._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Payment</button>`,
@@ -250,7 +267,11 @@ const Payments = {
 
     // Store map on the module for the onchange handler
     Payments._teamSchoolMap = teamSchoolMap;
-    setTimeout(() => Payments._calcBalance(), 100);
+    setTimeout(() => {
+      Payments._calcBalance();
+      // If editing an existing record (id provided), trigger team change to pre-fill
+      if (p?.teamId) Payments._onTeamChange();
+    }, 100);
   },
 
   _renderTeamList(teams, selectedId) {
@@ -293,17 +314,40 @@ const Payments = {
     }
   },
 
-  // Auto-fill school when team changes
+  // Auto-fill school when team changes; also pre-fills existing payment and shows banner
   _onTeamChange() {
     const teamSel   = document.getElementById('pay-team-select');
     const schoolSel = document.getElementById('pay-school-select');
+    const banner    = document.getElementById('pay-existing-banner');
     if (!teamSel || !schoolSel) return;
-    const teamId = teamSel.value;
-    const schoolId = Payments._teamSchoolMap?.[teamId];
-    if (schoolId) {
-      schoolSel.value = schoolId;
+    const teamId = parseInt(teamSel.value, 10) || null;
+
+    // Auto-fill school from team→school map
+    const schoolId = teamId ? Payments._teamSchoolMap?.[teamId] : null;
+    if (schoolId) schoolSel.value = schoolId;
+
+    // Check if an existing payment exists for this team
+    const existing = teamId ? Payments._paymentsByTeam?.[teamId] : null;
+    if (existing && banner) {
+      // Pre-fill form fields from existing payment
+      const form = document.getElementById('pay-form');
+      if (form) {
+        const set = (name, val) => { const el = form.querySelector(`[name="${name}"]`); if (el) el.value = val ?? ''; };
+        set('registrationFee', existing.registrationFee ?? 4000);
+        set('amountPaid',      existing.amountPaid      ?? 0);
+        set('paymentDate',     existing.paymentDate     ?? '');
+        set('paymentMethod',   existing.paymentMethod   ?? '');
+        set('orNumber',        existing.orNumber        ?? '');
+        set('sponsorship',     existing.sponsorship     ?? 0);
+        set('scholarship',     existing.scholarship     ?? 'None');
+        set('status',          existing.status          ?? 'unpaid');
+        Payments._calcBalance();
+      }
+      banner.style.display = 'flex';
+    } else if (banner) {
+      banner.style.display = 'none';
     }
-    
+
     // Sync sidebar list active state
     document.querySelectorAll('[id^="team-list-item-"]').forEach(el => {
       el.style.borderColor = 'var(--border-primary)';
@@ -337,9 +381,81 @@ const Payments = {
     if (data.balance <= 0) data.status = 'paid';
     else if (data.amountPaid > 0) data.status = 'partial';
     else data.status = 'unpaid';
-    if (id) { await DB.update('payments', id, data); Toast.success('Payment updated!'); }
-    else    { await DB.insert('payments', data);     Toast.success('Payment recorded!'); }
+
+    // Attach current user for audit log attribution
+    const user = AUTH ? AUTH.currentUser() : null;
+    data.performedBy = user?.name || user?.userName || 'Admin';
+
+    if (id) {
+      // Explicit edit by ID
+      await DB.update('payments', id, data);
+      Toast.success('Payment updated!');
+    } else {
+      // Let the server handle upsert (POST with upsert logic)
+      const result = await DB.insert('payments', data);
+      if (result?._upserted) {
+        Toast.success('Payment record updated (existing record found for this team).');
+      } else {
+        Toast.success('Payment recorded!');
+      }
+    }
     Modal.close(); await this._renderStats(); await this._loadTable();
+  },
+
+  // ── Payment History Modal ──────────────────────────────────
+  async openHistory(paymentId) {
+    const logs = await DB._request('GET', `/payments/${paymentId}/logs`);
+    if (!logs || !logs.length) {
+      Toast.info ? Toast.info('No history found for this payment.') : Toast.success('No history found.');
+      return;
+    }
+
+    const actionColor = { created: '#2dc653', updated: '#818cf8', status_changed: '#f59e0b' };
+    const actionLabel = { created: 'Created', updated: 'Updated', status_changed: 'Status Changed' };
+
+    const timeline = logs.map((log, i) => {
+      const color = actionColor[log.action] || '#6B7494';
+      const label = actionLabel[log.action] || log.action;
+      const date  = log.created_at ? new Date(log.created_at).toLocaleString() : '—';
+
+      const diffRows = [];
+      if (log.prev_status !== log.new_status && (log.prev_status || log.new_status)) {
+        diffRows.push(`<tr><td class="py-1 pr-4 text-slate-400 text-xs">Status</td><td class="py-1 text-xs line-through text-red-400">${log.prev_status ?? '—'}</td><td class="py-1 pl-3 text-xs text-green-400">${log.new_status ?? '—'}</td></tr>`);
+      }
+      if (log.prev_amount !== log.new_amount && (log.prev_amount != null || log.new_amount != null)) {
+        diffRows.push(`<tr><td class="py-1 pr-4 text-slate-400 text-xs">Amount Paid</td><td class="py-1 text-xs line-through text-red-400">₱${parseFloat(log.prev_amount||0).toLocaleString()}</td><td class="py-1 pl-3 text-xs text-green-400">₱${parseFloat(log.new_amount||0).toLocaleString()}</td></tr>`);
+      }
+      if (log.prev_balance !== log.new_balance && (log.prev_balance != null || log.new_balance != null)) {
+        diffRows.push(`<tr><td class="py-1 pr-4 text-slate-400 text-xs">Balance</td><td class="py-1 text-xs line-through text-red-400">₱${parseFloat(log.prev_balance||0).toLocaleString()}</td><td class="py-1 pl-3 text-xs text-green-400">₱${parseFloat(log.new_balance||0).toLocaleString()}</td></tr>`);
+      }
+
+      return `
+        <div class="flex gap-4 relative">
+          <!-- Timeline spine -->
+          <div class="flex flex-col items-center">
+            <div class="w-3 h-3 rounded-full mt-1 shrink-0" style="background:${color};"></div>
+            ${i < logs.length - 1 ? `<div class="w-px flex-1 mt-1" style="background:var(--border-subtle);"></div>` : ''}
+          </div>
+          <!-- Content -->
+          <div class="flex-1 pb-5">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style="background:${color}22; color:${color};">${label}</span>
+              <span class="text-xs" style="color:var(--txt-muted);">${date}</span>
+            </div>
+            <div class="text-xs mb-2" style="color:var(--txt-muted);">By <span class="font-semibold" style="color:var(--txt-primary);">${log.performed_by || 'System'}</span></div>
+            ${diffRows.length ? `<table class="text-xs">${diffRows.join('')}</table>` : `<p class="text-xs" style="color:var(--txt-muted);">No field changes recorded.</p>`}
+            ${log.notes ? `<p class="text-xs mt-1 italic" style="color:var(--txt-muted);">${log.notes}</p>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    Modal.show('Payment History', `
+      <div class="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+        <div class="pt-2">${timeline}</div>
+      </div>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition-colors hover:bg-slate-500/10" style="border-color:var(--border-primary); color:var(--txt-primary);">Close</button>`,
+      'max-w-lg w-full'
+    );
   },
 
   async exportCSV() {
