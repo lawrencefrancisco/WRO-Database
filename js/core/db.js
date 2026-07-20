@@ -115,7 +115,7 @@ const DB = {
   async insert(table, record) {
     const result = await this._request('POST', `/${this._route(table)}`, record);
     if (result) {
-      this.invalidate(table);
+      this.invalidateAll();
       this._logAudit('INSERT', table, result.id);
     }
     return result;
@@ -152,7 +152,7 @@ const DB = {
   async update(table, id, changes) {
     const result = await this._request('PUT', `/${this._route(table)}/${id}`, changes);
     if (result) {
-      this.invalidate(table);
+      this.invalidateAll();
       this._logAudit('UPDATE', table, id);
     }
     return result;
@@ -162,7 +162,7 @@ const DB = {
   async delete(table, id) {
     const result = await this._request('DELETE', `/${this._route(table)}/${id}`);
     if (result?.success) {
-      this.invalidate(table);
+      this.invalidateAll();
       this._logAudit('DELETE', table, id);
     }
     return result?.success || false;
@@ -172,7 +172,7 @@ const DB = {
   async hardDelete(table, id) {
     const result = await this._request('DELETE', `/${this._route(table)}/${id}?hard=true`);
     if (result?.success) {
-      this.invalidate(table);
+      this.invalidateAll();
     }
     return result?.success || false;
   },

@@ -621,6 +621,7 @@ const Judging = {
         if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
         return;
       }
+      DB.invalidateAll(); // clear cache so UI re-fetches assignments
       Modal.close();
       const total = seasons.length * categories.length;
       Toast.success(
@@ -628,6 +629,7 @@ const Judging = {
           ? 'All assignments cleared.'
           : `${total} assignment${total !== 1 ? 's' : ''} saved successfully!`
       );
+      await this._loadTable();
     } catch (err) {
       console.error('[Judging] Save assignment error:', err);
       Toast.error('Network error. Please check the server and try again.');
