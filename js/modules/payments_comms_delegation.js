@@ -191,13 +191,12 @@ const Payments = {
           <td class="text-sm text-green-400 font-medium">${Utils.formatCurrency(p.amountPaid)}</td>
           <td class="text-sm ${p.balance>0?'text-red-400':'text-green-400'} font-medium">${Utils.formatCurrency(p.balance)}</td>
           <td class="text-sm text-slate-400">${p.paymentMethod || '—'}</td>
-          <td class="text-sm font-mono text-slate-300 whitespace-nowrap">${p.orNumber || '—'}</td>
-          <td class="text-sm text-slate-400 whitespace-nowrap">${Utils.formatDate(p.paymentDate)}</td>
+          <td class="text-sm font-mono text-slate-300">${p.orNumber || '—'}</td>
+          <td class="text-sm text-slate-400">${Utils.formatDate(p.paymentDate)}</td>
           <td>${Utils.statusBadge(p.status)}</td>
           <td>
             <div class="flex gap-2">
               ${AUTH.can('payments.write') ? `
-              <button onclick="Payments.openForm('${p.id}')" title="Edit" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/></svg></button>
               <button onclick="Payments._deletePayment('${p.id}','${(team?.teamName||'this team').replace(/'/g,"\\'")}')"
                 title="Delete" class="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs transition flex items-center">
                 <svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'/><path d='M10 11v6'/><path d='M14 11v6'/><path d='M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'/></svg>
@@ -396,7 +395,7 @@ const Payments = {
 
       return `
         <tr class="table-row">
-          <td class="text-sm text-slate-400 whitespace-nowrap">${dt}</td>
+          <td class="text-sm text-slate-400">${dt}</td>
           <td>
             <div class="font-semibold text-white text-sm">${team?.teamName || '—'}</div>
             <div class="text-xs text-slate-500">${log.team_id || ''}</div>
@@ -408,7 +407,7 @@ const Payments = {
           <td class="text-sm text-green-400 font-medium">${amount}</td>
           <td class="text-sm font-medium" style="color:${balColor};">${balance}</td>
           <td class="text-sm text-slate-400">${log.payment_method || '—'}</td>
-          <td class="text-sm font-mono text-slate-300 whitespace-nowrap">${log.or_number || '—'}</td>
+          <td class="text-sm font-mono text-slate-300">${log.or_number || '—'}</td>
           <td>${statusBadge}</td>
           <td class="text-sm text-slate-400">${log.performed_by || '—'}</td>
         </tr>`;
