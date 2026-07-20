@@ -127,23 +127,29 @@ router.post('/', async (req, res) => {
     if (existingRow) {
       // ── UPDATE existing record ───────────────────────────
       const prevStatus  = existingRow.status;
-      const prevAmount  = existingRow.amount_paid;
-      const prevBalance = existingRow.balance;
+      const prevAmount  = parseFloat(existingRow.amount_paid) || 0; // cumulative before this payment
+      const prevBalance = parseFloat(existingRow.balance)    || 0;
+
+      // transactionAmount = the exact amount the user entered for this single payment
+      // amountPaid        = new cumulative total (prevAmount + transactionAmount)
+      const transactionAmount = parseFloat(d.transactionAmount ?? (d.amountPaid - prevAmount)) || 0;
+      const newCumulative     = parseFloat(d.amountPaid) || 0;
+      const newBalance        = parseFloat(d.balance)    || 0;
+      const newStatus         = d.status || 'unpaid';
 
       await conn.execute(
         `UPDATE payments SET team_id=?, school_id=?, registration_fee=?,
          amount_paid=?, balance=?, payment_date=?, payment_method=?, or_number=?, sponsorship=?,
          scholarship=?, status=?, updated_at=NOW() WHERE id = ?`,
         [teamId, schoolId,
-         d.registrationFee || 0, d.amountPaid || 0, d.balance || 0,
+         d.registrationFee || 0, newCumulative, newBalance,
          d.paymentDate || null, d.paymentMethod || null, d.orNumber || null,
-         d.sponsorship || 0, d.scholarship || 'None', d.status || 'unpaid',
+         d.sponsorship || 0, d.scholarship || 'None', newStatus,
          existingRow.id]
       );
 
       // Determine action label
-      const onlyStatusChanged = prevStatus !== (d.status || 'unpaid')
-        && prevAmount === (d.amountPaid || 0);
+      const onlyStatusChanged = prevStatus !== newStatus && prevAmount === newCumulative;
       const action = onlyStatusChanged ? 'status_changed' : 'updated';
 
       await _writeLog(conn, {
@@ -151,15 +157,15 @@ router.post('/', async (req, res) => {
         teamId:       teamId,
         action,
         prevStatus,
-        newStatus:    d.status || 'unpaid',
-        prevAmount,
-        newAmount:    d.amountPaid || 0,
+        newStatus,
+        prevAmount,                  // cumulative before
+        newAmount:    transactionAmount, // ← this single payment's amount
         prevBalance,
-        newBalance:   d.balance || 0,
+        newBalance,
         paymentDate:  d.paymentDate || null,
-        orNumber:     d.orNumber   || null,
+        orNumber:     d.orNumber    || null,
         paymentMethod: d.paymentMethod || null,
-        notes:        `Updated via Record Payment (existing record found for team_id=${teamId})`,
+        notes: `Payment of ₱${transactionAmount} recorded. Cumulative total: ₱${newCumulative}`,
         performedBy,
       });
 
@@ -167,7 +173,11 @@ router.post('/', async (req, res) => {
       finalRow = rows[0];
     } else {
       // ── INSERT new record ────────────────────────────────
-      const paymentCode = d.paymentCode || d.payment_code || `PAY_${Date.now()}`;
+      const paymentCode       = d.paymentCode || d.payment_code || `PAY_${Date.now()}`;
+      const transactionAmount = parseFloat(d.transactionAmount ?? d.amountPaid) || 0;
+      const newCumulative     = parseFloat(d.amountPaid) || 0;
+      const newBalance        = parseFloat(d.balance)    || 0;
+      const newStatus         = d.status || 'unpaid';
 
       const [result] = await conn.execute(
         `INSERT INTO payments (payment_code, team_id, school_id, registration_fee, amount_paid,
@@ -175,9 +185,9 @@ router.post('/', async (req, res) => {
          created_at, updated_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
         [paymentCode, teamId, schoolId,
-         d.registrationFee || 0, d.amountPaid || 0, d.balance || 0,
+         d.registrationFee || 0, newCumulative, newBalance,
          d.paymentDate || null, d.paymentMethod || null, d.orNumber || null,
-         d.sponsorship || 0, d.scholarship || 'None', d.status || 'unpaid']
+         d.sponsorship || 0, d.scholarship || 'None', newStatus]
       );
 
       await _writeLog(conn, {
@@ -185,13 +195,13 @@ router.post('/', async (req, res) => {
         teamId:       teamId,
         action:       'created',
         prevStatus:   null,
-        newStatus:    d.status || 'unpaid',
+        newStatus,
         prevAmount:   null,
-        newAmount:    d.amountPaid || 0,
+        newAmount:    transactionAmount, // ← exact amount entered
         prevBalance:  null,
-        newBalance:   d.balance || 0,
-        paymentDate:  d.paymentDate   || null,
-        orNumber:     d.orNumber      || null,
+        newBalance,
+        paymentDate:  d.paymentDate    || null,
+        orNumber:     d.orNumber       || null,
         paymentMethod: d.paymentMethod || null,
         notes:        null,
         performedBy,
@@ -210,7 +220,7 @@ router.post('/', async (req, res) => {
         `INSERT INTO notification_log (event_type, title, message, team_id, school_id, triggered_by, created_at)
          VALUES (?,?,?,?,?,?,NOW())`,
         ['payment', `Payment ${d.status || 'unpaid'} – ${teamName}`,
-         `Payment of ₱${d.amountPaid || 0} recorded for ${teamName}. Status: ${d.status || 'unpaid'}.`,
+         `Payment of ₱${d.transactionAmount ?? d.amountPaid ?? 0} recorded for ${teamName}. Status: ${d.status || 'unpaid'}.`,
          teamId, teamRow[0]?.school_id || null, 'Payments Module']
       );
     }
@@ -243,19 +253,28 @@ router.put('/:id', async (req, res) => {
       schoolId = teamRows[0]?.school_id || null;
     }
 
+    const prevCumulative = parseFloat(prev?.amount_paid) || 0;
+    const prevBalance    = parseFloat(prev?.balance)     || 0;
+    const newCumulative  = parseFloat(d.amountPaid)      || 0;
+    const newBalance     = parseFloat(d.balance)         || 0;
+
+    // The transaction amount for this edit = difference in cumulative totals
+    // If the user sent an explicit transactionAmount, prefer that.
+    const transactionAmount = parseFloat(d.transactionAmount ?? (newCumulative - prevCumulative)) || 0;
+
     await conn.execute(
       `UPDATE payments SET team_id=?, school_id=?, registration_fee=?,
        amount_paid=?, balance=?, payment_date=?, payment_method=?, or_number=?, sponsorship=?,
        scholarship=?, status=?, updated_at=NOW() WHERE id = ?`,
       [teamId, schoolId,
-       d.registrationFee || 0, d.amountPaid || 0, d.balance || 0,
+       d.registrationFee || 0, newCumulative, newBalance,
        d.paymentDate || null, d.paymentMethod || null, d.orNumber || null,
        d.sponsorship || 0, d.scholarship || 'None', d.status, req.params.id]
     );
 
     // Determine action label
     const onlyStatusChanged = prev && prev.status !== d.status
-      && parseFloat(prev.amount_paid) === (d.amountPaid || 0);
+      && prevCumulative === newCumulative;
     const action = onlyStatusChanged ? 'status_changed' : 'updated';
 
     await _writeLog(conn, {
@@ -264,14 +283,16 @@ router.put('/:id', async (req, res) => {
       action,
       prevStatus:   prev?.status   || null,
       newStatus:    d.status       || null,
-      prevAmount:   prev?.amount_paid  ?? null,
-      newAmount:    d.amountPaid   ?? null,
-      prevBalance:  prev?.balance  ?? null,
-      newBalance:   d.balance      ?? null,
+      prevAmount:   prevCumulative,       // cumulative before edit
+      newAmount:    transactionAmount,    // ← amount changed in this edit
+      prevBalance,
+      newBalance,
       paymentDate:  d.paymentDate  || null,
       orNumber:     d.orNumber     || null,
       paymentMethod: d.paymentMethod || null,
-      notes:        null,
+      notes: transactionAmount !== 0
+        ? `Edited: ₱${transactionAmount} adjustment. New cumulative total: ₱${newCumulative}`
+        : null,
       performedBy,
     });
 

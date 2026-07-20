@@ -811,9 +811,10 @@ const Payments = {
         return;
       }
 
-      data.registrationFee = parseFloat(document.getElementById('pay-reg-fee')?.value)   || 0;
-      data.amountPaid      = parseFloat((prevPaid + newPay).toFixed(2));   // cumulative total
-      data.balance         = parseFloat(Math.max(0, prevBal - newPay).toFixed(2)); // new outstanding
+      data.registrationFee    = parseFloat(document.getElementById('pay-reg-fee')?.value) || 0;
+      data.amountPaid          = parseFloat((prevPaid + newPay).toFixed(2));   // cumulative total
+      data.balance             = parseFloat(Math.max(0, prevBal - newPay).toFixed(2)); // new outstanding
+      data.transactionAmount   = parseFloat(newPay.toFixed(2)); // ← exact amount entered this time
 
       // Derive status from computed values
       if (data.balance <= 0)         data.status = 'paid';
@@ -822,9 +823,12 @@ const Payments = {
 
     } else {
       // ── NORMAL MODE: create new record, or explicit edit by payment ID ──
-      data.registrationFee = parseFloat(raw.registrationFee) || 0;
-      data.amountPaid      = parseFloat(document.getElementById('pay-amount-paid')?.value) || 0;
-      data.balance         = parseFloat(Math.max(0, data.registrationFee - data.amountPaid).toFixed(2));
+      data.registrationFee  = parseFloat(raw.registrationFee) || 0;
+      data.amountPaid       = parseFloat(document.getElementById('pay-amount-paid')?.value) || 0;
+      data.balance          = parseFloat(Math.max(0, data.registrationFee - data.amountPaid).toFixed(2));
+      // For a brand-new record the transaction IS the full amount paid
+      // For a PUT edit the server will compute the delta using its stored prev value
+      data.transactionAmount = data.amountPaid;
 
       // Derive status from computed values
       if (data.balance <= 0)         data.status = 'paid';
