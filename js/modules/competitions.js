@@ -456,7 +456,7 @@ const Competitions = {
     if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
 
     try {
-      const res = await DB._request('POST', '/seasons', { year: parseInt(year, 10) });
+      const res = await DB.insert('seasons', { year: parseInt(year, 10) });
       if (!res || res.success === false) {
         Toast.error(res?.error || 'Failed to create season.');
         if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
@@ -498,8 +498,8 @@ const Competitions = {
 
   async _deleteSeason(id, name) {
     try {
-      const res = await DB._request('DELETE', `/seasons/${id}`);
-      if (res?.success) {
+      const success = await DB.delete('seasons', id);
+      if (success) {
         Toast.success(`Season "${name}" deleted.`);
         Modal.close();
         await this._loadAll();
