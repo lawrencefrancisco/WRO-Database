@@ -23,6 +23,7 @@ const TABLE_ROUTES = {
   notifications:  'notifications',
   users:          'users',
   audit_logs:     'audit-logs',
+  payment_logs:   'payment-logs',
 };
 
 const DB = {
