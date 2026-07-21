@@ -31,7 +31,7 @@ const Students = {
           <div class="overflow-x-auto">
             <table class="data-table">
               <thead>
-                <tr><th>Student</th><th>Age/Grade</th><th>School</th><th>Parent</th><th>Participation</th><th>Medical</th><th>Actions</th></tr>
+                <tr><th>Student</th><th>Age/Grade</th><th>School</th><th>Parent</th><th>Medical</th><th>Actions</th></tr>
               </thead>
               <tbody id="students-tbody"></tbody>
             </table>
@@ -111,7 +111,7 @@ const Students = {
             <div class="text-sm text-slate-300">${s.parentName}</div>
             <div class="text-xs text-slate-500">${s.parentContact}</div>
           </td>
-          <td><span class="badge badge-blue">${s.previousParticipation || 0}x</span></td>
+
           <td>
             ${s.medicalConditions && s.medicalConditions !== 'None'
               ? `<span class="badge badge-yellow"><svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline;vertical-align:middle'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg> ${s.medicalConditions}</span>`
@@ -202,9 +202,7 @@ const Students = {
         <div><label class="form-label">Allergies</label>
           <input class="form-input" name="allergies" value="${s?.allergies||'None'}">
         </div>
-        <div><label class="form-label">Previous Participations</label>
-          <input class="form-input" type="number" name="previousParticipation" value="${s?.previousParticipation||0}">
-        </div>
+
         <div><label class="form-label">Consent Signed</label>
           <select class="form-input" name="consentSigned">
             <option value="true" ${s?.consentSigned?'selected':''}>Yes</option>
@@ -258,7 +256,7 @@ const Students = {
         <div><span class="text-slate-500">Medical:</span> <span class="${s.medicalConditions!=='None'?'text-yellow-400':'text-slate-200'}">${s.medicalConditions}</span></div>
         <div><span class="text-slate-500">Allergies:</span> <span class="${s.allergies!=='None'?'text-yellow-400':'text-slate-200'}">${s.allergies}</span></div>
         <div><span class="text-slate-500">Consent:</span> ${Utils.statusBadge(s.consentSigned ? 'active' : 'inactive')}</div>
-        <div><span class="text-slate-500">Participation Count:</span> <span class="badge badge-blue">${s.previousParticipation}x</span></div>
+
       </div>
       <div class="mt-4">
         <div class="text-xs text-slate-500 uppercase font-semibold mb-2">Teams Participated</div>
@@ -274,10 +272,10 @@ const Students = {
     const _schoolsMap = await DB.getLookup('schools');
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Students.csv',
-      ['ID','Full Name','Birthday','Age','Gender','Grade','School','Parent','Contact','Medical','Allergies','Participations'],
+      ['ID','Full Name','Birthday','Age','Gender','Grade','School','Parent','Contact','Medical','Allergies'],
       rows.map(s => {
         const sc = _schoolsMap[s.schoolId];
-        return [s.id,s.fullName,s.birthday,s.age,s.gender,s.gradeLevel,sc?.schoolName||'',s.parentName,s.parentContact,s.medicalConditions,s.allergies,s.previousParticipation];
+        return [s.id,s.fullName,s.birthday,s.age,s.gender,s.gradeLevel,sc?.schoolName||'',s.parentName,s.parentContact,s.medicalConditions,s.allergies];
       })
     );
     Toast.success('Student list exported!');
