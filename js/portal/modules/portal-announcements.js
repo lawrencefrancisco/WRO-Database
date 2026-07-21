@@ -72,12 +72,6 @@ const PortalAnnouncements = {
         </div>
       </div>
 
-      <!-- Detail Modal Backdrop -->
-      <div id="ann-modal-backdrop" class="p-ann-modal-backdrop" onclick="PortalAnnouncements.closeDetail()" style="display:none;"></div>
-
-      <!-- Detail Modal -->
-      <div id="ann-detail-modal" class="p-ann-detail-modal" style="display:none;"></div>
-
       <!-- Fullscreen Image Overlay -->
       <div id="ann-fullscreen-overlay" class="p-ann-fullscreen-overlay" onclick="PortalAnnouncements.closeImageFullscreen()" style="display:none;">
         <button class="p-ann-fs-close" aria-label="Close Fullscreen">
@@ -110,7 +104,7 @@ const PortalAnnouncements = {
       const isUnread = !a.is_read;
 
       return `
-        <div class="p-ann-card ${isUnread ? 'p-ann-card--unread' : ''}" id="ann-card-${i}" onclick="PortalAnnouncements.openDetail(${i})" style="${isUnread ? `border-left:3px solid ${color};` : ''}">
+        <div class="p-ann-card ${isUnread ? 'p-ann-card--unread' : ''}" id="ann-card-${a.id}" onclick="PortalRouter.navigate('announcement_detail', { id: ${a.id} })" style="${isUnread ? `border-left:3px solid ${color};` : ''}">
 
           ${isUnread ? `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;background:#e63946;border-radius:50%;box-shadow:0 0 5px rgba(230,57,70,0.6);"></div>` : ''}
 
@@ -142,83 +136,84 @@ const PortalAnnouncements = {
     }).join('');
   },
 
-  async openDetail(i) {
-    const a = this._all[i];
-    if (!a) return;
-    const { colors, icons } = this._catMeta();
-    const color = colors[a.category] || '#1d6fa4';
-    const icon  = icons[a.category]  || icons.general;
-    const date  = new Date(a.created_at).toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'});
-    const img   = a.image_url || a.imageUrl || null;
+  async renderDetail(opts) {
+    const content = document.getElementById('portal-content');
+    content.innerHTML = `<div class="p-loading"><div class="p-spinner"></div></div>`;
 
-    // Mark as read in DB + update local state immediately
-    if (!a.is_read) {
-      a.is_read = true;
-      PORTAL_DB.markAnnouncementRead(a.id).catch(() => {});
-      // Update the card visually without closing the modal
-      const card = document.getElementById(`ann-card-${i}`);
-      if (card) {
-        card.classList.remove('p-ann-card--unread');
-        card.style.borderLeft = '';
-        // Remove red dot and NEW badge
-        card.querySelectorAll('[style*="e63946"]').forEach(el => {
-          if (el.style.position === 'absolute' || el.textContent.trim() === 'NEW') el.remove();
-        });
-        // Make title normal weight
-        const title = card.querySelector('.p-ann-card-title');
-        if (title) { title.style.fontWeight = ''; title.style.color = ''; }
+    try {
+      if (this._all.length === 0) {
+        this._all = await PORTAL_DB.announcements();
       }
-      // Update the header unread count badge
-      this._refreshUnreadBadge();
-    }
+      const a = this._all.find(x => x.id == opts.id);
+      
+      if (!a) {
+        content.innerHTML = `
+          <div class="p-page" style="text-align:center; padding-top:4rem;">
+            <div class="p-error-card" style="display:inline-block;">Announcement not found or has been deleted.</div>
+            <br><br>
+            <button class="p-btn p-btn-primary" onclick="PortalRouter.navigate('announcements')">Back to Announcements</button>
+          </div>`;
+        return;
+      }
 
-    const modal = document.getElementById('ann-detail-modal');
-    const backdrop = document.getElementById('ann-modal-backdrop');
-    if (!modal) return;
+      const { colors, icons } = this._catMeta();
+      const color = colors[a.category] || '#1d6fa4';
+      const icon  = icons[a.category]  || icons.general;
+      const date  = new Date(a.created_at).toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const img   = a.image_url || a.imageUrl || null;
 
-    modal.innerHTML = `
-      <!-- Close button -->
-      <button class="p-ann-modal-close" onclick="PortalAnnouncements.closeDetail()" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      // Mark as read in DB if unread
+      if (!a.is_read) {
+        a.is_read = true;
+        PORTAL_DB.markAnnouncementRead(a.id).catch(() => {});
+      }
 
-      <!-- Image (full width, aspect-ratio preserved) -->
-      ${img ? `
-      <div class="p-ann-modal-img-wrap">
-        <img src="${img}" alt="Announcement poster" class="p-ann-modal-img" loading="lazy" onclick="PortalAnnouncements.openImageFullscreen('${img}')" style="cursor:pointer;" title="Click to view fullscreen">
-      </div>` : ''}
-
-      <!-- Body -->
-      <div class="p-ann-modal-body">
-        <!-- Category + Date row -->
-        <div class="p-ann-card-meta" style="margin-bottom:0.75rem;">
-          <div class="p-ann-cat-icon" style="background:${color}18;width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
+      content.innerHTML = `
+        <div class="p-ann-detail-page">
+          <div class="p-ann-detail-nav">
+            <button class="p-ann-back-btn" onclick="PortalRouter.navigate('announcements')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back to Announcements
+            </button>
           </div>
-          <span class="p-ann-cat-badge" style="background:${color}18;color:${color};">${a.category}</span>
-          <span class="p-ann-card-date">${date}</span>
+
+          ${img ? `
+          <div class="p-ann-hero-img-wrap">
+            <img src="${img}" alt="Announcement Poster" class="p-ann-hero-img" onclick="PortalAnnouncements.openImageFullscreen('${img}')" title="Click to view fullscreen">
+          </div>` : ''}
+
+          <div class="p-ann-detail-body-container">
+            <div class="p-ann-card-meta" style="margin-bottom:1.25rem;">
+              <div class="p-ann-cat-icon" style="background:${color}18;width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
+              </div>
+              <span class="p-ann-cat-badge" style="background:${color}18;color:${color};font-size:0.8rem;">${a.category}</span>
+              <span class="p-ann-card-date" style="font-size:0.85rem;">${date}</span>
+            </div>
+
+            <h1 class="p-ann-detail-title">${a.title}</h1>
+            
+            <div class="p-ann-detail-text">${(a.body || '').replace(/\n/g,'<br>')}</div>
+
+            ${a.recipients ? `
+            <div class="p-ann-detail-meta">
+              <span>Recipients:</span>
+              <strong>${a.recipients}</strong>
+            </div>` : ''}
+          </div>
         </div>
 
-        <h2 class="p-ann-modal-title">${a.title}</h2>
+        <!-- Fullscreen Image Overlay -->
+        <div id="ann-fullscreen-overlay" class="p-ann-fullscreen-overlay" onclick="PortalAnnouncements.closeImageFullscreen()" style="display:none;">
+          <button class="p-ann-fs-close" aria-label="Close Fullscreen">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <img id="ann-fullscreen-img" class="p-ann-fs-img" src="" alt="Fullscreen image">
+        </div>`;
 
-        <div class="p-ann-modal-text">${(a.body || '').replace(/\n/g,'<br>')}</div>
-
-        ${a.recipients ? `
-        <div class="p-ann-modal-meta">
-          <span>Recipients:</span>
-          <strong>${a.recipients}</strong>
-        </div>` : ''}
-      </div>`;
-
-    modal.style.display   = 'flex';
-    backdrop.style.display = 'block';
-    // Prevent body scroll
-    document.body.style.overflow = 'hidden';
-    // Animate in
-    requestAnimationFrame(() => {
-      modal.classList.add('p-ann-modal-open');
-      backdrop.classList.add('p-ann-modal-bg-open');
-    });
+    } catch (err) {
+      content.innerHTML = `<div class="p-page"><div class="p-error-card">Failed to load announcement details: ${err.message}</div></div>`;
+    }
   },
 
   // Update the header unread count badge in real time

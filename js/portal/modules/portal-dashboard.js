@@ -172,7 +172,7 @@ const PortalDashboard = {
             ${anns.length === 0
               ? `<div class="p-empty-row">No announcements yet — check back later.</div>`
               : anns.slice(0, 4).map(a => `
-                <div class="p-ann-row" onclick="PortalRouter.navigate('announcements')">
+                <div class="p-ann-row" onclick="PortalRouter.navigate('announcement_detail', { id: ${a.id} })">
                   <div class="p-ann-dot" style="background:${catColors[a.category] || '#1d6fa4'};"></div>
                   <div class="p-ann-body">
                     <div class="p-ann-title">${a.title}</div>
