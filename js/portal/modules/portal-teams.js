@@ -68,14 +68,7 @@ const PortalTeams = {
                     <span class="p-team-lbl">Competition</span>
                     <span class="p-team-val">${t.season || '—'}</span>
                   </div>
-                  <div class="p-team-row">
-                    <span class="p-team-lbl">Platform</span>
-                    <span class="p-team-val">${t.robot_platform || '—'}</span>
-                  </div>
-                  <div class="p-team-row">
-                    <span class="p-team-lbl">Language</span>
-                    <span class="p-team-val">${t.programming_language || '—'}</span>
-                  </div>
+
                 </div>
                 <div class="p-team-footer">
                   ${badge(t.registration_status)}

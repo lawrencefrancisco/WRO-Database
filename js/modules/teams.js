@@ -235,16 +235,7 @@ const Teams = {
           </div>
         </div>
 
-        <div><label class="form-label">Robot Platform</label>
-          <select class="form-input" name="robotPlatform">
-            ${Seeder.ROBOT_PLATFORMS.map(p=>`<option ${t?.robotPlatform===p?'selected':''}>${p}</option>`).join('')}
-          </select>
-        </div>
-        <div><label class="form-label">Programming Language</label>
-          <select class="form-input" name="programmingLanguage">
-            ${Seeder.PROGRAMMING_LANGUAGES.map(p=>`<option ${t?.programmingLanguage===p?'selected':''}>${p}</option>`).join('')}
-          </select>
-        </div>
+
         <div><label class="form-label">Registration Status</label>
           <select class="form-input" name="registrationStatus">
             ${['registered','confirmed','waitlisted','withdrawn'].map(s=>`<option ${t?.registrationStatus===s?'selected':''}>${s}</option>`).join('')}
@@ -383,8 +374,7 @@ const Teams = {
           ${memberSchools.length > 1 ? '<span class="ml-2 px-1.5 py-0.5 rounded text-xs font-semibold" style="background:rgba(30,158,191,0.18);color:#1E9EBF;">Multi-school</span>' : ''}
         </div>
         <div><span class="text-slate-500">Coach:</span> <span class="text-slate-200">${coach?.fullName||'—'}</span></div>
-        <div><span class="text-slate-500">Robot Platform:</span> <span class="text-slate-200">${t.robotPlatform}</span></div>
-        <div><span class="text-slate-500">Language:</span> <span class="text-slate-200">${t.programmingLanguage}</span></div>
+
         <div><span class="text-slate-500">Registration:</span> ${Utils.statusBadge(t.registrationStatus)}</div>
         <div><span class="text-slate-500">Payment:</span> ${Utils.statusBadge(t.paymentStatus)}</div>
         <div><span class="text-slate-500">Qualification:</span> ${Utils.statusBadge(t.qualificationStatus)}</div>
@@ -423,11 +413,11 @@ const Teams = {
     const _coachesMap = await DB.getLookup('coaches');
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Teams.csv',
-      ['ID','Team Name','Season','Category','Age Group','School','Coach','Robot Platform','Programming Language','Registration','Payment','Qualification'],
+      ['ID','Team Name','Season','Category','Age Group','School','Coach','Registration','Payment','Qualification'],
       rows.map(t => {
         const sc = _schoolsMap[t.schoolId];
         const co = _coachesMap[t.coachId];
-        return [t.id,t.teamName,t.season,t.category,t.ageGroup,sc?.schoolName||'',co?.fullName||'',t.robotPlatform,t.programmingLanguage,t.registrationStatus,t.paymentStatus,t.qualificationStatus];
+        return [t.id,t.teamName,t.season,t.category,t.ageGroup,sc?.schoolName||'',co?.fullName||'',t.registrationStatus,t.paymentStatus,t.qualificationStatus];
       })
     );
     Toast.success('Team list exported!');

@@ -88,7 +88,7 @@ router.get('/teams', async (req, res) => {
     if (!schoolId) return res.json([]);
 
     const [rows] = await pool.execute(
-      `SELECT t.id, t.team_name, t.category, t.age_group, t.season, t.robot_platform, t.programming_language,
+      `SELECT t.id, t.team_name, t.category, t.age_group, t.season,
               t.registration_status, t.payment_status, t.qualification_status, t.status,
               c.full_name AS coach_name,
               comp.name AS competition_name

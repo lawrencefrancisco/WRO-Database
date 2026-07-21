@@ -110,10 +110,10 @@ const Reports = {
     const _coachesMap = await DB.getLookup('coaches');
     if (format === 'csv') {
       Utils.downloadCSV('WRO_Teams.csv',
-        ['ID','Team Name','Season','Category','School','Coach','Platform','Registration','Payment','Qualification'],
+        ['ID','Team Name','Season','Category','School','Coach','Registration','Payment','Qualification'],
         rows.map(t => {
           const sc=_schoolsMap[t.schoolId], co=_coachesMap[t.coachId];
-          return [t.id,t.teamName,t.season,t.category,sc?.schoolName||'',co?.fullName||'',t.robotPlatform,t.registrationStatus,t.paymentStatus,t.qualificationStatus];
+          return [t.id,t.teamName,t.season,t.category,sc?.schoolName||'',co?.fullName||'',t.registrationStatus,t.paymentStatus,t.qualificationStatus];
         })
       );
     } else {

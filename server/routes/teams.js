@@ -96,11 +96,11 @@ router.post('/', async (req, res) => {
 
     const [result] = await conn.execute(
       `INSERT INTO teams (team_code, season, competition_id, team_name, category, age_group,
-       school_id, coach_id, robot_platform, programming_language, registration_status,
+       school_id, coach_id, registration_status,
        payment_status, qualification_status, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [teamCode, d.season, competitionId, d.teamName, d.category, d.ageGroup || null,
-       schoolId, coachId, d.robotPlatform || null, d.programmingLanguage || null,
+       schoolId, coachId,
        d.registrationStatus || 'registered',
        // payment_status is managed exclusively by Payment Management — always default to 'unpaid' on insert
        'unpaid',
@@ -154,12 +154,12 @@ router.put('/:id', async (req, res) => {
 
     await conn.execute(
       `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?,
-       age_group=?, school_id=?, coach_id=?, robot_platform=?, programming_language=?,
+       age_group=?, school_id=?, coach_id=?,
        registration_status=?, payment_status=?, qualification_status=?, status=?, updated_at=NOW()
        WHERE id = ?`,
       [d.season, competitionId, d.teamName, d.category,
-       d.ageGroup || null, schoolId, coachId, d.robotPlatform || null,
-       d.programmingLanguage || null, d.registrationStatus, currentPaymentStatus,
+       d.ageGroup || null, schoolId, coachId,
+       d.registrationStatus, currentPaymentStatus,
        d.qualificationStatus, d.status, teamId]
     );
 
