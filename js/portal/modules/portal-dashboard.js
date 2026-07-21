@@ -39,7 +39,7 @@ const PortalDashboard = {
             <div class="p-welcome-left">
               <div class="p-welcome-avatar">${(me.name || 'U').charAt(0).toUpperCase()}</div>
               <div>
-                <div class="p-welcome-name">Hi, ${me.name?.split(' ')[0] || 'User'} 👋</div>
+                <div class="p-welcome-name">Hi, ${me.name?.split(' ')[0] || 'User'}</div>
                 <div class="p-welcome-school">
                   ${me.school_name || 'No school linked'}
                   ${me.region ? ` · ${me.region}` : ''}
