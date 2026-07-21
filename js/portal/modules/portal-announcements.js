@@ -76,7 +76,15 @@ const PortalAnnouncements = {
       <div id="ann-modal-backdrop" class="p-ann-modal-backdrop" onclick="PortalAnnouncements.closeDetail()" style="display:none;"></div>
 
       <!-- Detail Modal -->
-      <div id="ann-detail-modal" class="p-ann-detail-modal" style="display:none;"></div>`;
+      <div id="ann-detail-modal" class="p-ann-detail-modal" style="display:none;"></div>
+
+      <!-- Fullscreen Image Overlay -->
+      <div id="ann-fullscreen-overlay" class="p-ann-fullscreen-overlay" onclick="PortalAnnouncements.closeImageFullscreen()" style="display:none;">
+        <button class="p-ann-fs-close" aria-label="Close Fullscreen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <img id="ann-fullscreen-img" class="p-ann-fs-img" src="" alt="Fullscreen image">
+      </div>`;
   },
 
   _renderCards(items) {
@@ -177,7 +185,7 @@ const PortalAnnouncements = {
       <!-- Image (full width, aspect-ratio preserved) -->
       ${img ? `
       <div class="p-ann-modal-img-wrap">
-        <img src="${img}" alt="Announcement poster" class="p-ann-modal-img" loading="lazy">
+        <img src="${img}" alt="Announcement poster" class="p-ann-modal-img" loading="lazy" onclick="PortalAnnouncements.openImageFullscreen('${img}')" style="cursor:pointer;" title="Click to view fullscreen">
       </div>` : ''}
 
       <!-- Body -->
@@ -247,6 +255,28 @@ const PortalAnnouncements = {
     const filtered = cat === 'all' ? this._all : this._all.filter(a => a.category === cat);
     const list = document.getElementById('ann-list');
     if (list) list.innerHTML = this._renderCards(filtered);
+  },
+
+  openImageFullscreen(src) {
+    const overlay = document.getElementById('ann-fullscreen-overlay');
+    const imgEl = document.getElementById('ann-fullscreen-img');
+    if (!overlay || !imgEl) return;
+    imgEl.src = src;
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => {
+      overlay.classList.add('p-ann-fs-open');
+    });
+  },
+
+  closeImageFullscreen() {
+    const overlay = document.getElementById('ann-fullscreen-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('p-ann-fs-open');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      const imgEl = document.getElementById('ann-fullscreen-img');
+      if (imgEl) imgEl.src = '';
+    }, 250);
   },
 };
 
