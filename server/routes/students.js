@@ -50,12 +50,12 @@ router.post('/', async (req, res) => {
     const [result] = await pool.execute(
       `INSERT INTO students (student_code, full_name, birthday, age, gender, grade_level, school_id,
        parent_name, parent_contact, parent_email, medical_conditions, allergies, shirt_size,
-       previous_participation, consent_signed, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       consent_signed, status, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [studentCode, d.fullName, d.birthday || null, d.age || null, d.gender, d.gradeLevel,
        schoolId, d.parentName, d.parentContact, d.parentEmail,
        d.medicalConditions || 'None', d.allergies || 'None', d.shirtSize,
-       d.previousParticipation || 0, d.consentSigned ? 1 : 0, d.status || 'active']
+       d.consentSigned ? 1 : 0, d.status || 'active']
     );
     const [rows] = await pool.execute('SELECT * FROM students WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -79,12 +79,12 @@ router.put('/:id', async (req, res) => {
     await pool.execute(
       `UPDATE students SET full_name=?, birthday=?, age=?, gender=?, grade_level=?,
        school_id=?, parent_name=?, parent_contact=?, parent_email=?, medical_conditions=?,
-       allergies=?, shirt_size=?, previous_participation=?, consent_signed=?, status=?,
+       allergies=?, shirt_size=?, consent_signed=?, status=?,
        updated_at=NOW() WHERE id = ?`,
       [d.fullName, d.birthday || null, d.age || null,
        d.gender, d.gradeLevel, schoolId, d.parentName, d.parentContact, d.parentEmail,
        d.medicalConditions || 'None', d.allergies || 'None', d.shirtSize,
-       d.previousParticipation || 0, d.consentSigned ? 1 : 0, d.status, req.params.id]
+       d.consentSigned ? 1 : 0, d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM students WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
