@@ -18,7 +18,7 @@ router.use(authMiddleware);
 router.get('/', requireRole('SUPER_ADMIN'), async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id, user_code, username, name, role, email, is_active, last_login, created_at, updated_at FROM users WHERE is_deleted = 0'
+      'SELECT id, user_code, username, name, role, email, school_id, is_active, last_login, created_at, updated_at FROM users WHERE is_deleted = 0'
     );
     res.json(rows);
   } catch (err) {
@@ -30,7 +30,7 @@ router.get('/', requireRole('SUPER_ADMIN'), async (req, res) => {
 router.get('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id, user_code, username, name, role, email, is_active, last_login, created_at, updated_at FROM users WHERE id = ? AND is_deleted = 0',
+      'SELECT id, user_code, username, name, role, email, school_id, is_active, last_login, created_at, updated_at FROM users WHERE id = ? AND is_deleted = 0',
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });

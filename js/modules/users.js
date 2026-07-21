@@ -110,7 +110,7 @@ const Users = {
           <label class="form-label">Linked School <span style="color:var(--txt-muted);font-weight:400;">(Required for Standard Users)</span></label>
           <select class="form-input" name="schoolId">
             <option value="">— No school linked —</option>
-            ${schools.map(s=>`<option value="${s.id}" ${u?.schoolId==s.id?'selected':''}>${s.schoolName}</option>`).join('')}
+            ${schools.map(s=>`<option value="${s.id}" ${(u?.schoolId == s.id || u?.school_id == s.id)?'selected':''}>${s.schoolName}</option>`).join('')}
           </select>
         </div>
         <div><label class="form-label">Active</label>

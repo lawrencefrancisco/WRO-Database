@@ -44,9 +44,30 @@ const PORTAL_AUTH = {
     }
   },
 
+  /**
+   * Dynamically computes the base directory of the app so redirects work
+   * whether served by Apache (e.g. /WRO-old/) or Node.js on port 3000 (/).
+   * Uses this script's own src to find the root — avoids being tripped up
+   * by deep-linked URLs like /WRO-old/announcements/1.
+   */
+  _baseUrl() {
+    // This script is at: /WRO-old/js/portal/portal-auth.js
+    // We need:           /WRO-old/
+    const scripts = document.querySelectorAll('script[src]');
+    for (const s of scripts) {
+      if (s.src && s.src.includes('portal-auth.js')) {
+        // e.g. http://localhost/WRO-old/js/portal/portal-auth.js
+        //   → strip "js/portal/portal-auth.js" → http://localhost/WRO-old/
+        return s.src.replace(/js\/portal\/portal-auth\.js.*$/, '');
+      }
+    }
+    // Fallback: use the origin (works correctly on Node.js server at port 3000)
+    return window.location.origin + '/';
+  },
+
   logout() {
     sessionStorage.removeItem(this._SESSION_KEY);
-    window.location.href = 'portal-login.html';
+    window.location.href = this._baseUrl() + 'portal-login.html';
   },
 
   currentUser() {
@@ -63,7 +84,7 @@ const PORTAL_AUTH = {
   /** Guard – redirect to portal-login.html if not authenticated */
   guard() {
     if (!this.isLoggedIn()) {
-      window.location.href = 'portal-login.html';
+      window.location.href = this._baseUrl() + 'portal-login.html';
       return false;
     }
     return true;

@@ -1277,9 +1277,21 @@ const Communications = {
   },
 
   async publishAnnouncement(id) {
-    await DB.update('announcements', id, { status: 'published' });
-    Toast.success('Announcement published!');
-    await this._renderTab();
+    try {
+      // Fetch the current record first so we don't accidentally blank any fields
+      const existing = await DB.getById('announcements', id);
+      if (!existing) { Toast.error('Announcement not found.'); return; }
+      await DB.update('announcements', id, {
+        ...existing,
+        status: 'published',
+        publishAt: existing.publishAt || existing.publish_at || new Date().toISOString(),
+      });
+      Toast.success('Announcement published!');
+      await this._renderTab();
+    } catch (err) {
+      console.error('[publishAnnouncement]', err);
+      Toast.error('Failed to publish announcement.');
+    }
   },
 
   async deleteAnnouncement(id) {

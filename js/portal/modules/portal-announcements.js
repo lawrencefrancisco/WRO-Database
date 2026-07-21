@@ -6,10 +6,39 @@
 
 const PortalAnnouncements = {
   _all: [],
+  _pollTimer: null,
+
+  // Stop the 60-second auto-refresh timer
+  _stopPoll() {
+    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+  },
+
+  // Start auto-refresh: every 60 s re-fetch announcements quietly
+  _startPoll() {
+    this._stopPoll();
+    this._pollTimer = setInterval(async () => {
+      try {
+        const fresh = await PORTAL_DB.announcements();
+        if (JSON.stringify(fresh.map(a => a.id + a.is_read)) !==
+            JSON.stringify(this._all.map(a => a.id + a.is_read))) {
+          this._all = fresh;
+          const content = document.getElementById('portal-content');
+          if (content) this._renderView(content);
+          // Update the nav badge
+          const unread = fresh.filter(a => !a.is_read).length;
+          const badge = document.getElementById('ann-nav-badge');
+          if (badge) { badge.style.display = unread > 0 ? '' : 'none'; }
+        }
+      } catch { /* silent – polling is best-effort */ }
+    }, 60_000);
+  },
 
   async render() {
     const content = document.getElementById('portal-content');
     content.innerHTML = `<div class="p-loading"><div class="p-spinner"></div></div>`;
+
+    // Always clear the in-memory cache so we get fresh data from the server
+    this._all = [];
 
     try {
       const all = await PORTAL_DB.announcements();
@@ -24,6 +53,9 @@ const PortalAnnouncements = {
       if (unread.length > 0) {
         PORTAL_DB.markAllAnnouncementsRead().catch(() => {});
       }
+
+      // Start polling while user is on the Announcements list page
+      this._startPoll();
     } catch (err) {
       content.innerHTML = `<div class="p-page"><div class="p-error-card">Failed to load announcements: ${err.message}</div></div>`;
     }
@@ -137,13 +169,18 @@ const PortalAnnouncements = {
   },
 
   async renderDetail(opts) {
+    // Stop the list poll — we're leaving the list page
+    this._stopPoll();
+    // Clear cache so returning to list always fetches fresh
+    this._all = [];
+
     const content = document.getElementById('portal-content');
     content.innerHTML = `<div class="p-loading"><div class="p-spinner"></div></div>`;
 
     try {
-      if (this._all.length === 0) {
-        this._all = await PORTAL_DB.announcements();
-      }
+      // Always fetch fresh data for the detail view
+      const all = await PORTAL_DB.announcements();
+      this._all = all;
       const a = this._all.find(x => x.id == opts.id);
       
       if (!a) {
@@ -166,6 +203,10 @@ const PortalAnnouncements = {
       if (!a.is_read) {
         a.is_read = true;
         PORTAL_DB.markAnnouncementRead(a.id).catch(() => {});
+        // Update nav badge immediately
+        const remaining = this._all.filter(x => !x.is_read).length;
+        const badge = document.getElementById('ann-nav-badge');
+        if (badge) { badge.style.display = remaining > 0 ? '' : 'none'; }
       }
 
       content.innerHTML = `

@@ -59,23 +59,52 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update announcement
+// PUT update announcement – partial update (only updates fields provided in body)
 router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
+    const validRoles = ['SUPER_ADMIN', 'EVENT_ADMIN'];
+
+    // Build SET clause dynamically so a partial payload (e.g. just { status })
+    // does NOT overwrite the other columns with null/undefined.
+    const fieldMap = {
+      title:      d.title,
+      body:       d.body,
+      image_url:  d.imageUrl !== undefined ? d.imageUrl : (d.image_url !== undefined ? d.image_url : undefined),
+      category:   d.category,
+      recipients: d.recipients,
+      status:     d.status,
+      publish_at: d.publishAt !== undefined ? d.publishAt : d.publish_at,
+    };
+
+    const setClauses = [];
+    const values     = [];
+    for (const [col, val] of Object.entries(fieldMap)) {
+      if (val !== undefined) {
+        setClauses.push(`${col} = ?`);
+        values.push(val === '' && col !== 'body' ? null : val);
+      }
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ success: false, error: 'No fields to update.' });
+    }
+
+    setClauses.push('updated_at = NOW()');
+    values.push(req.params.id);
+
     await pool.execute(
-      `UPDATE announcements SET title=?, body=?, image_url=?, category=?, recipients=?,
-       status=?, publish_at=?, updated_at=NOW() WHERE id = ?`,
-      [d.title, d.body || '', d.imageUrl !== undefined ? d.imageUrl : null,
-       d.category || 'general', d.recipients || 'all',
-       d.status || 'draft', d.publishAt || null, req.params.id]
+      `UPDATE announcements SET ${setClauses.join(', ')} WHERE id = ?`,
+      values
     );
+
     const [rows] = await pool.execute(
       'SELECT id, announcement_code, title, body, image_url, category, recipients, status, publish_at, created_by, created_at, updated_at FROM announcements WHERE id = ?',
       [req.params.id]
     );
     res.json(rows[0]);
   } catch (err) {
+    console.error('[Announcements PUT] Error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

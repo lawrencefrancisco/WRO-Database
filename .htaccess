@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /WRO-old/
+
+  # If it's a real file or directory, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Route deep links in the portal (e.g. /announcements/1) to portal.html
+  RewriteRule ^announcements/.*$ portal.html [L]
+</IfModule>
