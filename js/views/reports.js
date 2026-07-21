@@ -89,10 +89,10 @@ const Reports = {
     const _schoolsMap = await DB.getLookup('schools');
     if (format === 'csv') {
       Utils.downloadCSV('WRO_Students.csv',
-        ['ID','Full Name','Birthday','Age','Gender','Grade','School','Parent Name','Contact','Medical','Allergies'],
+        ['ID','Full Name','Birthday','Age','Gender','Grade','School','Parent Name','Contact'],
         rows.map(s => {
           const sc = _schoolsMap[s.schoolId];
-          return [s.id,s.fullName,s.birthday,s.age,s.gender,s.gradeLevel,sc?.schoolName||'',s.parentName,s.parentContact,s.medicalConditions,s.allergies];
+          return [s.id,s.fullName,s.birthday,s.age,s.gender,s.gradeLevel,sc?.schoolName||'',s.parentName,s.parentContact];
         })
       );
     } else {
