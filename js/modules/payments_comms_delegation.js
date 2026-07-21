@@ -1203,19 +1203,48 @@ const Communications = {
     if (!file.type.startsWith('image/')) {
       errEl.textContent = 'Please upload an image file (PNG, JPG, WEBP).'; errEl.style.display = 'block'; return;
     }
-    if (file.size > 2.5 * 1024 * 1024) {
-      errEl.textContent = 'Image is too large. Please use an image under 2 MB.'; errEl.style.display = 'block'; return;
+    // Limit increased to 10MB just for the raw input, since we will compress it down heavily anyway
+    if (file.size > 10 * 1024 * 1024) {
+      errEl.textContent = 'Image is too large. Please use an image under 10 MB.'; errEl.style.display = 'block'; return;
     }
+
     const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = e.target.result;
-      Communications._pendingImage = base64;
-      const preview = document.getElementById('ann-img-preview');
-      const wrap    = document.getElementById('ann-img-preview-wrap');
-      const prompt  = document.getElementById('ann-drop-prompt');
-      if (preview) preview.src = base64;
-      if (wrap)    wrap.style.display    = 'block';
-      if (prompt)  prompt.style.display  = 'none';
+      // Compress the image before storing it as base64 to avoid MySQL packet size errors
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to WebP format for superior compression
+        const compressedBase64 = canvas.toDataURL('image/webp', 0.8);
+
+        Communications._pendingImage = compressedBase64;
+        const preview = document.getElementById('ann-img-preview');
+        const wrap    = document.getElementById('ann-img-preview-wrap');
+        const prompt  = document.getElementById('ann-drop-prompt');
+        if (preview) preview.src = compressedBase64;
+        if (wrap)    wrap.style.display    = 'block';
+        if (prompt)  prompt.style.display  = 'none';
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   },

@@ -1,6 +1,7 @@
 // ============================================================
 // WRO Philippines – Standard User Portal – Announcements Module
 // Mobile-first: image-first cards, detail modal, filter chips
+// Supports per-announcement read/unread tracking
 // ============================================================
 
 const PortalAnnouncements = {
@@ -14,6 +15,15 @@ const PortalAnnouncements = {
       const all = await PORTAL_DB.announcements();
       this._all = all;
       this._renderView(content);
+
+      // Mark all read in the background (DB) so dashboard notifications clear,
+      // but do NOT instantly clear the UI badges here so the user can see which ones are new.
+      // The local 'new' badges will clear individually when clicked (openDetail),
+      // or entirely if the page is reloaded (since DB is updated).
+      const unread = all.filter(a => !a.is_read);
+      if (unread.length > 0) {
+        PORTAL_DB.markAllAnnouncementsRead().catch(() => {});
+      }
     } catch (err) {
       content.innerHTML = `<div class="p-page"><div class="p-error-card">Failed to load announcements: ${err.message}</div></div>`;
     }
@@ -34,6 +44,7 @@ const PortalAnnouncements = {
 
   _renderView(container) {
     const content = container || document.getElementById('portal-content');
+    const unreadCount = this._all.filter(a => !a.is_read).length;
     content.innerHTML = `
       <div class="p-page">
         <div class="p-page-header">
@@ -41,7 +52,10 @@ const PortalAnnouncements = {
             <div class="p-page-title">Announcements</div>
             <div class="p-page-sub">Official updates from administrators</div>
           </div>
-          <div class="p-count-pill">${this._all.length}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="p-count-pill">${this._all.length}</div>
+            ${unreadCount > 0 ? `<div style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(230,57,70,0.15);color:#e63946;border:1px solid rgba(230,57,70,0.3);">${unreadCount} unread</div>` : ''}
+          </div>
         </div>
 
         <!-- Scrollable filter chips -->
@@ -85,9 +99,12 @@ const PortalAnnouncements = {
       const date    = new Date(a.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
       const img     = a.image_url || a.imageUrl || null;
       const preview = (a.body || '').slice(0, 120) + ((a.body || '').length > 120 ? '…' : '');
+      const isUnread = !a.is_read;
 
       return `
-        <div class="p-ann-card" id="ann-card-${i}" onclick="PortalAnnouncements.openDetail(${i})">
+        <div class="p-ann-card ${isUnread ? 'p-ann-card--unread' : ''}" id="ann-card-${i}" onclick="PortalAnnouncements.openDetail(${i})" style="${isUnread ? `border-left:3px solid ${color};` : ''}">
+
+          ${isUnread ? `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;background:#e63946;border-radius:50%;box-shadow:0 0 5px rgba(230,57,70,0.6);"></div>` : ''}
 
           <!-- Image (shown if present) -->
           ${img ? `
@@ -104,8 +121,9 @@ const PortalAnnouncements = {
               <div class="p-ann-card-meta">
                 <span class="p-ann-cat-badge" style="background:${color}18;color:${color};">${a.category}</span>
                 <span class="p-ann-card-date">${date}</span>
+                ${isUnread ? `<span style="font-size:10px;font-weight:700;color:#e63946;background:rgba(230,57,70,0.12);border-radius:10px;padding:1px 7px;">NEW</span>` : ''}
               </div>
-              <div class="p-ann-card-title">${a.title}</div>
+              <div class="p-ann-card-title" style="${isUnread ? 'color:#fff;font-weight:700;' : ''}">${a.title}</div>
               <div class="p-ann-card-preview">${preview}</div>
             </div>
             <div class="p-ann-card-chev">
@@ -116,7 +134,7 @@ const PortalAnnouncements = {
     }).join('');
   },
 
-  openDetail(i) {
+  async openDetail(i) {
     const a = this._all[i];
     if (!a) return;
     const { colors, icons } = this._catMeta();
@@ -124,6 +142,27 @@ const PortalAnnouncements = {
     const icon  = icons[a.category]  || icons.general;
     const date  = new Date(a.created_at).toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'});
     const img   = a.image_url || a.imageUrl || null;
+
+    // Mark as read in DB + update local state immediately
+    if (!a.is_read) {
+      a.is_read = true;
+      PORTAL_DB.markAnnouncementRead(a.id).catch(() => {});
+      // Update the card visually without closing the modal
+      const card = document.getElementById(`ann-card-${i}`);
+      if (card) {
+        card.classList.remove('p-ann-card--unread');
+        card.style.borderLeft = '';
+        // Remove red dot and NEW badge
+        card.querySelectorAll('[style*="e63946"]').forEach(el => {
+          if (el.style.position === 'absolute' || el.textContent.trim() === 'NEW') el.remove();
+        });
+        // Make title normal weight
+        const title = card.querySelector('.p-ann-card-title');
+        if (title) { title.style.fontWeight = ''; title.style.color = ''; }
+      }
+      // Update the header unread count badge
+      this._refreshUnreadBadge();
+    }
 
     const modal = document.getElementById('ann-detail-modal');
     const backdrop = document.getElementById('ann-modal-backdrop');
@@ -172,6 +211,20 @@ const PortalAnnouncements = {
       modal.classList.add('p-ann-modal-open');
       backdrop.classList.add('p-ann-modal-bg-open');
     });
+  },
+
+  // Update the header unread count badge in real time
+  _refreshUnreadBadge() {
+    const remaining = this._all.filter(a => !a.is_read).length;
+    // Update the count pill in the page header
+    const headerBadge = document.querySelector('.p-page-header [style*="e63946"]');
+    if (headerBadge) {
+      if (remaining === 0) {
+        headerBadge.remove();
+      } else {
+        headerBadge.textContent = `${remaining} unread`;
+      }
+    }
   },
 
   closeDetail() {
