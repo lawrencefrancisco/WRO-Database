@@ -19,7 +19,7 @@ const PortalProfile = {
             <div class="p-profile-avatar">${(me.name || 'U').charAt(0).toUpperCase()}</div>
             <div class="p-profile-name">${me.name || '—'}</div>
             <div class="p-profile-role">Standard User</div>
-            ${me.school_name ? `<div class="p-profile-school">🏫 ${me.school_name}</div>` : '<div class="p-profile-school" style="color:#e8c027;">No school linked — contact admin</div>'}
+            ${me.school_name ? `<div class="p-profile-school"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${me.school_name}</div>` : '<div class="p-profile-school" style="color:#e8c027;">No school linked — contact admin</div>'}
           </div>
 
           <div class="p-profile-grid">
@@ -61,9 +61,9 @@ const PortalProfile = {
                 </div>
                 <div>
                   <div class="p-school-name">${me.school_name}</div>
-                  ${me.region ? `<div class="p-school-detail">📍 ${[me.city, me.province, me.region].filter(Boolean).join(', ')}</div>` : ''}
-                  ${me.contact_number ? `<div class="p-school-detail">📞 ${me.contact_number}</div>` : ''}
-                  ${me.school_email ? `<div class="p-school-detail">✉️ ${me.school_email}</div>` : ''}
+                  ${me.region ? `<div class="p-school-detail"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${[me.city, me.province, me.region].filter(Boolean).join(', ')}</div>` : ''}
+                  ${me.contact_number ? `<div class="p-school-detail"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.58 3.44 2 2 0 0 1 3.54 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.73a16 16 0 0 0 6.36 6.36l.87-1.84a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${me.contact_number}</div>` : ''}
+                  ${me.school_email ? `<div class="p-school-detail"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${me.school_email}</div>` : ''}
                 </div>
               </div>
             </div>` : ''}
