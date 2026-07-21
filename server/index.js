@@ -32,6 +32,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../index.html')); 
 });
 
+// Serve the portal on direct announcement links
+app.get('/announcements/:id', (req, res) => {
+    res.sendFile(path.join(__dirname, '../portal.html'));
+});
+
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth',           require('./routes/auth'));
 app.use('/api/chat', chatRoute);

@@ -26,13 +26,24 @@ const PortalRouter = {
     // Close sidebar on mobile after nav
     PortalApp.closeSidebar();
 
+    // Handle URL pushState for deep linking
+    if (!opts.popState) {
+      if (name === 'announcement_detail' && opts.id) {
+        history.pushState({ name, opts }, '', `/announcements/${opts.id}`);
+      } else {
+        // Only push state if we are actually changing URL or if it's the first load
+        // Actually, always pushing is fine for SPA history stack.
+        history.pushState({ name, opts }, '', `/portal.html`);
+      }
+    }
+
     // Loading state
     if (!opts.silent) {
       const c = document.getElementById('portal-content');
       if (c) c.innerHTML = `<div class="p-loading"><div class="p-spinner"></div></div>`;
     }
 
-    requestAnimationFrame(() => this._routes[name]());
+    requestAnimationFrame(() => this._routes[name](opts));
   },
 };
 
@@ -45,18 +56,28 @@ const PortalApp = {
 
     // Register routes
     PortalRouter
-      .on('dashboard',     () => PortalDashboard.render())
-      .on('teams',         () => PortalTeams.render())
-      .on('announcements', () => PortalAnnouncements.render())
-      .on('notifications', () => PortalNotifications.render())
-      .on('profile',       () => PortalProfile.render());
+      .on('dashboard',           () => PortalDashboard.render())
+      .on('teams',               () => PortalTeams.render())
+      .on('announcements',       () => PortalAnnouncements.render())
+      .on('announcement_detail', (opts) => PortalAnnouncements.renderDetail(opts))
+      .on('notifications',       () => PortalNotifications.render())
+      .on('profile',             () => PortalProfile.render());
 
     this._renderTopbar();
     this._renderSidebar();
     this._renderBottomNav();
 
+    // Handle browser Back button
+    window.addEventListener('popstate', (e) => {
+      if (e.state && e.state.name) {
+        PortalRouter.navigate(e.state.name, { ...e.state.opts, popState: true });
+      } else {
+        this._routeFromURL(true);
+      }
+    });
+
     // Initial route
-    PortalRouter.navigate('dashboard');
+    this._routeFromURL();
 
     // Overlay click closes sidebar
     document.getElementById('portal-overlay').addEventListener('click', () => this.closeSidebar());
@@ -65,6 +86,16 @@ const PortalApp = {
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') this.closeSidebar();
     });
+  },
+
+  _routeFromURL(isPopState = false) {
+    const path = window.location.pathname;
+    const match = path.match(/^\/announcements\/(\d+)$/);
+    if (match) {
+      PortalRouter.navigate('announcement_detail', { id: match[1], popState: isPopState });
+    } else {
+      PortalRouter.navigate('dashboard', { popState: isPopState });
+    }
   },
 
   _ic(d) {
