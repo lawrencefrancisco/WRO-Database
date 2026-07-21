@@ -104,7 +104,7 @@ const DB = {
 
     // Cache miss or stale — fetch fresh data
     const data = await this._request('GET', `/${this._route(table)}`);
-    const rows = Array.isArray(data) ? data : [];
+    const rows = Array.isArray(data) ? data.map(r => this._normalise(r)) : [];
 
     // Store in cache
     this._cache[table] = { data: rows, ts: now };
@@ -127,7 +127,7 @@ const DB = {
     const data = await this._request('GET', `/${this._route(table)}/${id}`);
     // 404 returns null from _request; also handle error objects
     if (!data || data.success === false) return null;
-    return data;
+    return this._normalise(data);
   },
 
   /** Get a map of ID → record */

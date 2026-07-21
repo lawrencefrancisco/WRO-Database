@@ -28,12 +28,11 @@ const PortalRouter = {
 
     // Handle URL pushState for deep linking
     if (!opts.popState) {
+      const base = PortalApp._getBasePath();
       if (name === 'announcement_detail' && opts.id) {
-        history.pushState({ name, opts }, '', `/announcements/${opts.id}`);
+        history.pushState({ name, opts }, '', `${base}announcements/${opts.id}`);
       } else {
-        // Only push state if we are actually changing URL or if it's the first load
-        // Actually, always pushing is fine for SPA history stack.
-        history.pushState({ name, opts }, '', `/portal.html`);
+        history.pushState({ name, opts }, '', `${base}portal.html`);
       }
     }
 
@@ -54,14 +53,17 @@ const PortalApp = {
     if (!PORTAL_AUTH.guard()) return;
     this._user = PORTAL_AUTH.currentUser();
 
-    // Register routes
+    // Register routes — stop any announcement poll on every navigation away
+    const _stopAnnPoll = () => {
+      if (typeof PortalAnnouncements !== 'undefined') PortalAnnouncements._stopPoll();
+    };
     PortalRouter
-      .on('dashboard',           () => PortalDashboard.render())
-      .on('teams',               () => PortalTeams.render())
+      .on('dashboard',           () => { _stopAnnPoll(); PortalDashboard.render(); })
+      .on('teams',               () => { _stopAnnPoll(); PortalTeams.render(); })
       .on('announcements',       () => PortalAnnouncements.render())
       .on('announcement_detail', (opts) => PortalAnnouncements.renderDetail(opts))
-      .on('notifications',       () => PortalNotifications.render())
-      .on('profile',             () => PortalProfile.render());
+      .on('notifications',       () => { _stopAnnPoll(); PortalNotifications.render(); })
+      .on('profile',             () => { _stopAnnPoll(); PortalProfile.render(); });
 
     this._renderTopbar();
     this._renderSidebar();
@@ -88,9 +90,33 @@ const PortalApp = {
     });
   },
 
+  _basePathCache: null,
+  
+  _getBasePath() {
+    if (this._basePathCache !== null) return this._basePathCache;
+    // Reads own script src to find base dir, same approach as portal-auth.js
+    // e.g. http://localhost/WRO-old/js/portal/portal-app.js → "/WRO-old/"
+    // e.g. http://localhost:3000/js/portal/portal-app.js    → "/"
+    const scripts = document.querySelectorAll('script[src]');
+    for (const s of scripts) {
+      // Use getAttribute to avoid browser re-resolving against pushed URLs if possible,
+      // but s.src is usually absolute. We cache it immediately to avoid pushState side-effects.
+      if (s.src && s.src.includes('portal-app.js')) {
+        const url = new URL(s.src, window.location.origin);
+        this._basePathCache = url.pathname.replace(/js\/portal\/portal-app\.js.*$/, '');
+        return this._basePathCache;
+      }
+    }
+    this._basePathCache = '/';
+    return this._basePathCache;
+  },
+
   _routeFromURL(isPopState = false) {
-    const path = window.location.pathname;
-    const match = path.match(/^\/announcements\/(\d+)$/);
+    const base  = this._getBasePath(); // e.g. "/WRO-old/" or "/"
+    const path  = window.location.pathname;
+    // Strip base prefix before matching. e.g. "/WRO-old/announcements/1" → "/announcements/1"
+    const local = path.startsWith(base) ? path.slice(base.length - 1) : path;
+    const match = local.match(/^\/announcements\/(\d+)$/);
     if (match) {
       PortalRouter.navigate('announcement_detail', { id: match[1], popState: isPopState });
     } else {
