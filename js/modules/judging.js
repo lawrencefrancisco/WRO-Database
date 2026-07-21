@@ -284,77 +284,128 @@ const Judging = {
 
   // ── Add / Edit Form ────────────────────────────────────────
   async openForm(id = null) {
-    const [j, rawSeasons] = await Promise.all([
-      id ? DB.getById('judging', id) : Promise.resolve(null),
+    // Fetch judge data + all seasons, and (for edit) existing assignments in parallel
+    const [j, rawSeasons, existingAssignments] = await Promise.all([
+      id ? DB.getById('judging', id)                              : Promise.resolve(null),
       DB.getAll('seasons'),
+      id ? DB._request('GET', `/judging/${id}/assignments`).catch(() => null) : Promise.resolve(null),
     ]);
-    const liveSeasons = rawSeasons.sort((a, b) => (b.year || 0) - (a.year || 0)).map(s => s.name);
 
-    const seasonOptions = liveSeasons.map(s =>
-      `<option ${(j?.season === s) ? 'selected' : ''}>${s}</option>`
-    ).join('');
+    const liveSeasons    = rawSeasons.sort((a, b) => (b.year || 0) - (a.year || 0)).map(s => s.name);
+    const allCategories  = Seeder.WRO_CATEGORIES;
 
-    const categoryOptions = Seeder.WRO_CATEGORIES.map(c => {
-      const cat = j?.judgingCategory || j?.judging_category;
-      return `<option ${cat === c ? 'selected' : ''}>${c}</option>`;
-    }).join('');
+    // Resolve pre-selected values:
+    // Priority: judge_assignments table (authoritative) → fallback to judge row columns
+    const savedSeasons = existingAssignments?.seasons?.length
+      ? existingAssignments.seasons
+      : (j?.season ? [j.season] : []);
 
-    const name = j?.fullName || j?.full_name || '';
+    const savedCategories = existingAssignments?.categories?.length
+      ? existingAssignments.categories
+      : (j?.judgingCategory || j?.judging_category
+          ? [j.judgingCategory || j.judging_category]
+          : []);
+
+    const name    = j?.fullName || j?.full_name || '';
     const contact = j?.contactNumber || j?.contact_number || '';
 
+    // Chip builder — same style as the Assignments modal
+    const chipSet = (items, selectedSet, groupId, activeColor, activeBorder, activeBg) =>
+      items.map(item => {
+        const isSel = selectedSet.includes(item);
+        return `
+          <button type="button"
+            data-group="${groupId}"
+            data-value="${item.replace(/"/g, '&quot;')}"
+            onclick="Judging._toggleChip(this)"
+            class="assignment-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+            style="${isSel
+              ? `background:${activeBg};color:${activeColor};border-color:${activeBorder};`
+              : 'background:rgba(255,255,255,0.04);color:#6B7494;border-color:rgba(255,255,255,0.10);'}"
+            aria-pressed="${isSel}">${item}</button>`;
+      }).join('');
+
     Modal.show(id ? 'Edit Judge' : 'Add Judge', `
-      <form id="judge-form" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <form id="judge-form" class="space-y-5">
 
-        <!-- Full Name -->
-        <div class="md:col-span-2">
-          <label class="form-label">Full Name <span style="color:#e63946">*</span></label>
-          <input class="form-input" name="fullName" value="${name}"
-            placeholder="e.g. Maria Santos" required>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Full Name -->
+          <div class="md:col-span-2">
+            <label class="form-label">Full Name <span style="color:#e63946">*</span></label>
+            <input class="form-input" name="fullName" value="${name}"
+              placeholder="e.g. Maria Santos" required>
+          </div>
+
+          <!-- Contact Number -->
+          <div>
+            <label class="form-label">Contact Number</label>
+            <input class="form-input" name="contactNumber" value="${contact}"
+              placeholder="e.g. 09171234567">
+          </div>
+
+          <!-- Gender -->
+          <div>
+            <label class="form-label">Gender</label>
+            <select class="form-input" name="gender">
+              <option value="">— Select Gender —</option>
+              ${['Male', 'Female', 'Other'].map(g =>
+                `<option ${j?.gender === g ? 'selected' : ''}>${g}</option>`
+              ).join('')}
+            </select>
+          </div>
+
+          <!-- Status -->
+          <div class="md:col-span-2">
+            <label class="form-label">Status</label>
+            <select class="form-input" name="status">
+              <option ${(!j || j.status === 'active')   ? 'selected' : ''}>active</option>
+              <option ${j?.status === 'inactive'        ? 'selected' : ''}>inactive</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Contact Number -->
+        <!-- Divider -->
+        <div style="height:1px;background:rgba(255,255,255,0.07);"></div>
+
+        <!-- Seasons Multi-Select (chips) -->
         <div>
-          <label class="form-label">Contact Number</label>
-          <input class="form-input" name="contactNumber" value="${contact}"
-            placeholder="e.g. 09171234567">
+          <div class="flex items-center justify-between mb-2">
+            <label class="form-label mb-0" style="color:#F6C945;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Seasons Available
+            </label>
+            <div class="flex gap-2">
+              <button type="button" onclick="Judging._selectAll('season')" class="text-xs text-slate-400 hover:text-white transition">Select all</button>
+              <span class="text-slate-700">·</span>
+              <button type="button" onclick="Judging._clearAll('season')" class="text-xs text-slate-400 hover:text-white transition">Clear</button>
+            </div>
+          </div>
+          <div id="chips-season" class="flex flex-wrap gap-2">
+            ${liveSeasons.length
+              ? chipSet(liveSeasons, savedSeasons, 'season', '#F6C945', 'rgba(246,201,69,0.55)', 'rgba(246,201,69,0.22)')
+              : '<p class="text-xs text-slate-500">No seasons found. Create a season first.</p>'}
+          </div>
         </div>
 
-        <!-- Gender -->
+        <!-- Divider -->
+        <div style="height:1px;background:rgba(255,255,255,0.07);"></div>
+
+        <!-- Judging Categories Multi-Select (chips) -->
         <div>
-          <label class="form-label">Gender</label>
-          <select class="form-input" name="gender">
-            <option value="">— Select Gender —</option>
-            ${['Male', 'Female', 'Other'].map(g =>
-      `<option ${j?.gender === g ? 'selected' : ''}>${g}</option>`
-    ).join('')}
-          </select>
-        </div>
-
-        <!-- Season -->
-        <div>
-          <label class="form-label">Season</label>
-          <select class="form-input" name="season">
-            <option value="">— Select Season —</option>
-            ${seasonOptions}
-          </select>
-        </div>
-
-        <!-- Judging Category -->
-        <div>
-          <label class="form-label">Judging Category</label>
-          <select class="form-input" name="judgingCategory">
-            <option value="">— Select Category —</option>
-            ${categoryOptions}
-          </select>
-        </div>
-
-        <!-- Status -->
-        <div class="md:col-span-2">
-          <label class="form-label">Status</label>
-          <select class="form-input" name="status">
-            <option ${(!j || j.status === 'active') ? 'selected' : ''}>active</option>
-            <option ${j?.status === 'inactive' ? 'selected' : ''}>inactive</option>
-          </select>
+          <div class="flex items-center justify-between mb-2">
+            <label class="form-label mb-0" style="color:#1E9EBF;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              Judging Categories
+            </label>
+            <div class="flex gap-2">
+              <button type="button" onclick="Judging._selectAll('category')" class="text-xs text-slate-400 hover:text-white transition">Select all</button>
+              <span class="text-slate-700">·</span>
+              <button type="button" onclick="Judging._clearAll('category')" class="text-xs text-slate-400 hover:text-white transition">Clear</button>
+            </div>
+          </div>
+          <div id="chips-category" class="flex flex-wrap gap-2">
+            ${chipSet(allCategories, savedCategories, 'category', '#1E9EBF', 'rgba(30,158,191,0.55)', 'rgba(30,158,191,0.22)')}
+          </div>
         </div>
 
       </form>`,
@@ -371,6 +422,13 @@ const Judging = {
     );
   },
 
+  // Helper: collect selected chip values from the modal form
+  _getChipValues(group) {
+    return Array.from(
+      document.querySelectorAll(`#judge-form [data-group="${group}"][aria-pressed="true"]`)
+    ).map(b => b.dataset.value);
+  },
+
   // ── Save Judge ─────────────────────────────────────────────
   async _save(id) {
     const form = document.getElementById('judge-form');
@@ -382,29 +440,59 @@ const Judging = {
       return;
     }
 
+    // Collect chip multi-selections
+    const selectedSeasons    = this._getChipValues('season');
+    const selectedCategories = this._getChipValues('category');
+
+    // For the legacy single-value columns on the judges row, use the first chip selection
+    const primarySeason   = selectedSeasons[0]    || null;
+    const primaryCategory = selectedCategories[0] || null;
+
     const data = {
-      fullName: raw.fullName.trim(),
-      contactNumber: raw.contactNumber || null,
-      gender: raw.gender || null,
-      season: raw.season || null,
-      judgingCategory: raw.judgingCategory || null,
-      status: raw.status || 'active',
+      fullName:        raw.fullName.trim(),
+      contactNumber:   raw.contactNumber || null,
+      gender:          raw.gender        || null,
+      season:          primarySeason,
+      judgingCategory: primaryCategory,
+      status:          raw.status        || 'active',
     };
 
+    // Disable save button to prevent double-submit
+    const saveBtn = document.querySelector('#modal-overlay button[onclick*="_save"]');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.6'; }
+
     try {
+      let judgeId = id;
+
       if (id) {
         await DB.update('judging', id, data);
-        Toast.success('Judge updated successfully!');
       } else {
-        await DB.insert('judging', data);
-        Toast.success('Judge added successfully!');
+        const created = await DB.insert('judging', data);
+        // DB.insert returns the full created record or { id } depending on backend
+        judgeId = created?.id || created?.insertId || null;
       }
+
+      // Sync assignments table (seasons × categories) — same as the Assignments modal
+      if (judgeId && (selectedSeasons.length > 0 || selectedCategories.length > 0)) {
+        try {
+          await DB._request('PUT', `/judging/${judgeId}/assignments`, {
+            seasons:    selectedSeasons,
+            categories: selectedCategories,
+          });
+        } catch (aErr) {
+          console.warn('[Judging] Assignments sync failed (non-fatal):', aErr);
+        }
+      }
+
+      DB.invalidateAll(); // ensure fresh data on next load
+      Toast.success(id ? 'Judge updated successfully!' : 'Judge added successfully!');
       Modal.close();
       await this._renderStats();
       await this._loadTable();
     } catch (err) {
       Toast.error('Failed to save judge. Please try again.');
       console.error('[Judging] Save error:', err);
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
     }
   },
 
