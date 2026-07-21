@@ -32,6 +32,23 @@ const PortalDashboard = {
       const anns       = stats.recentAnnouncements || [];
       const unreadCount = stats.unreadAnnouncements ?? anns.filter(a => !a.is_read).length;
 
+      // -- NEW CHANGES DETECTION --
+      const currentTeamsState = `${totalTeams}-${qualified}`;
+      let seenTeamsState = localStorage.getItem('portal_seen_teams');
+      if (!seenTeamsState) { seenTeamsState = currentTeamsState; localStorage.setItem('portal_seen_teams', currentTeamsState); }
+      const teamsChanged = seenTeamsState !== currentTeamsState;
+
+      const currentPayState = `${paid}-${partial}-${unpaid}-${stats.totalPayments || 0}`;
+      let seenPayState = localStorage.getItem('portal_seen_payments');
+      if (!seenPayState) { seenPayState = currentPayState; localStorage.setItem('portal_seen_payments', currentPayState); }
+      const payChanged = seenPayState !== currentPayState;
+
+      const currentProfileState = `${me.updated_at || me.name}`;
+      let seenProfileState = localStorage.getItem('portal_seen_profile');
+      if (!seenProfileState) { seenProfileState = currentProfileState; localStorage.setItem('portal_seen_profile', currentProfileState); }
+      const profileChanged = seenProfileState !== currentProfileState;
+      // -----------------------------
+
       content.innerHTML = `
         <div class="p-page">
 
@@ -58,16 +75,17 @@ const PortalDashboard = {
           <div class="p-actions-grid">
 
             <!-- My Teams -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('teams')">
-              <div class="p-action-glow" style="background:#F6C945;"></div>
-              <div class="p-action-icon-wrap" style="background:rgba(246,201,69,0.12);">
+            <button class="p-action-tile" onclick="localStorage.setItem('portal_seen_teams', '${currentTeamsState}'); PortalRouter.navigate('teams')" ${teamsChanged ? 'style="border-color:rgba(246,201,69,0.4);box-shadow:0 0 20px rgba(246,201,69,0.15);"' : ''}>
+              <div class="p-action-glow" style="background:#F6C945; ${teamsChanged ? 'opacity:0.2' : ''}"></div>
+              <div class="p-action-icon-wrap" style="background:rgba(246,201,69,0.12); position:relative;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/></svg>
+                ${teamsChanged ? '<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#e63946;border-radius:50%;border:2px solid #0f172a;box-shadow:0 0 5px rgba(230,57,70,0.5)"></div>' : ''}
               </div>
               <div>
-                <div class="p-action-label">My Teams</div>
-                <div class="p-action-sub">${totalTeams} team${totalTeams !== 1 ? 's' : ''} registered</div>
+                <div class="p-action-label" style="${teamsChanged ? 'color:#fff;' : ''}">My Teams</div>
+                <div class="p-action-sub" style="${teamsChanged ? 'color:#F6C945;font-weight:600;' : ''}">${teamsChanged ? 'New changes' : `${totalTeams} team${totalTeams !== 1 ? 's' : ''} registered`}</div>
               </div>
-              <div class="p-action-arrow">
+              <div class="p-action-arrow" style="${teamsChanged ? 'color:#F6C945;' : ''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
             </button>
@@ -89,31 +107,33 @@ const PortalDashboard = {
             </button>
 
             <!-- Payment Status -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('teams')">
-              <div class="p-action-glow" style="background:#2dc653;"></div>
-              <div class="p-action-icon-wrap" style="background:rgba(45,198,83,0.10);">
+            <button class="p-action-tile" onclick="localStorage.setItem('portal_seen_payments', '${currentPayState}'); PortalRouter.navigate('teams')" ${payChanged ? 'style="border-color:rgba(45,198,83,0.4);box-shadow:0 0 20px rgba(45,198,83,0.15);"' : ''}>
+              <div class="p-action-glow" style="background:#2dc653; ${payChanged ? 'opacity:0.2' : ''}"></div>
+              <div class="p-action-icon-wrap" style="background:rgba(45,198,83,0.10); position:relative;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2dc653" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                ${payChanged ? '<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#e63946;border-radius:50%;border:2px solid #0f172a;box-shadow:0 0 5px rgba(230,57,70,0.5)"></div>' : ''}
               </div>
               <div>
-                <div class="p-action-label">Payments</div>
-                <div class="p-action-sub">${paid} paid · ${partial} partial · ${unpaid} unpaid</div>
+                <div class="p-action-label" style="${payChanged ? 'color:#fff;' : ''}">Payments</div>
+                <div class="p-action-sub" style="${payChanged ? 'color:#2dc653;font-weight:600;' : ''}">${payChanged ? 'New changes' : `${paid} paid · ${partial} partial · ${unpaid} unpaid`}</div>
               </div>
-              <div class="p-action-arrow">
+              <div class="p-action-arrow" style="${payChanged ? 'color:#2dc653;' : ''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
             </button>
 
             <!-- My Profile -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('profile')">
-              <div class="p-action-glow" style="background:#8338ec;"></div>
-              <div class="p-action-icon-wrap" style="background:rgba(131,56,236,0.10);">
+            <button class="p-action-tile" onclick="localStorage.setItem('portal_seen_profile', '${currentProfileState}'); PortalRouter.navigate('profile')" ${profileChanged ? 'style="border-color:rgba(131,56,236,0.4);box-shadow:0 0 20px rgba(131,56,236,0.15);"' : ''}>
+              <div class="p-action-glow" style="background:#8338ec; ${profileChanged ? 'opacity:0.2' : ''}"></div>
+              <div class="p-action-icon-wrap" style="background:rgba(131,56,236,0.10); position:relative;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8338ec" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                ${profileChanged ? '<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#e63946;border-radius:50%;border:2px solid #0f172a;box-shadow:0 0 5px rgba(230,57,70,0.5)"></div>' : ''}
               </div>
               <div>
-                <div class="p-action-label">My Profile</div>
-                <div class="p-action-sub">Account &amp; settings</div>
+                <div class="p-action-label" style="${profileChanged ? 'color:#fff;' : ''}">My Profile</div>
+                <div class="p-action-sub" style="${profileChanged ? 'color:#8338ec;font-weight:600;' : ''}">${profileChanged ? 'New changes' : 'Account & settings'}</div>
               </div>
-              <div class="p-action-arrow">
+              <div class="p-action-arrow" style="${profileChanged ? 'color:#8338ec;' : ''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
             </button>
