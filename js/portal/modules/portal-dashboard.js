@@ -30,6 +30,7 @@ const PortalDashboard = {
       const unpaid     = stats.unpaid     || 0;
       const qualified  = stats.qualified  || 0;
       const anns       = stats.recentAnnouncements || [];
+      const unreadCount = stats.unreadAnnouncements ?? anns.filter(a => !a.is_read).length;
 
       content.innerHTML = `
         <div class="p-page">
@@ -72,17 +73,17 @@ const PortalDashboard = {
             </button>
 
             <!-- Announcements -->
-            <button class="p-action-tile" onclick="PortalRouter.navigate('announcements')" ${anns.length > 0 ? 'style="border-color:rgba(79,156,249,0.4);box-shadow:0 0 20px rgba(79,156,249,0.15);"' : ''}>
-              <div class="p-action-glow" style="background:${anns.length > 0 ? '#4f9cf9' : '#1d6fa4'}; opacity:${anns.length > 0 ? '0.2' : ''}"></div>
-              <div class="p-action-icon-wrap" style="background:rgba(${anns.length > 0 ? '79,156,249,0.2' : '29,111,164,0.12'}); position:relative;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${anns.length > 0 ? '#4f9cf9' : '#1d6fa4'}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                ${anns.length > 0 ? '<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#e63946;border-radius:50%;border:2px solid #0f172a;box-shadow:0 0 5px rgba(230,57,70,0.5)"></div>' : ''}
+            <button class="p-action-tile" onclick="PortalRouter.navigate('announcements')" ${unreadCount > 0 ? 'style="border-color:rgba(79,156,249,0.4);box-shadow:0 0 20px rgba(79,156,249,0.15);"' : ''}>
+              <div class="p-action-glow" style="background:${unreadCount > 0 ? '#4f9cf9' : '#1d6fa4'}; opacity:${unreadCount > 0 ? '0.2' : ''}"></div>
+              <div class="p-action-icon-wrap" style="background:rgba(${unreadCount > 0 ? '79,156,249,0.2' : '29,111,164,0.12'}); position:relative;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${unreadCount > 0 ? '#4f9cf9' : '#1d6fa4'}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                ${unreadCount > 0 ? '<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#e63946;border-radius:50%;border:2px solid #0f172a;box-shadow:0 0 5px rgba(230,57,70,0.5)"></div>' : ''}
               </div>
               <div>
-                <div class="p-action-label" style="${anns.length > 0 ? 'color:#fff;' : ''}">Announcements</div>
-                <div class="p-action-sub" style="${anns.length > 0 ? 'color:#4f9cf9;font-weight:600;' : ''}">${anns.length > 0 ? anns.length + ' new update' + (anns.length !== 1 ? 's' : '') : 'No new updates'}</div>
+                <div class="p-action-label" style="${unreadCount > 0 ? 'color:#fff;' : ''}">Announcements</div>
+                <div class="p-action-sub" style="${unreadCount > 0 ? 'color:#4f9cf9;font-weight:600;' : ''}">${unreadCount > 0 ? unreadCount + ' unread update' + (unreadCount !== 1 ? 's' : '') : 'No new updates'}</div>
               </div>
-              <div class="p-action-arrow" style="${anns.length > 0 ? 'color:#4f9cf9;' : ''}">
+              <div class="p-action-arrow" style="${unreadCount > 0 ? 'color:#4f9cf9;' : ''}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
             </button>

@@ -21,7 +21,7 @@ router.get('/me', async (req, res) => {
        FROM users u
        LEFT JOIN schools s ON s.id = u.school_id
        WHERE u.id = ? AND u.is_deleted = 0`,
-      [req.user.userId]
+      [(req.user.userId || req.user.id)]
     );
     if (!rows[0]) return res.status(404).json({ success: false, error: 'User not found.' });
     res.json(rows[0]);
@@ -35,7 +35,7 @@ router.get('/me', async (req, res) => {
 router.get('/dashboard', async (req, res) => {
   try {
     const [userRows] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [(req.user.userId || req.user.id)]
     );
     const schoolId = userRows[0]?.school_id || null;
 
@@ -56,7 +56,14 @@ router.get('/dashboard', async (req, res) => {
     }
 
     [announcements] = await pool.execute(
-      "SELECT id, title, image_url, category, created_at FROM announcements WHERE status = 'published' AND is_deleted = 0 ORDER BY created_at DESC LIMIT 5"
+      `SELECT a.id, a.title, a.image_url, a.category, a.created_at,
+              IF(ar.user_id IS NOT NULL, 1, 0) AS is_read
+       FROM announcements a
+       LEFT JOIN announcement_reads ar
+         ON ar.announcement_id = a.id AND ar.user_id = ?
+       WHERE a.status = 'published' AND a.is_deleted = 0
+       ORDER BY a.created_at DESC LIMIT 5`,
+      [(req.user.userId || req.user.id)]
     );
 
     const paid    = teams.filter(t => t.payment_status === 'paid').length;
@@ -70,6 +77,7 @@ router.get('/dashboard', async (req, res) => {
       qualified,
       paid, partial, unpaid,
       recentAnnouncements: announcements,
+      unreadAnnouncements: announcements.filter(a => !a.is_read).length,
       totalPayments: payments.length,
     });
   } catch (err) {
@@ -82,7 +90,7 @@ router.get('/dashboard', async (req, res) => {
 router.get('/teams', async (req, res) => {
   try {
     const [userRows] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [(req.user.userId || req.user.id)]
     );
     const schoolId = userRows[0]?.school_id || null;
     if (!schoolId) return res.json([]);
@@ -110,7 +118,7 @@ router.get('/teams', async (req, res) => {
 router.get('/payments', async (req, res) => {
   try {
     const [userRows] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [(req.user.userId || req.user.id)]
     );
     const schoolId = userRows[0]?.school_id || null;
     if (!schoolId) return res.json([]);
@@ -132,14 +140,59 @@ router.get('/payments', async (req, res) => {
 });
 
 // ── GET /api/portal/announcements ────────────────────────────
-// Returns published announcements only (no drafts)
+// Returns published announcements with per-user read status
 router.get('/announcements', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      "SELECT id, announcement_code, title, body, image_url, category, recipients, status, created_at FROM announcements WHERE status = 'published' AND is_deleted = 0 ORDER BY created_at DESC"
+      `SELECT a.id, a.announcement_code, a.title, a.body, a.image_url,
+              a.category, a.recipients, a.status, a.created_at,
+              IF(ar.user_id IS NOT NULL, 1, 0) AS is_read
+       FROM announcements a
+       LEFT JOIN announcement_reads ar
+         ON ar.announcement_id = a.id AND ar.user_id = ?
+       WHERE a.status = 'published' AND a.is_deleted = 0
+       ORDER BY a.created_at DESC`,
+      [(req.user.userId || req.user.id)]
     );
     res.json(rows);
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── PUT /api/portal/announcements/:id/read ────────────────────
+// Marks a single announcement as read for the current user
+router.put('/announcements/:id/read', async (req, res) => {
+  try {
+    await pool.execute(
+      'INSERT IGNORE INTO announcement_reads (user_id, announcement_id) VALUES (?, ?)',
+      [(req.user.userId || req.user.id) || req.user.id, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── PUT /api/portal/announcements/mark-all-read ───────────────
+// Marks all currently published announcements as read for the current user
+router.put('/announcements/mark-all-read', async (req, res) => {
+  try {
+    const [anns] = await pool.execute(
+      "SELECT id FROM announcements WHERE status = 'published' AND is_deleted = 0"
+    );
+    if (anns.length > 0) {
+      const values = anns.map(a => [(req.user.userId || req.user.id) || req.user.id, a.id]);
+      for (const val of values) {
+        await pool.execute(
+          'INSERT IGNORE INTO announcement_reads (user_id, announcement_id) VALUES (?, ?)',
+          val
+        );
+      }
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('mark-all-read error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -155,18 +208,18 @@ router.put('/profile', async (req, res) => {
       const hash = await bcrypt.hash(d.password, 10);
       await pool.execute(
         'UPDATE users SET name=?, email=?, password_hash=?, updated_at=NOW() WHERE id=?',
-        [d.name, d.email || '', hash, req.user.userId]
+        [d.name, d.email || '', hash, (req.user.userId || req.user.id)]
       );
     } else {
       await pool.execute(
         'UPDATE users SET name=?, email=?, updated_at=NOW() WHERE id=?',
-        [d.name, d.email || '', req.user.userId]
+        [d.name, d.email || '', (req.user.userId || req.user.id)]
       );
     }
 
     const [rows] = await pool.execute(
       'SELECT id, user_code, username, name, email, role, school_id FROM users WHERE id = ?',
-      [req.user.userId]
+      [(req.user.userId || req.user.id)]
     );
     res.json(rows[0]);
   } catch (err) {
@@ -179,7 +232,7 @@ router.put('/profile', async (req, res) => {
 router.get('/notifications', async (req, res) => {
   try {
     const [userRows] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [(req.user.userId || req.user.id)]
     );
     const schoolId = userRows[0]?.school_id || null;
     if (!schoolId) return res.json([]);
@@ -203,7 +256,7 @@ router.get('/notifications', async (req, res) => {
 router.put('/notifications/:id/read', async (req, res) => {
   try {
     const [userRows] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [(req.user.userId || req.user.id)]
     );
     const schoolId = userRows[0]?.school_id || null;
 
@@ -222,7 +275,7 @@ router.put('/notifications/:id/read', async (req, res) => {
 router.put('/notifications/read-all', async (req, res) => {
   try {
     const [userRows] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [req.user.userId]
+      'SELECT school_id FROM users WHERE id = ? AND is_deleted = 0', [(req.user.userId || req.user.id)]
     );
     const schoolId = userRows[0]?.school_id || null;
 

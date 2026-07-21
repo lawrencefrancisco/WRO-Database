@@ -32,6 +32,17 @@ const PORTAL_DB = {
     return data;
   },
 
+  async post(path, body = {}) {
+    const res  = await fetch(`${this._BASE}${path}`, {
+      method:  'POST',
+      headers: this._headers(),
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  },
+
   // Convenience portal-scoped getters
   me()            { return this.get('/portal/me'); },
   dashboard()     { return this.get('/portal/dashboard'); },
@@ -41,6 +52,8 @@ const PORTAL_DB = {
   notifications() { return this.get('/portal/notifications'); },
   markNotificationRead(id) { return this.put(`/portal/notifications/${id}/read`, {}); },
   markAllNotificationsRead() { return this.put('/portal/notifications/read-all', {}); },
+  markAnnouncementRead(id) { return this.put(`/portal/announcements/${id}/read`, {}); },
+  markAllAnnouncementsRead() { return this.put('/portal/announcements/mark-all-read', {}); },
   updateProfile(data) { return this.put('/portal/profile', data); },
 };
 
