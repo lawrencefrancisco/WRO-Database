@@ -67,6 +67,7 @@ async function autoInitDatabase(pool) {
     await dropIfBadSchema(conn, 'seasons',      'name');
     await dropIfBadSchema(conn, 'judging',      'judging_code'); // old 'judging' was wrong table
     await dropIfBadSchema(conn, 'delegation',   'delegation_code');
+    await dropIfBadSchema(conn, 'judges',       'email');
 
     // ── Step 2: CREATE TABLE IF NOT EXISTS (correct schemas) ──────────
 
@@ -255,6 +256,7 @@ async function autoInitDatabase(pool) {
         judge_code        VARCHAR(60)   NOT NULL,
         full_name         VARCHAR(200)  NOT NULL,
         contact_number    VARCHAR(50)   DEFAULT NULL,
+        email             VARCHAR(200)  DEFAULT NULL,
         gender            ENUM('Male','Female','Other') DEFAULT NULL,
         season            VARCHAR(50)   DEFAULT NULL,
         judging_category  VARCHAR(200)  DEFAULT NULL,
