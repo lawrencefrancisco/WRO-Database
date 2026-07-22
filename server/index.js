@@ -56,6 +56,7 @@ app.use('/api/notifications',  require('./routes/notifications'));
 app.use('/api/portal',         require('./routes/portal'));
 app.use('/api/dashboard',      require('./routes/dashboard'));
 app.use('/api/users',          require('./routes/users'));
+app.use('/api/emails',         require('./routes/emails'));
 
 // ── Audit log alias (standalone endpoint) ─────────────────────
 app.get('/api/audit-logs', require('./middleware/auth').authMiddleware, async (req, res) => {

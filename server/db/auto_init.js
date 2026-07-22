@@ -484,6 +484,34 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS email_log (
+        id               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+        email_code       VARCHAR(80)   NOT NULL,
+        subject          VARCHAR(500)  NOT NULL,
+        message          LONGTEXT      NOT NULL,
+        sender_id        INT UNSIGNED  DEFAULT NULL,
+        sender_name      VARCHAR(200)  DEFAULT NULL,
+        recipient_ids    JSON          DEFAULT NULL,
+        recipient_emails JSON          DEFAULT NULL,
+        recipient_names  JSON          DEFAULT NULL,
+        total_recipients INT UNSIGNED  DEFAULT 0,
+        sent_count       INT UNSIGNED  DEFAULT 0,
+        failed_count     INT UNSIGNED  DEFAULT 0,
+        status           ENUM('pending','sending','sent','partial','failed') DEFAULT 'pending',
+        attachment_name  VARCHAR(500)  DEFAULT NULL,
+        attachment_data  LONGTEXT      DEFAULT NULL,
+        error_log        LONGTEXT      DEFAULT NULL,
+        sent_at          DATETIME      DEFAULT NULL,
+        created_at       DATETIME      DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_email_code (email_code),
+        KEY idx_status  (status),
+        KEY idx_sender  (sender_id),
+        KEY idx_sent_at (sent_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     await conn.execute('SET FOREIGN_KEY_CHECKS = 1');
     console.log('✅ All tables verified/created with correct schemas.');
 

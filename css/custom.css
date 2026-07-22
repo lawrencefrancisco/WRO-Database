@@ -1270,3 +1270,57 @@ body.sidebar-collapsed #main-content {
   min-width: 540px; /* ensure table never collapses below readable width */
 }
 }
+
+/* ── Direct Email – Rich Text Editor ─────────────────────────── */
+.editor-toolbar-btn {
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--txt-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-toolbar-btn:hover {
+  background: rgba(246,201,69,0.15);
+  border-color: var(--felta-yellow);
+  color: var(--felta-yellow);
+}
+.editor-toolbar-btn svg {
+  width: 14px;
+  height: 14px;
+}
+#email-body-editor:empty:before {
+  content: attr(data-placeholder);
+  color: var(--txt-muted);
+  pointer-events: none;
+  opacity: 0.7;
+}
+#email-body-editor:focus {
+  outline: none;
+}
+#email-body-editor h2 {
+  font-size: 1.2em;
+  font-weight: 700;
+  margin-bottom: 0.5em;
+  color: var(--txt-primary);
+}
+#email-body-editor a {
+  color: var(--felta-yellow);
+  text-decoration: underline;
+}
+#email-body-editor ul,
+#email-body-editor ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+/* ── Spin animation (used by send button loading state) ─────── */
+@keyframes spin {
+  0%   { transform: rotate(0deg);   }
+  100% { transform: rotate(360deg); }
+}
+
