@@ -4,7 +4,7 @@
 // All methods remain async so existing module code needs no changes.
 // ============================================================
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api';
 
 // Map table names used by modules → API path segments
 const TABLE_ROUTES = {

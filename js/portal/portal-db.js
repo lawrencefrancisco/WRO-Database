@@ -5,7 +5,7 @@
 // ============================================================
 
 const PORTAL_DB = {
-  _BASE: 'http://localhost:3000/api',
+  _BASE: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api',
 
   _headers() {
     return {
