@@ -210,7 +210,7 @@ const Judging = {
           : `<span class="badge" style="background:rgba(90,106,138,0.2);color:#5a6a8a;">Inactive</span>`;
 
         return `
-          <tr class="table-row">
+          <tr class="table-row cursor-pointer transition-colors" onclick="Judging.viewJudge('${j.id}')" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
             <td>
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
@@ -227,7 +227,7 @@ const Judging = {
             <td class="text-sm text-slate-300">${contact}</td>
             <td>${statusBadge}</td>
             <td>
-              <div class="flex gap-2">
+              <div class="flex gap-2" onclick="event.stopPropagation();">
                 ${AUTH.can('judging.write') ? `
                 <button onclick="Judging.openForm('${j.id}')"
                   title="Edit Judge"
@@ -282,6 +282,79 @@ const Judging = {
     await this._loadTable();
   },
 
+  async viewJudge(id) {
+    const [j, assignments] = await Promise.all([
+      DB.getById('judging', id),
+      DB._request('GET', `/judging/${id}/assignments`).catch(() => null)
+    ]);
+    if (!j) return;
+    
+    const name = j.fullName || j.full_name || '—';
+    const email = j.email || '—';
+    const contact = j.contactNumber || j.contact_number || '—';
+    const gender = j.gender || '—';
+    const status = j.status === 'active' 
+      ? '<span class="badge" style="background:rgba(45,198,83,0.15);color:#2dc653;">Active</span>'
+      : '<span class="badge" style="background:rgba(90,106,138,0.2);color:#5a6a8a;">Inactive</span>';
+    
+    const seasons = assignments?.seasons?.length ? assignments.seasons.join(', ') : (j.season || 'None');
+    const categories = assignments?.categories?.length ? assignments.categories.join(', ') : (j.judgingCategory || j.judging_category || 'None');
+
+    Modal.show('Judge Details', `
+      <div class="space-y-6">
+        <div class="flex items-center gap-4">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-2xl flex-shrink-0" style="background:linear-gradient(135deg,#F6C945,#8B6914);">
+            ${name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-white">${name}</h3>
+            <p class="text-sm text-slate-400">Judge Code: ${j.judge_code || '—'}</p>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+          <div>
+            <div class="text-xs text-slate-500 uppercase font-bold mb-1">Email</div>
+            <div class="text-sm text-slate-200 break-words">${email}</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 uppercase font-bold mb-1">Contact Number</div>
+            <div class="text-sm text-slate-200">${contact}</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 uppercase font-bold mb-1">Gender</div>
+            <div class="text-sm text-slate-200">${gender}</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 uppercase font-bold mb-1">Status</div>
+            <div class="text-sm text-slate-200">${status}</div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <div class="text-xs text-slate-500 uppercase font-bold mb-2 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Assigned Seasons
+            </div>
+            <div class="text-sm text-slate-300 bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+              ${seasons}
+            </div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 uppercase font-bold mb-2 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1E9EBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              Assigned Categories
+            </div>
+            <div class="text-sm text-slate-300 bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+              ${categories}
+            </div>
+          </div>
+        </div>
+      </div>
+    `, `<button onclick="Modal.close()" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold">Close</button>`, 'max-w-xl');
+  },
+
   // ── Add / Edit Form ────────────────────────────────────────
   async openForm(id = null) {
     // Fetch judge data + all seasons, and (for edit) existing assignments in parallel
@@ -307,6 +380,7 @@ const Judging = {
           : []);
 
     const name    = j?.fullName || j?.full_name || '';
+    const email   = j?.email || '';
     const contact = j?.contactNumber || j?.contact_number || '';
 
     // Chip builder — same style as the Assignments modal
@@ -334,6 +408,13 @@ const Judging = {
             <label class="form-label">Full Name <span style="color:#e63946">*</span></label>
             <input class="form-input" name="fullName" value="${name}"
               placeholder="e.g. Maria Santos" required>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="form-label">Email Address</label>
+            <input class="form-input" name="email" type="email" value="${email}"
+              placeholder="e.g. maria@example.com">
           </div>
 
           <!-- Contact Number -->
@@ -450,6 +531,7 @@ const Judging = {
 
     const data = {
       fullName:        raw.fullName.trim(),
+      email:           raw.email?.trim() || null,
       contactNumber:   raw.contactNumber || null,
       gender:          raw.gender        || null,
       season:          primarySeason,
