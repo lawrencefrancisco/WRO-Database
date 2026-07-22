@@ -59,6 +59,7 @@ router.post('/', async (req, res) => {
     }
 
     const fullName        = d.fullName        || d.full_name        || null;
+    const email           = d.email           || null;
     const contactNumber   = d.contactNumber   || d.contact_number   || null;
     const gender          = d.gender          || null;
     const season          = d.season          || null;
@@ -67,10 +68,10 @@ router.post('/', async (req, res) => {
 
     const [result] = await pool.execute(
       `INSERT INTO judges
-         (judge_code, full_name, contact_number, gender, season, judging_category, status,
+         (judge_code, full_name, email, contact_number, gender, season, judging_category, status,
           created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [judgeCode, fullName, contactNumber, gender, season, judgingCategory, status]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [judgeCode, fullName, email, contactNumber, gender, season, judgingCategory, status]
     );
 
     const [rows] = await pool.execute('SELECT * FROM judges WHERE id = ?', [result.insertId]);
@@ -87,6 +88,7 @@ router.put('/:id', async (req, res) => {
     const d = req.body;
 
     const fullName        = d.fullName        || d.full_name        || null;
+    const email           = d.email           || null;
     const contactNumber   = d.contactNumber   || d.contact_number   || null;
     const gender          = d.gender          || null;
     const season          = d.season          || null;
@@ -95,10 +97,10 @@ router.put('/:id', async (req, res) => {
 
     await pool.execute(
       `UPDATE judges
-       SET full_name=?, contact_number=?, gender=?, season=?,
+       SET full_name=?, email=?, contact_number=?, gender=?, season=?,
            judging_category=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [fullName, contactNumber, gender, season,
+      [fullName, email, contactNumber, gender, season,
        judgingCategory, status, req.params.id]
     );
 
