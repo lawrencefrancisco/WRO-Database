@@ -1431,10 +1431,13 @@ const Communications = {
                   <label class="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
                     style="border-bottom:1px solid var(--border-subtle);${sel ? 'background:rgba(246,201,69,0.06);' : ''}">
                     <input type="checkbox" ${sel ? 'checked' : ''}
-                      onchange="Communications._toggleUser(${u.id})"
+                      onchange="Communications._toggleUser('${u.id}')"
                       style="width:15px;height:15px;margin-top:2px;accent-color:var(--felta-yellow);cursor:pointer;flex-shrink:0;">
                     <div class="flex-1 min-w-0">
-                      <div class="text-sm font-semibold truncate" style="color:var(--txt-primary);">${u.name || '—'}</div>
+                      <div class="flex justify-between items-center gap-2">
+                        <div class="text-sm font-semibold truncate" style="color:var(--txt-primary);">${u.name || '—'}</div>
+                        <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded" style="background:var(--bg-hover);color:var(--txt-muted);border:1px solid var(--border-subtle);">${u.category}</span>
+                      </div>
                       <div class="text-xs truncate" style="color:var(--txt-muted);">${u.email}</div>
                       <div class="text-xs" style="color:var(--txt-muted);opacity:0.7;">${u.school_name || '—'}</div>
                     </div>
