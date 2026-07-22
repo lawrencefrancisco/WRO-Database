@@ -18,7 +18,6 @@ const PortalDashboard = {
         general:      '#1d6fa4',
         payment:      '#2dc653',
         qualification:'#e8c027',
-        delegation:   '#8338ec',
         competition:  '#e63946',
       };
 

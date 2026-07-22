@@ -20,7 +20,6 @@ const Reports = {
       { id:'payment-summary',color:'#8B5CF6', title:'Payment Summary',         desc:'Financial report with OR numbers and balances',    paths:'<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>',            count: await DB.count('payments'), action: 'generatePaymentReport' },
       { id:'award-winners',  color:'#EC4899', title:'Award Winners',           desc:'All award recipients by year and category',        paths:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',count: await DB.count('awards'),   action: 'generateAwardList' },
       { id:'judging-sheet',  color:'#EF4444', title:'Judging Report',          desc:'Score sheets and rankings by category',            paths:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',                                               count: await DB.count('judging'),  action: 'generateJudgingReport' },
-      { id:'delegation-list',color:'#14B8A6', title:'International Delegation',desc:'Delegates for international competition',          paths:'<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',                                     count: await DB.count('delegation'),action: 'generateDelegationList' },
       { id:'participation',  color:'#F97316', title:'Participation Summary',   desc:'Schools, teams, coaches, and students stats',      paths:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',count: null,                action: 'generateParticipationReport' },
     ];
     document.getElementById('reports-grid').innerHTML = reports.map(r => `
@@ -186,25 +185,6 @@ const Reports = {
     Toast.success(`Judging report exported as ${format.toUpperCase()}!`);
   },
 
-  async generateDelegationList(format) {
-    const rows = (await DB.getAll('delegation')).filter(d => !d.isDeleted);
-    const _teamsMap = await DB.getLookup('teams');
-    if (format === 'csv') {
-      Utils.downloadCSV('WRO_Delegation.csv',
-        ['ID','Team','Destination','Year','Passport','Visa','Flight','Hotel','Dietary','Status'],
-        rows.map(d => {
-          const t=_teamsMap[d.teamId];
-          return [d.id,t?.teamName||'',d.destinationCountry,d.wroYear,d.passportStatus,d.visaStatus,d.flight,d.hotel,d.dietaryRestrictions,d.status];
-        })
-      );
-    } else {
-      this._printReport('WRO Philippines International Delegation', rows,
-        ['Team','Country','Year','Passport','Visa','Status'],
-        (d) => { const t=_teamsMap[d.teamId]; return [t?.teamName||'',d.destinationCountry,d.wroYear,d.passportStatus,d.visaStatus,d.status]; }
-      );
-    }
-    Toast.success(`Delegation list exported!`);
-  },
 
   async generateParticipationReport(format) {
     const schools  = await DB.count('schools');

@@ -23,7 +23,6 @@ const AUTH = {
       'judging.read','judging.write',
       'awards.read','awards.write',
       'communications.read','communications.write',
-      'delegation.read',
       'reports.read','reports.write',
       'users.read',
     ],
