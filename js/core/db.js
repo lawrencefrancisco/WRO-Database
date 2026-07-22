@@ -24,6 +24,7 @@ const TABLE_ROUTES = {
   users:          'users',
   audit_logs:     'audit-logs',
   payment_logs:   'payment-logs',
+  email_log:      'emails/history',
 };
 
 const DB = {
