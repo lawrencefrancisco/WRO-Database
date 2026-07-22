@@ -63,22 +63,56 @@ function sanitizeHtml(html) {
 }
 
 // ── GET /api/emails/recipients  ───────────────────────────────
-// Returns Standard Users with emails for recipient selection.
+// Returns Users, Schools, Coaches, Students, and Judges with emails for recipient selection.
 router.get('/recipients', requireRole('SUPER_ADMIN', 'EVENT_ADMIN'), async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      `SELECT u.id, u.name, u.email, u.username,
-              COALESCE(s.school_name, '—') AS school_name
-       FROM users u
-       LEFT JOIN schools s ON s.id = u.school_id
-       WHERE u.role = 'STANDARD_USER'
-         AND u.is_deleted = 0
-         AND u.is_active = 1
-         AND u.email IS NOT NULL
-         AND u.email != ''
-       ORDER BY u.name ASC`
-    );
-    res.json(rows);
+    const [
+      [users], [schools], [coaches], [students], [judges]
+    ] = await Promise.all([
+      pool.execute(
+        `SELECT u.id, u.name, u.email, COALESCE(s.school_name, '—') AS school_name
+         FROM users u LEFT JOIN schools s ON s.id = u.school_id
+         WHERE u.role = 'STANDARD_USER' AND u.is_deleted = 0 AND u.is_active = 1 AND u.email IS NOT NULL AND u.email != ''`
+      ),
+      pool.execute(
+        `SELECT id, school_name AS name, email, school_name 
+         FROM schools WHERE status = 'active' AND is_deleted = 0 AND email IS NOT NULL AND email != ''`
+      ),
+      pool.execute(
+        `SELECT c.id, c.full_name AS name, c.email, COALESCE(s.school_name, '—') AS school_name 
+         FROM coaches c LEFT JOIN schools s ON s.id = c.school_id
+         WHERE c.status = 'active' AND c.is_deleted = 0 AND c.email IS NOT NULL AND c.email != ''`
+      ),
+      pool.execute(
+        `SELECT st.id, st.full_name AS name, st.parent_email AS email, COALESCE(s.school_name, '—') AS school_name 
+         FROM students st LEFT JOIN schools s ON s.id = st.school_id
+         WHERE st.status = 'active' AND st.is_deleted = 0 AND st.parent_email IS NOT NULL AND st.parent_email != ''`
+      ),
+      pool.execute(
+        `SELECT id, full_name AS name, email, '—' AS school_name 
+         FROM judges WHERE status = 'active' AND is_deleted = 0 AND email IS NOT NULL AND email != ''`
+      )
+    ]);
+
+    const formatRecipients = (arr, prefix, category) => arr.map(r => ({
+      id: `${prefix}_${r.id}`,
+      raw_id: r.id,
+      category,
+      name: r.name,
+      email: r.email,
+      school_name: r.school_name || '—'
+    }));
+
+    let allRecipients = [
+      ...formatRecipients(users, 'user', 'User'),
+      ...formatRecipients(schools, 'school', 'School'),
+      ...formatRecipients(coaches, 'coach', 'Coach'),
+      ...formatRecipients(students, 'student', 'Student'),
+      ...formatRecipients(judges, 'judge', 'Judge')
+    ];
+
+    allRecipients.sort((a, b) => a.name.localeCompare(b.name));
+    res.json(allRecipients);
   } catch (err) {
     console.error('[emails] GET /recipients error:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -197,18 +231,57 @@ router.post('/send', requireRole('SUPER_ADMIN', 'EVENT_ADMIN'), async (req, res)
   // ── Fetch recipient data from DB ─────────────────────────────
   let recipients = [];
   try {
-    const placeholders = recipientIds.map(() => '?').join(',');
-    const [rows] = await pool.execute(
-      `SELECT id, name, email FROM users
-       WHERE id IN (${placeholders})
-         AND role = 'STANDARD_USER'
-         AND is_deleted = 0
-         AND is_active = 1
-         AND email IS NOT NULL
-         AND email != ''`,
-      recipientIds
-    );
-    recipients = rows;
+    const userIds = recipientIds.filter(id => id.startsWith('user_')).map(id => id.replace('user_', ''));
+    const schoolIds = recipientIds.filter(id => id.startsWith('school_')).map(id => id.replace('school_', ''));
+    const coachIds = recipientIds.filter(id => id.startsWith('coach_')).map(id => id.replace('coach_', ''));
+    const studentIds = recipientIds.filter(id => id.startsWith('student_')).map(id => id.replace('student_', ''));
+    const judgeIds = recipientIds.filter(id => id.startsWith('judge_')).map(id => id.replace('judge_', ''));
+
+    const queries = [];
+
+    if (userIds.length > 0) {
+      queries.push(
+        pool.execute(
+          `SELECT id, name, email FROM users WHERE id IN (${userIds.map(() => '?').join(',')}) AND role='STANDARD_USER' AND is_deleted=0 AND is_active=1 AND email IS NOT NULL AND email != ''`,
+          userIds
+        ).then(([r]) => recipients.push(...r.map(row => ({...row, id: 'user_' + row.id}))))
+      );
+    }
+    if (schoolIds.length > 0) {
+      queries.push(
+        pool.execute(
+          `SELECT id, school_name AS name, email FROM schools WHERE id IN (${schoolIds.map(() => '?').join(',')}) AND status='active' AND is_deleted=0 AND email IS NOT NULL AND email != ''`,
+          schoolIds
+        ).then(([r]) => recipients.push(...r.map(row => ({...row, id: 'school_' + row.id}))))
+      );
+    }
+    if (coachIds.length > 0) {
+      queries.push(
+        pool.execute(
+          `SELECT id, full_name AS name, email FROM coaches WHERE id IN (${coachIds.map(() => '?').join(',')}) AND status='active' AND is_deleted=0 AND email IS NOT NULL AND email != ''`,
+          coachIds
+        ).then(([r]) => recipients.push(...r.map(row => ({...row, id: 'coach_' + row.id}))))
+      );
+    }
+    if (studentIds.length > 0) {
+      queries.push(
+        pool.execute(
+          `SELECT id, full_name AS name, parent_email AS email FROM students WHERE id IN (${studentIds.map(() => '?').join(',')}) AND status='active' AND is_deleted=0 AND parent_email IS NOT NULL AND parent_email != ''`,
+          studentIds
+        ).then(([r]) => recipients.push(...r.map(row => ({...row, id: 'student_' + row.id}))))
+      );
+    }
+    if (judgeIds.length > 0) {
+      queries.push(
+        pool.execute(
+          `SELECT id, full_name AS name, email FROM judges WHERE id IN (${judgeIds.map(() => '?').join(',')}) AND status='active' AND is_deleted=0 AND email IS NOT NULL AND email != ''`,
+          judgeIds
+        ).then(([r]) => recipients.push(...r.map(row => ({...row, id: 'judge_' + row.id}))))
+      );
+    }
+
+    await Promise.all(queries);
+
   } catch (err) {
     console.error('[emails] Recipient fetch error:', err);
     return res.status(500).json({ success: false, error: 'Failed to fetch recipient data.' });

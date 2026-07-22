@@ -1358,16 +1358,17 @@ const Communications = {
     }
     this._emailAllUsers = users;
 
+    this._emailActiveCategory = this._emailActiveCategory || 'All';
+
     // Apply search filter
     const q = (this._emailSearch || '').toLowerCase();
-    const filtered = q
-      ? users.filter(u =>
-          (u.name||'').toLowerCase().includes(q) ||
+    const filtered = users.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q) ||
           (u.email||'').toLowerCase().includes(q) ||
-          (u.school_name||'').toLowerCase().includes(q) ||
-          (u.username||'').toLowerCase().includes(q)
-        )
-      : users;
+          (u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
 
     const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
     const allFiltered = filtered.length > 0 && filtered.every(u => selIds.has(u.id));
@@ -1390,12 +1391,20 @@ const Communications = {
                     ${this._emailSelectedUsers.length} selected
                   </span>
                 </div>
+                <div class="flex flex-wrap gap-2 mb-3">
+                  ${['All', 'User', 'School', 'Coach', 'Student', 'Judge'].map(c => `
+                    <button onclick="Communications._setCategory('${c}')" class="px-2 py-1 rounded-md text-[10px] font-bold uppercase transition"
+                      style="background:${this._emailActiveCategory === c ? 'var(--felta-yellow)' : 'var(--bg-hover)'};color:${this._emailActiveCategory === c ? '#07120c' : 'var(--txt-muted)'};border:1px solid ${this._emailActiveCategory === c ? 'var(--felta-yellow)' : 'transparent'};">
+                      ${c}${c==='All'?'':'s'}
+                    </button>
+                  `).join('')}
+                </div>
                 <!-- Search -->
                 <div class="relative">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                     style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input id="email-user-search" type="text" placeholder="Search by name, email, school…"
-                    value="${this._emailSearch}"
+                    value="${this._emailSearch || ''}"
                     oninput="Communications._onUserSearch(this.value)"
                     class="form-input" style="padding-left:32px;font-size:12px;">
                 </div>
@@ -1406,7 +1415,7 @@ const Communications = {
                   onchange="Communications._toggleSelectAll(this.checked)"
                   style="width:15px;height:15px;accent-color:var(--felta-yellow);cursor:pointer;">
                 <label for="email-select-all" class="text-xs font-semibold cursor-pointer" style="color:var(--txt-secondary);">
-                  Select All (${filtered.length} user${filtered.length !== 1 ? 's' : ''})
+                  Select All (${filtered.length} recipient${filtered.length !== 1 ? 's' : ''})
                 </label>
               </div>
               <!-- User List -->
@@ -1640,17 +1649,21 @@ const Communications = {
       : `<span style="color:var(--felta-yellow);">✓</span> <strong style="color:var(--txt-primary);">${this._emailSelectedUsers.length}</strong> recipient${this._emailSelectedUsers.length !== 1 ? 's' : ''} selected`;
   },
 
+  _setCategory(c) {
+    this._emailActiveCategory = c;
+    this._renderTab();
+  },
+
   _onUserSearch(val) {
     this._emailSearch = val;
     const q = val.toLowerCase();
-    const filtered = q
-      ? this._emailAllUsers.filter(u =>
-          (u.name||'').toLowerCase().includes(q) ||
+    const filtered = this._emailAllUsers.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q) ||
           (u.email||'').toLowerCase().includes(q) ||
-          (u.school_name||'').toLowerCase().includes(q) ||
-          (u.username||'').toLowerCase().includes(q)
-        )
-      : this._emailAllUsers;
+          (u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
 
     const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
     const allFiltered = filtered.length > 0 && filtered.every(u => selIds.has(u.id));
@@ -1663,11 +1676,11 @@ const Communications = {
     if (badge) badge.textContent = `${this._emailSelectedUsers.length} selected`;
 
     const saLabel = saEl?.parentElement?.querySelector('label');
-    if (saLabel) saLabel.textContent = `Select All (${filtered.length} user${filtered.length !== 1 ? 's' : ''})`;
+    if (saLabel) saLabel.textContent = `Select All (${filtered.length} recipient${filtered.length !== 1 ? 's' : ''})`;
 
     if (!listEl) return;
     if (filtered.length === 0) {
-      listEl.innerHTML = `<div class="p-8 text-center" style="color:var(--txt-muted);"><p class="text-xs">${q ? 'No users match your search.' : 'No Standard Users with email found.'}</p></div>`;
+      listEl.innerHTML = `<div class="p-8 text-center" style="color:var(--txt-muted);"><p class="text-xs">${q ? 'No recipients match your search.' : 'No recipients found in this category.'}</p></div>`;
       return;
     }
     listEl.innerHTML = filtered.map(u => {
@@ -1676,10 +1689,13 @@ const Communications = {
       <label class="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
         style="border-bottom:1px solid var(--border-subtle);${sel ? 'background:rgba(246,201,69,0.06);' : ''}">
         <input type="checkbox" ${sel ? 'checked' : ''}
-          onchange="Communications._toggleUser(${u.id})"
+          onchange="Communications._toggleUser('${u.id}')"
           style="width:15px;height:15px;margin-top:2px;accent-color:var(--felta-yellow);cursor:pointer;flex-shrink:0;">
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold truncate" style="color:var(--txt-primary);">${u.name || '—'}</div>
+          <div class="flex justify-between items-center gap-2">
+            <div class="text-sm font-semibold truncate" style="color:var(--txt-primary);">${u.name || '—'}</div>
+            <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded" style="background:var(--bg-hover);color:var(--txt-muted);border:1px solid var(--border-subtle);">${u.category}</span>
+          </div>
           <div class="text-xs truncate" style="color:var(--txt-muted);">${u.email}</div>
           <div class="text-xs" style="color:var(--txt-muted);opacity:0.7;">${u.school_name || '—'}</div>
         </div>
@@ -1703,9 +1719,13 @@ const Communications = {
     this._updateRecipLine();
     // Update select-all checkbox
     const q = (this._emailSearch || '').toLowerCase();
-    const filtered = q ? this._emailAllUsers.filter(u =>
-      (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.school_name||'').toLowerCase().includes(q)
-    ) : this._emailAllUsers;
+    const filtered = this._emailAllUsers.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q) ||
+          (u.email||'').toLowerCase().includes(q) ||
+          (u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
     const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
     const allFiltered = filtered.length > 0 && filtered.every(u => selIds.has(u.id));
     const saEl = document.getElementById('email-select-all');
@@ -1715,11 +1735,11 @@ const Communications = {
 
   _toggleSelectAll(checked) {
     const q = (this._emailSearch || '').toLowerCase();
-    const filtered = q
-      ? this._emailAllUsers.filter(u =>
-          (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.school_name||'').toLowerCase().includes(q)
-        )
-      : this._emailAllUsers;
+    const filtered = this._emailAllUsers.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
 
     if (checked) {
       // Add all filtered users not already selected
