@@ -237,14 +237,7 @@ const Judging = {
                   onmouseout="this.style.background='rgba(246,201,69,0.12)'">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
-                <button onclick="Judging.openAssignment('${j.id}', '${name.replace(/'/g, "\\'")}')" 
-                  title="Manage Assignments"
-                  class="p-1.5 rounded-lg text-xs transition flex items-center"
-                  style="background:rgba(30,158,191,0.12);color:#1E9EBF;"
-                  onmouseover="this.style.background='rgba(30,158,191,0.28)'"
-                  onmouseout="this.style.background='rgba(30,158,191,0.12)'">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/><path d="M15 5l4 4"/></svg>
-                </button>
+
                 <button onclick="Judging._confirmDelete('${j.id}', '${name.replace(/'/g, "\\'")}')" 
                   title="Remove Judge"
                   class="p-1.5 rounded-lg text-xs transition flex items-center"
@@ -603,129 +596,7 @@ const Judging = {
     await this._loadTable();
   },
 
-  // ── Assignments Modal ──────────────────────────────────────
-  async openAssignment(judgeId, judgeName) {
-    // Show a loading modal first
-    Modal.show(
-      `Manage Assignments – ${judgeName}`,
-      `<div class="flex items-center justify-center py-10">
-         <div class="spinner"></div>
-       </div>`,
-      '',
-      'max-w-2xl'
-    );
 
-    // Fetch existing assignments for this judge
-    let savedSeasons = [];
-    let savedCategories = [];
-    try {
-      const res = await DB._request('GET', `/judging/${judgeId}/assignments`);
-      if (res && !res.error) {
-        savedSeasons = res.seasons || [];
-        savedCategories = res.categories || [];
-      }
-    } catch (_) { /* silently ignore – start with empty selection */ }
-
-    // Always fetch live seasons from DB so newly-created seasons appear immediately
-    const rawSeasons = await DB.getAll('seasons');
-    const allSeasons = rawSeasons.sort((a, b) => (b.year || 0) - (a.year || 0)).map(s => s.name);
-    const allCategories = Seeder.WRO_CATEGORIES;
-
-    // Build chip HTML for a list of values
-    const chipSet = (items, selectedSet, groupId) =>
-      items.map(item => {
-        const isSelected = selectedSet.includes(item);
-        return `
-          <button type="button"
-            data-group="${groupId}"
-            data-value="${item.replace(/"/g, '&quot;')}"
-            onclick="Judging._toggleChip(this)"
-            class="assignment-chip px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
-            style="${isSelected
-            ? groupId === 'season'
-              ? 'background:rgba(246,201,69,0.22);color:#F6C945;border-color:rgba(246,201,69,0.55);'
-              : 'background:rgba(30,158,191,0.22);color:#1E9EBF;border-color:rgba(30,158,191,0.55);'
-            : 'background:rgba(255,255,255,0.04);color:#6B7494;border-color:rgba(255,255,255,0.10);'
-          }"
-            aria-pressed="${isSelected}">${item}</button>`;
-      }).join('');
-
-    const bodyHTML = `
-      <div class="space-y-6">
-
-        <!-- Helper note -->
-        <p class="text-xs text-slate-500">Click chips to toggle selection. At least one Season <strong>and</strong> one Category must be selected to save.</p>
-
-        <!-- Seasons -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <label class="form-label mb-0" style="color:#F6C945;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Seasons
-            </label>
-            <div class="flex gap-2">
-              <button type="button" onclick="Judging._selectAll('season')" class="text-xs text-slate-400 hover:text-white transition">Select all</button>
-              <span class="text-slate-700">·</span>
-              <button type="button" onclick="Judging._clearAll('season')" class="text-xs text-slate-400 hover:text-white transition">Clear</button>
-            </div>
-          </div>
-          <div id="chips-season" class="flex flex-wrap gap-2">
-            ${chipSet(allSeasons, savedSeasons, 'season')}
-          </div>
-        </div>
-
-        <!-- Divider -->
-        <div style="height:1px;background:rgba(255,255,255,0.07);"></div>
-
-        <!-- Categories -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <label class="form-label mb-0" style="color:#1E9EBF;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:4px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-              Judging Categories
-            </label>
-            <div class="flex gap-2">
-              <button type="button" onclick="Judging._selectAll('category')" class="text-xs text-slate-400 hover:text-white transition">Select all</button>
-              <span class="text-slate-700">·</span>
-              <button type="button" onclick="Judging._clearAll('category')" class="text-xs text-slate-400 hover:text-white transition">Clear</button>
-            </div>
-          </div>
-          <div id="chips-category" class="flex flex-wrap gap-2">
-            ${chipSet(allCategories, savedCategories, 'category')}
-          </div>
-        </div>
-
-      </div>`;
-
-    const footerHTML = `
-      <button onclick="Modal.close()"
-        class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold transition hover:bg-slate-600">
-        Cancel
-      </button>
-      <button onclick="Judging._saveAssignment('${judgeId}')"
-        class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save Assignments
-      </button>`;
-
-    // Replace modal content in-place (avoids the flash of a second overlay)
-    const overlayBox = document.querySelector('#modal-overlay .modal-box');
-    if (overlayBox) {
-      overlayBox.querySelector('.flex-1').innerHTML = bodyHTML;
-      const existingFooter = overlayBox.querySelector('.p-6.border-t');
-      if (existingFooter) {
-        existingFooter.innerHTML = footerHTML;
-      } else {
-        const footer = document.createElement('div');
-        footer.className = 'p-6 border-t border-slate-700/50 flex justify-end gap-3';
-        footer.innerHTML = footerHTML;
-        overlayBox.appendChild(footer);
-      }
-    } else {
-      // Fallback: open a fresh modal if the loading one was dismissed
-      Modal.show(`Manage Assignments – ${judgeName}`, bodyHTML, footerHTML, 'max-w-2xl');
-    }
-  },
 
   // Toggle a chip's selected state
   _toggleChip(btn) {
@@ -760,52 +631,7 @@ const Judging = {
     });
   },
 
-  // Collect selected chips and save to API
-  async _saveAssignment(judgeId) {
-    const getSelected = (group) =>
-      Array.from(
-        document.querySelectorAll(`[data-group="${group}"][aria-pressed="true"]`)
-      ).map(b => b.dataset.value);
 
-    const seasons = getSelected('season');
-    const categories = getSelected('category');
-
-    if (seasons.length === 0 && categories.length === 0) {
-      // Allow clearing all assignments
-    } else if (seasons.length === 0) {
-      Toast.warning('Please select at least one Season.');
-      return;
-    } else if (categories.length === 0) {
-      Toast.warning('Please select at least one Judging Category.');
-      return;
-    }
-
-    // Disable save button to prevent double-click
-    const saveBtn = document.querySelector('#modal-overlay button[onclick*="_saveAssignment"]');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.6'; }
-
-    try {
-      const res = await DB._request('PUT', `/judging/${judgeId}/assignments`, { seasons, categories });
-      if (!res || res.error || res.success === false) {
-        Toast.error(res?.error || 'Failed to save assignments. Please try again.');
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
-        return;
-      }
-      DB.invalidateAll(); // clear cache so UI re-fetches assignments
-      Modal.close();
-      const total = seasons.length * categories.length;
-      Toast.success(
-        total === 0
-          ? 'All assignments cleared.'
-          : `${total} assignment${total !== 1 ? 's' : ''} saved successfully!`
-      );
-      await this._loadTable();
-    } catch (err) {
-      console.error('[Judging] Save assignment error:', err);
-      Toast.error('Network error. Please check the server and try again.');
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
-    }
-  },
 
   // ── CSV Export ─────────────────────────────────────────────
   async exportCSV() {
