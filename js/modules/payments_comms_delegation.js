@@ -902,6 +902,17 @@ window.Payments = Payments;
 const Communications = {
   _tab: 'announcements',
 
+  // ── Direct Email state ──────────────────────────────────────
+  _emailSelectedUsers: [],
+  _emailAllUsers:      [],
+  _emailSearch:        '',
+  _emailSending:       false,
+  _emailHistPage:      1,
+  _emailHistSearch:    '',
+  _emailHistFilter:    '',
+  _emailAttachName:    null,
+  _emailAttachData:    null,
+
   async render() {
     document.getElementById('page-content').innerHTML = `
       <div class="page-view space-y-6">
@@ -910,23 +921,25 @@ const Communications = {
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 class="text-2xl font-black" style="color:var(--txt-primary);">Communications Hub</h1>
-            <p class="text-sm mt-1" style="color:var(--txt-muted);">Manage announcements, notifications & team communication status</p>
+            <p class="text-sm mt-1" style="color:var(--txt-muted);">Manage announcements, notifications, team status &amp; direct email</p>
           </div>
-          <button onclick="Communications.openAnnouncement()" class="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2">
+          <button id="comm-ann-btn" onclick="Communications.openAnnouncement()"
+            class="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2"
+            style="${Communications._tab !== 'announcements' ? 'display:none;' : ''}">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Announcement
           </button>
         </div>
 
         <!-- Tabs -->
-        <div class="flex gap-1 p-1 rounded-xl" style="background:var(--bg-surface); border:1px solid var(--border-subtle);">
+        <div class="flex flex-wrap gap-1 p-1 rounded-xl" style="background:var(--bg-surface); border:1px solid var(--border-subtle);">
           ${[['announcements','Announcements','<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'],
              ['history','Notification History','<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
-             ['tracker','Team Status Tracker','<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/>']
+             ['tracker','Team Status Tracker','<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/>'],
+             ['directemail','Direct Email','<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'],
           ].map(([id, label, paths]) => `
             <button id="comm-tab-${id}" onclick="Communications._switchTab('${id}')"
-              class="flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2
-                ${Communications._tab === id ? 'text-white' : ''}"
+              class="flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2"
               style="${Communications._tab === id
                 ? 'background:var(--felta-yellow); color:#07120c;'
                 : 'color:var(--txt-muted);'}">
@@ -944,8 +957,7 @@ const Communications = {
 
   async _switchTab(tab) {
     this._tab = tab;
-    // Update tab button styles
-    ['announcements','history','tracker'].forEach(id => {
+    ['announcements','history','tracker','directemail'].forEach(id => {
       const btn = document.getElementById(`comm-tab-${id}`);
       if (!btn) return;
       if (id === tab) {
@@ -956,15 +968,19 @@ const Communications = {
         btn.style.color = 'var(--txt-muted)';
       }
     });
+    // Show/hide New Announcement button
+    const annBtn = document.getElementById('comm-ann-btn');
+    if (annBtn) annBtn.style.display = tab === 'announcements' ? '' : 'none';
     await this._renderTab();
   },
 
   async _renderTab() {
     const el = document.getElementById('comm-content');
     if (!el) return;
-    if (this._tab === 'announcements') await this._renderAnnouncements(el);
-    else if (this._tab === 'history') await this._renderHistory(el);
-    else await this._renderTracker(el);
+    if (this._tab === 'announcements')   await this._renderAnnouncements(el);
+    else if (this._tab === 'history')    await this._renderHistory(el);
+    else if (this._tab === 'tracker')    await this._renderTracker(el);
+    else if (this._tab === 'directemail') await this._renderDirectEmail(el);
   },
 
   async _renderAnnouncements(el) {
@@ -1325,6 +1341,786 @@ const Communications = {
       all.map(c => [c.id, c.teamId, c.registrationConfirmation, c.paymentConfirmation, c.certificateSent, c.feedbackSubmitted])
     );
     Toast.success('Communications exported!');
+  },
+
+  // ============================================================
+  // DIRECT EMAIL METHODS
+  // ============================================================
+
+  async _renderDirectEmail(el) {
+    // Load Standard Users with emails
+    let users = [];
+    try {
+      const result = await DB._request('GET', '/emails/recipients');
+      users = Array.isArray(result) ? result : [];
+    } catch (e) {
+      users = [];
+    }
+    this._emailAllUsers = users;
+
+    this._emailActiveCategory = this._emailActiveCategory || 'All';
+
+    // Apply search filter
+    const q = (this._emailSearch || '').toLowerCase();
+    const filtered = users.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q) ||
+          (u.email||'').toLowerCase().includes(q) ||
+          (u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
+
+    const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
+    const allFiltered = filtered.length > 0 && filtered.every(u => selIds.has(u.id));
+
+    el.innerHTML = `
+      <div class="space-y-6">
+
+        <!-- ── Composer Panel ─────────────────────────────── -->
+        <div class="flex flex-col lg:flex-row gap-6 w-full">
+
+          <!-- Left: Recipient Selector -->
+          <div class="w-full lg:w-1/3 flex flex-col min-h-[550px]">
+            <div class="glass rounded-2xl overflow-hidden h-full flex flex-col">
+              <!-- Header -->
+              <div class="p-4 border-b" style="border-color:var(--border-primary);">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="font-bold text-sm" style="color:var(--txt-primary);">Recipients</span>
+                  <span id="email-sel-badge" class="px-2 py-0.5 rounded-full text-xs font-bold"
+                    style="background:rgba(246,201,69,0.15);color:var(--felta-yellow);">
+                    ${this._emailSelectedUsers.length} selected
+                  </span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-3">
+                  ${['All', 'User', 'School', 'Coach', 'Student', 'Judge'].map(c => `
+                    <button onclick="Communications._setCategory('${c}')" class="px-2 py-1 rounded-md text-[10px] font-bold uppercase transition"
+                      style="background:${this._emailActiveCategory === c ? 'var(--felta-yellow)' : 'var(--bg-hover)'};color:${this._emailActiveCategory === c ? '#07120c' : 'var(--txt-muted)'};border:1px solid ${this._emailActiveCategory === c ? 'var(--felta-yellow)' : 'transparent'};">
+                      ${c}${c==='All'?'':'s'}
+                    </button>
+                  `).join('')}
+                </div>
+                <!-- Search -->
+                <div class="relative">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input id="email-user-search" type="text" placeholder="Search by name, email, school…"
+                    value="${this._emailSearch || ''}"
+                    oninput="Communications._onUserSearch(this.value)"
+                    class="form-input" style="padding-left:32px;font-size:12px;">
+                </div>
+              </div>
+              <!-- Select All row -->
+              <div class="px-4 py-2 flex items-center gap-3 border-b" style="border-color:var(--border-primary);background:var(--bg-hover);">
+                <input type="checkbox" id="email-select-all" ${allFiltered ? 'checked' : ''}
+                  onchange="Communications._toggleSelectAll(this.checked)"
+                  style="width:15px;height:15px;accent-color:var(--felta-yellow);cursor:pointer;">
+                <label for="email-select-all" class="text-xs font-semibold cursor-pointer" style="color:var(--txt-secondary);">
+                  Select All (${filtered.length} recipient${filtered.length !== 1 ? 's' : ''})
+                </label>
+              </div>
+              <!-- User List -->
+              <div class="flex-1 overflow-y-auto" style="min-height:200px;" id="email-user-list">
+                ${filtered.length === 0 ? `
+                  <div class="p-8 text-center" style="color:var(--txt-muted);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px;opacity:0.3;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <p class="text-xs">${q ? 'No users match your search.' : 'No Standard Users with email found.'}</p>
+                  </div>
+                ` : filtered.map(u => {
+                  const sel = selIds.has(u.id);
+                  return `
+                  <label class="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
+                    style="border-bottom:1px solid var(--border-subtle);${sel ? 'background:rgba(246,201,69,0.06);' : ''}">
+                    <input type="checkbox" ${sel ? 'checked' : ''}
+                      onchange="Communications._toggleUser(${u.id})"
+                      style="width:15px;height:15px;margin-top:2px;accent-color:var(--felta-yellow);cursor:pointer;flex-shrink:0;">
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-semibold truncate" style="color:var(--txt-primary);">${u.name || '—'}</div>
+                      <div class="text-xs truncate" style="color:var(--txt-muted);">${u.email}</div>
+                      <div class="text-xs" style="color:var(--txt-muted);opacity:0.7;">${u.school_name || '—'}</div>
+                    </div>
+                  </label>`;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Email Composer -->
+          <div class="w-full lg:w-2/3 flex flex-col min-h-[550px]">
+            <div class="glass rounded-2xl p-6 h-full flex flex-col gap-4">
+              <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--felta-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <h3 class="font-bold" style="color:var(--txt-primary);">Compose Email</h3>
+              </div>
+
+              <!-- Subject -->
+              <div>
+                <label class="form-label">Subject *</label>
+                <input id="email-subject" type="text" class="form-input" placeholder="Enter email subject…"
+                  oninput="Communications._updateSendBtn()">
+              </div>
+
+              <!-- Rich Text Toolbar -->
+              <div class="flex flex-col flex-1">
+                <label class="form-label">Message *</label>
+                <div class="rounded-xl overflow-hidden flex flex-col flex-1" style="border:1px solid var(--border-primary); background:var(--bg-surface);">
+                  <!-- Toolbar -->
+                  <div class="flex flex-wrap gap-1 p-2 border-b" style="border-color:var(--border-primary); background:var(--bg-panel);">
+                    ${[
+                      ['Bold','bold',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>`,false],
+                      ['Italic','italic',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,false],
+                      ['Underline','underline',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>`,false],
+                      ['Strikethrough','strikeThrough',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>`,false],
+                      ['|','','|',true],
+                      ['Heading','formatBlock','H2',false],
+                      ['Ordered List','insertOrderedList',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`,false],
+                      ['Unordered List','insertUnorderedList',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,false],
+                      ['|','','|',true],
+                      ['Align Left','justifyLeft',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"/><line x1="15" y1="12" x2="3" y2="12"/><line x1="17" y1="18" x2="3" y2="18"/></svg>`,false],
+                      ['Align Center','justifyCenter',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"/><line x1="19" y1="12" x2="5" y2="12"/><line x1="17" y1="18" x2="7" y2="18"/></svg>`,false],
+                      ['|','','|',true],
+                      ['Insert Link','createLink',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,false],
+                      ['Clear Format','removeFormat',`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M16 4h4v4"/><path d="M4 16v4h4"/></svg>`,false],
+                    ].map(([title, cmd, icon, isSep]) => isSep
+                      ? `<span style="color:var(--border-subtle);margin:0 4px;display:flex;align-items:center;font-size:12px;">|</span>`
+                      : `<button type="button" title="${title}"
+                          onclick="Communications._execCmd('${cmd}')"
+                          class="editor-toolbar-btn">
+                          ${icon}</button>`
+                    ).join('')}
+                  </div>
+                  <!-- Editor -->
+                  <div id="email-body-editor"
+                    contenteditable="true"
+                    oninput="Communications._updateSendBtn(); Communications._updateCharCount();"
+                    style="flex:1;min-height:250px;max-height:55vh;overflow-y:auto;padding:16px;outline:none;font-size:14px;line-height:1.7;color:var(--txt-primary);background:transparent;"
+                    data-placeholder="Write your message here…"></div>
+                </div>
+                <div class="flex justify-between mt-1">
+                  <span class="text-xs" style="color:var(--txt-muted);">Supports bold, italic, lists, and links</span>
+                  <span id="email-char-count" class="text-xs" style="color:var(--txt-muted);">0 chars</span>
+                </div>
+              </div>
+
+              <!-- Attachment -->
+              <div>
+                <label class="form-label">Attachment <span style="font-weight:400;opacity:0.6;">(optional · max 5 MB)</span></label>
+                <div id="email-attach-zone"
+                  onclick="document.getElementById('email-attach-input').click()"
+                  style="border:1.5px dashed var(--border-subtle);border-radius:10px;padding:12px 16px;cursor:pointer;transition:border-color 0.2s;display:flex;align-items:center;gap:10px;"
+                  onmouseover="this.style.borderColor='var(--felta-yellow)';"
+                  onmouseout="this.style.borderColor='var(--border-subtle)';">
+                  <input type="file" id="email-attach-input" style="display:none" onchange="Communications._onAttachPick(event)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--txt-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  <span id="email-attach-label" class="text-xs" style="color:var(--txt-muted);">Click to attach a file</span>
+                  <button id="email-attach-remove" type="button" onclick="event.stopPropagation();Communications._removeAttach()"
+                    style="display:none;margin-left:auto;padding:2px 8px;border-radius:6px;border:none;background:rgba(230,57,70,0.12);color:#e63946;font-size:11px;cursor:pointer;">✕ Remove</button>
+                </div>
+              </div>
+
+              <!-- Recipients preview + Send -->
+              <div class="flex flex-wrap items-center justify-between gap-3 pt-2 mt-auto border-t" style="border-color:var(--border-subtle);">
+                <div id="email-recip-preview-line" class="text-sm" style="color:var(--txt-muted);">
+                  ${this._emailSelectedUsers.length === 0
+                    ? '<span style="color:#e63946;">⚠ No recipients selected</span>'
+                    : `<span style="color:var(--felta-yellow);">✓</span> <strong style="color:var(--txt-primary);">${this._emailSelectedUsers.length}</strong> recipient${this._emailSelectedUsers.length !== 1 ? 's' : ''} selected`
+                  }
+                </div>
+                <div class="flex gap-2">
+                  <button id="email-preview-btn" onclick="Communications._openPreview()"
+                    ${this._emailSelectedUsers.length === 0 ? 'disabled' : ''}
+                    class="px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2"
+                    style="background:var(--bg-surface);color:var(--txt-secondary);border:1px solid var(--border-subtle);"
+                    onmouseover="if(!this.disabled){this.style.borderColor='var(--felta-yellow)';}" onmouseout="this.style.borderColor='var(--border-subtle)';">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Preview
+                  </button>
+                  <button id="email-send-btn" onclick="Communications._confirmSend()"
+                    ${this._emailSelectedUsers.length === 0 ? 'disabled' : ''}
+                    class="btn-primary px-5 py-2 rounded-xl text-xs font-bold flex items-center gap-2"
+                    style="${this._emailSelectedUsers.length === 0 ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Send Email
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Email History ───────────────────────────────── -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <h3 class="font-bold" style="color:var(--txt-primary);">Email History</h3>
+            <div class="flex flex-wrap gap-2">
+              <div class="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="email-hist-search" type="text" placeholder="Search subject or sender…"
+                  value="${this._emailHistSearch}"
+                  oninput="Communications._onHistSearch(this.value)"
+                  class="form-input" style="padding-left:28px;font-size:12px;width:200px;">
+              </div>
+              <select id="email-hist-filter" class="form-input" style="font-size:12px;width:auto;"
+                onchange="Communications._onHistFilter(this.value)">
+                <option value="">All Status</option>
+                <option value="sent" ${this._emailHistFilter==='sent'?'selected':''}>Sent</option>
+                <option value="partial" ${this._emailHistFilter==='partial'?'selected':''}>Partial</option>
+                <option value="failed" ${this._emailHistFilter==='failed'?'selected':''}>Failed</option>
+                <option value="pending" ${this._emailHistFilter==='pending'?'selected':''}>Pending</option>
+              </select>
+            </div>
+          </div>
+          <div id="email-history-table">Loading…</div>
+        </div>
+      </div>`;
+
+    // Init placeholder for contenteditable
+    this._initEditorPlaceholder();
+    // Load history
+    await this._loadEmailHistory();
+  },
+
+  _initEditorPlaceholder() {
+    const editor = document.getElementById('email-body-editor');
+    if (!editor) return;
+    const ph = editor.getAttribute('data-placeholder');
+    if (!editor.textContent.trim()) {
+      editor.style.color = 'var(--txt-muted)';
+      editor.textContent = ph;
+    }
+    editor.addEventListener('focus', function() {
+      if (this.textContent === ph) { this.textContent = ''; this.style.color = 'var(--txt-primary)'; }
+    }, { once: false });
+    editor.addEventListener('blur', function() {
+      if (!this.textContent.trim()) { this.textContent = ph; this.style.color = 'var(--txt-muted)'; }
+    }, { once: false });
+  },
+
+  _execCmd(cmd) {
+    const editor = document.getElementById('email-body-editor');
+    if (!editor) return;
+    editor.focus();
+    if (cmd === 'formatBlock') {
+      document.execCommand('formatBlock', false, '<h2>');
+    } else if (cmd === 'createLink') {
+      const url = prompt('Enter URL:');
+      if (url) document.execCommand('createLink', false, url);
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    this._updateCharCount();
+  },
+
+  _updateCharCount() {
+    const editor = document.getElementById('email-body-editor');
+    const countEl = document.getElementById('email-char-count');
+    if (!editor || !countEl) return;
+    const ph = editor.getAttribute('data-placeholder');
+    const text = editor.innerText || '';
+    const count = text === ph ? 0 : text.length;
+    countEl.textContent = `${count.toLocaleString()} chars`;
+  },
+
+  _updateSendBtn() {
+    const subj = (document.getElementById('email-subject')?.value || '').trim();
+    const editor = document.getElementById('email-body-editor');
+    const ph = editor?.getAttribute('data-placeholder') || '';
+    const body = editor ? (editor.innerText || '').trim() : '';
+    const hasBody = body && body !== ph;
+    const hasSel  = this._emailSelectedUsers.length > 0;
+    const sendBtn = document.getElementById('email-send-btn');
+    const prevBtn = document.getElementById('email-preview-btn');
+    const ready = subj && hasBody && hasSel;
+    if (sendBtn) {
+      sendBtn.disabled = !ready;
+      sendBtn.style.opacity = ready ? '1' : '0.5';
+      sendBtn.style.cursor  = ready ? 'pointer' : 'not-allowed';
+    }
+    if (prevBtn) {
+      prevBtn.disabled = !ready;
+    }
+  },
+
+  _updateRecipLine() {
+    const el = document.getElementById('email-recip-preview-line');
+    if (!el) return;
+    el.innerHTML = this._emailSelectedUsers.length === 0
+      ? '<span style="color:#e63946;">⚠ No recipients selected</span>'
+      : `<span style="color:var(--felta-yellow);">✓</span> <strong style="color:var(--txt-primary);">${this._emailSelectedUsers.length}</strong> recipient${this._emailSelectedUsers.length !== 1 ? 's' : ''} selected`;
+  },
+
+  _setCategory(c) {
+    this._emailActiveCategory = c;
+    this._renderTab();
+  },
+
+  _onUserSearch(val) {
+    this._emailSearch = val;
+    const q = val.toLowerCase();
+    const filtered = this._emailAllUsers.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q) ||
+          (u.email||'').toLowerCase().includes(q) ||
+          (u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
+
+    const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
+    const allFiltered = filtered.length > 0 && filtered.every(u => selIds.has(u.id));
+
+    const listEl = document.getElementById('email-user-list');
+    const saEl   = document.getElementById('email-select-all');
+    const badge  = document.getElementById('email-sel-badge');
+
+    if (saEl) saEl.checked = allFiltered;
+    if (badge) badge.textContent = `${this._emailSelectedUsers.length} selected`;
+
+    const saLabel = saEl?.parentElement?.querySelector('label');
+    if (saLabel) saLabel.textContent = `Select All (${filtered.length} recipient${filtered.length !== 1 ? 's' : ''})`;
+
+    if (!listEl) return;
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div class="p-8 text-center" style="color:var(--txt-muted);"><p class="text-xs">${q ? 'No recipients match your search.' : 'No recipients found in this category.'}</p></div>`;
+      return;
+    }
+    listEl.innerHTML = filtered.map(u => {
+      const sel = selIds.has(u.id);
+      return `
+      <label class="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
+        style="border-bottom:1px solid var(--border-subtle);${sel ? 'background:rgba(246,201,69,0.06);' : ''}">
+        <input type="checkbox" ${sel ? 'checked' : ''}
+          onchange="Communications._toggleUser('${u.id}')"
+          style="width:15px;height:15px;margin-top:2px;accent-color:var(--felta-yellow);cursor:pointer;flex-shrink:0;">
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-center gap-2">
+            <div class="text-sm font-semibold truncate" style="color:var(--txt-primary);">${u.name || '—'}</div>
+            <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded" style="background:var(--bg-hover);color:var(--txt-muted);border:1px solid var(--border-subtle);">${u.category}</span>
+          </div>
+          <div class="text-xs truncate" style="color:var(--txt-muted);">${u.email}</div>
+          <div class="text-xs" style="color:var(--txt-muted);opacity:0.7;">${u.school_name || '—'}</div>
+        </div>
+      </label>`;
+    }).join('');
+  },
+
+  _toggleUser(userId) {
+    const user = this._emailAllUsers.find(u => u.id === userId);
+    if (!user) return;
+    const idx = this._emailSelectedUsers.findIndex(u => u.id === userId);
+    if (idx >= 0) {
+      this._emailSelectedUsers.splice(idx, 1);
+    } else {
+      this._emailSelectedUsers.push(user);
+    }
+    // Update badge
+    const badge = document.getElementById('email-sel-badge');
+    if (badge) badge.textContent = `${this._emailSelectedUsers.length} selected`;
+    // Update recipient line in composer
+    this._updateRecipLine();
+    // Update select-all checkbox
+    const q = (this._emailSearch || '').toLowerCase();
+    const filtered = this._emailAllUsers.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q) ||
+          (u.email||'').toLowerCase().includes(q) ||
+          (u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
+    const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
+    const allFiltered = filtered.length > 0 && filtered.every(u => selIds.has(u.id));
+    const saEl = document.getElementById('email-select-all');
+    if (saEl) saEl.checked = allFiltered;
+    this._updateSendBtn();
+  },
+
+  _toggleSelectAll(checked) {
+    const q = (this._emailSearch || '').toLowerCase();
+    const filtered = this._emailAllUsers.filter(u => {
+      const matchCat = this._emailActiveCategory === 'All' || u.category === this._emailActiveCategory;
+      const matchText = !q || (u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.school_name||'').toLowerCase().includes(q);
+      return matchCat && matchText;
+    });
+
+    if (checked) {
+      // Add all filtered users not already selected
+      const selIds = new Set(this._emailSelectedUsers.map(u => u.id));
+      filtered.forEach(u => { if (!selIds.has(u.id)) this._emailSelectedUsers.push(u); });
+    } else {
+      // Remove all filtered users from selection
+      const filteredIds = new Set(filtered.map(u => u.id));
+      this._emailSelectedUsers = this._emailSelectedUsers.filter(u => !filteredIds.has(u.id));
+    }
+    // Re-render list
+    this._onUserSearch(this._emailSearch || '');
+    const badge = document.getElementById('email-sel-badge');
+    if (badge) badge.textContent = `${this._emailSelectedUsers.length} selected`;
+    this._updateSendBtn();
+    this._updateRecipLine();
+  },
+
+  _onAttachPick(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      Toast.error('Attachment too large. Maximum size is 5 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      Communications._emailAttachName = file.name;
+      Communications._emailAttachData = e.target.result;
+      const label  = document.getElementById('email-attach-label');
+      const remove = document.getElementById('email-attach-remove');
+      if (label)  { label.textContent = `📎 ${file.name} (${(file.size/1024).toFixed(1)} KB)`; label.style.color = 'var(--txt-primary)'; }
+      if (remove) remove.style.display = 'inline-block';
+    };
+    reader.readAsDataURL(file);
+  },
+
+  _removeAttach() {
+    this._emailAttachName = null;
+    this._emailAttachData = null;
+    const label  = document.getElementById('email-attach-label');
+    const remove = document.getElementById('email-attach-remove');
+    const input  = document.getElementById('email-attach-input');
+    if (label)  { label.textContent = 'Click to attach a file'; label.style.color = 'var(--txt-muted)'; }
+    if (remove) remove.style.display = 'none';
+    if (input)  input.value = '';
+  },
+
+  _getEditorHtml() {
+    const editor = document.getElementById('email-body-editor');
+    if (!editor) return '';
+    const ph = editor.getAttribute('data-placeholder') || '';
+    return editor.innerText.trim() === ph ? '' : editor.innerHTML;
+  },
+
+  _openPreview() {
+    const subject = (document.getElementById('email-subject')?.value || '').trim();
+    const html    = this._getEditorHtml();
+    if (!subject) { Toast.error('Subject is required.'); return; }
+    if (!html)    { Toast.error('Message body is required.'); return; }
+    if (this._emailSelectedUsers.length === 0) { Toast.error('Please select at least one recipient.'); return; }
+
+    const recipientList = this._emailSelectedUsers.slice(0, 8).map(u =>
+      `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:20px;font-size:11px;background:rgba(246,201,69,0.15);color:var(--felta-yellow);border:1px solid rgba(246,201,69,0.3);">${u.name}</span>`
+    ).join('');
+    const moreCount = this._emailSelectedUsers.length - 8;
+
+    Modal.show('Email Preview', `
+      <div class="space-y-4">
+        <div class="rounded-xl p-4" style="background:var(--bg-surface);border:1px solid var(--border-subtle);">
+          <div class="grid grid-cols-3 gap-2 text-sm mb-3">
+            <div><span style="color:var(--txt-muted);font-size:11px;">FROM</span><br><strong style="color:var(--txt-primary);">${(AUTH.currentUser()?.name || 'Administrator')}</strong></div>
+            <div><span style="color:var(--txt-muted);font-size:11px;">RECIPIENTS</span><br><strong style="color:var(--felta-yellow);">${this._emailSelectedUsers.length} user${this._emailSelectedUsers.length !== 1 ? 's' : ''}</strong></div>
+            <div><span style="color:var(--txt-muted);font-size:11px;">ATTACHMENT</span><br><strong style="color:var(--txt-primary);">${this._emailAttachName || '—'}</strong></div>
+          </div>
+          <div><span style="color:var(--txt-muted);font-size:11px;">SUBJECT</span><br><strong style="color:var(--txt-primary);font-size:15px;">${subject}</strong></div>
+        </div>
+        <div>
+          <span style="color:var(--txt-muted);font-size:11px;">RECIPIENTS</span>
+          <div class="mt-1">${recipientList}${moreCount > 0 ? `<span style="font-size:11px;color:var(--txt-muted);"> +${moreCount} more</span>` : ''}</div>
+        </div>
+        <div>
+          <span style="color:var(--txt-muted);font-size:11px;">MESSAGE PREVIEW</span>
+          <div class="mt-1 rounded-xl p-4" style="background:white;color:#1a1a2e;font-size:13px;line-height:1.7;border:1px solid var(--border-subtle);max-height:280px;overflow-y:auto;">
+            ${html}
+          </div>
+        </div>
+      </div>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition" style="border-color:var(--border-primary);color:var(--txt-primary);">Close Preview</button>
+       <button onclick="Modal.close();Communications._sendEmail()" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
+         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+         Send Now
+       </button>`,
+      'max-w-2xl'
+    );
+  },
+
+  _confirmSend() {
+    const subject = (document.getElementById('email-subject')?.value || '').trim();
+    const html    = this._getEditorHtml();
+    if (!subject) { Toast.error('Subject is required.'); return; }
+    if (!html)    { Toast.error('Message body is required.'); return; }
+    if (this._emailSelectedUsers.length === 0) { Toast.error('Please select at least one recipient.'); return; }
+    if (this._emailSending) { Toast.warning('Already sending. Please wait.'); return; }
+
+    const msg = `Are you sure you want to send this email to <strong style="color:var(--txt-primary);">${this._emailSelectedUsers.length} recipient${this._emailSelectedUsers.length !== 1 ? 's' : ''}</strong>?`;
+    Modal.show(
+      'Confirm Send Email',
+      `<div class="text-center py-6">
+        <div class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style="background:rgba(246,201,69,0.15);color:var(--felta-yellow);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <p class="text-base" style="color:var(--txt-secondary);">${msg}</p>
+      </div>`,
+      `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition" style="border-color:var(--border-primary);color:var(--txt-primary);">Cancel</button>
+       <button onclick="Modal.close(); Communications._sendEmail();" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-bold flex items-center gap-2">
+         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+         Send Email
+       </button>`,
+      'max-w-md'
+    );
+  },
+
+  async _sendEmail() {
+    if (this._emailSending) return;
+    const subject = (document.getElementById('email-subject')?.value || '').trim();
+    const html    = this._getEditorHtml();
+
+    if (!subject || !html || this._emailSelectedUsers.length === 0) {
+      Toast.error('Please fill in subject, message, and select recipients.');
+      return;
+    }
+
+    this._emailSending = true;
+    const sendBtn = document.getElementById('email-send-btn');
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Sending…`;
+    }
+
+    try {
+      const payload = {
+        subject,
+        message:        html,
+        recipientIds:   this._emailSelectedUsers.map(u => u.id),
+        attachmentName: this._emailAttachName || null,
+        attachmentData: this._emailAttachData || null,
+      };
+
+      const result = await DB._request('POST', '/emails/send', payload);
+
+      if (!result) {
+        Toast.error('Failed to send emails. Check server logs.');
+        return;
+      }
+
+      const { sentCount, failedCount, totalRecipients, status } = result;
+
+      if (status === 'sent') {
+        Toast.success(`✅ Email sent successfully to all ${sentCount} recipient${sentCount !== 1 ? 's' : ''}!`);
+      } else if (status === 'partial') {
+        Toast.warning(`⚠ Partially sent: ${sentCount} succeeded, ${failedCount} failed.`);
+      } else {
+        Toast.error(`❌ All ${failedCount} emails failed to send. Check your Gmail settings.`);
+      }
+
+      // Clear composer
+      const editor = document.getElementById('email-body-editor');
+      const subjEl = document.getElementById('email-subject');
+      if (subjEl) subjEl.value = '';
+      if (editor) { editor.innerHTML = ''; editor.textContent = editor.getAttribute('data-placeholder'); editor.style.color = 'var(--txt-muted)'; }
+      this._emailSelectedUsers = [];
+      this._emailAttachName = null;
+      this._emailAttachData = null;
+
+      // Reload history
+      await this._loadEmailHistory();
+
+    } catch (err) {
+      console.error('[DirectEmail] Send error:', err);
+      Toast.error('An unexpected error occurred while sending.');
+    } finally {
+      this._emailSending = false;
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Email`;
+      }
+    }
+  },
+
+  _onHistSearch(val) {
+    this._emailHistSearch = val;
+    this._emailHistPage   = 1;
+    this._loadEmailHistory();
+  },
+
+  _onHistFilter(val) {
+    this._emailHistFilter = val;
+    this._emailHistPage   = 1;
+    this._loadEmailHistory();
+  },
+
+  async _loadEmailHistory() {
+    const el = document.getElementById('email-history-table');
+    if (!el) return;
+    el.innerHTML = `<div class="glass rounded-xl p-6 text-center text-sm" style="color:var(--txt-muted);">Loading history…</div>`;
+
+    try {
+      const params = new URLSearchParams({
+        page:     this._emailHistPage || 1,
+        per_page: 15,
+        ...(this._emailHistSearch ? { search: this._emailHistSearch } : {}),
+        ...(this._emailHistFilter ? { status: this._emailHistFilter } : {}),
+      });
+
+      const result = await DB._request('GET', `/emails/history?${params.toString()}`);
+      if (!result || !result.data) {
+        el.innerHTML = `<div class="glass rounded-xl p-6 text-center text-sm" style="color:var(--txt-muted);">No email history found.</div>`;
+        return;
+      }
+
+      const { data, total, totalPages, page } = result;
+      const statusStyle = {
+        sent:    { bg:'rgba(45,198,83,0.12)',   clr:'#2dc653',   label:'Sent' },
+        partial: { bg:'rgba(232,192,39,0.12)',  clr:'#e8c027',   label:'Partial' },
+        failed:  { bg:'rgba(230,57,70,0.12)',   clr:'#e63946',   label:'Failed' },
+        pending: { bg:'rgba(107,116,148,0.15)', clr:'#6B7494',   label:'Pending' },
+        sending: { bg:'rgba(29,111,164,0.15)',  clr:'#1d6fa4',   label:'Sending' },
+      };
+
+      if (data.length === 0) {
+        el.innerHTML = `
+          <div class="glass rounded-2xl p-12 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(246,201,69,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <p style="color:var(--txt-muted);font-size:14px;">No emails sent yet. Compose your first email above.</p>
+          </div>`;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="glass rounded-2xl overflow-hidden" style="border:1px solid var(--border-subtle);">
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>Subject</th>
+                <th>Sent By</th>
+                <th>Recipients</th>
+                <th class="text-center">Count</th>
+                <th>Date Sent</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Actions</th>
+              </tr></thead>
+              <tbody>
+                ${data.map(e => {
+                  const st   = statusStyle[e.status] || statusStyle.pending;
+                  const names = (() => { try { return JSON.parse(e.recipient_names || '[]'); } catch{ return []; } })();
+                  const preview = names.slice(0,2).join(', ') + (names.length > 2 ? ` +${names.length-2} more` : '');
+                  return `<tr class="table-row">
+                    <td class="font-semibold" style="color:var(--txt-primary);max-width:180px;">
+                      <div class="truncate">${e.subject}</div>
+                    </td>
+                    <td style="color:var(--txt-secondary);font-size:12px;">${e.sender_name || '—'}</td>
+                    <td style="color:var(--txt-muted);font-size:12px;max-width:160px;">
+                      <div class="truncate">${preview || '—'}</div>
+                    </td>
+                    <td class="text-center">
+                      <span class="font-bold" style="color:var(--felta-yellow);">${e.total_recipients}</span>
+                      ${e.failed_count > 0 ? `<span class="text-xs" style="color:#e63946;"> (${e.failed_count}✕)</span>` : ''}
+                    </td>
+                    <td style="color:var(--txt-muted);font-size:12px;">${e.sent_at ? Utils.formatDateTime(e.sent_at) : Utils.formatDateTime(e.created_at)}</td>
+                    <td class="text-center">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" style="background:${st.bg};color:${st.clr};">${st.label}</span>
+                    </td>
+                    <td class="text-center">
+                      <button onclick="Communications._viewEmailDetail(${e.id})" title="View Details"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                        style="background:rgba(29,111,164,0.15);color:#1d6fa4;">View</button>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${totalPages > 1 ? `
+          <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:var(--border-subtle);">
+            <span class="text-xs" style="color:var(--txt-muted);">Showing ${data.length} of ${total} records</span>
+            <div class="flex gap-1">
+              ${page > 1 ? `<button onclick="Communications._emailHistPage=${page-1};Communications._loadEmailHistory()" class="px-3 py-1 rounded text-xs font-medium" style="background:var(--bg-surface);color:var(--txt-secondary);">← Prev</button>` : ''}
+              <span class="px-3 py-1 rounded text-xs font-medium" style="background:rgba(246,201,69,0.15);color:var(--felta-yellow);">Page ${page} / ${totalPages}</span>
+              ${page < totalPages ? `<button onclick="Communications._emailHistPage=${page+1};Communications._loadEmailHistory()" class="px-3 py-1 rounded text-xs font-medium" style="background:var(--bg-surface);color:var(--txt-secondary);">Next →</button>` : ''}
+            </div>
+          </div>` : ''}
+        </div>`;
+
+    } catch (err) {
+      console.error('[DirectEmail] History load error:', err);
+      el.innerHTML = `<div class="glass rounded-xl p-6 text-center text-sm" style="color:#e63946;">Failed to load email history.</div>`;
+    }
+  },
+
+  async _viewEmailDetail(id) {
+    try {
+      const e = await DB._request('GET', `/emails/history/${id}`);
+      if (!e) { Toast.error('Email record not found.'); return; }
+
+      const names  = (() => { try { return JSON.parse(e.recipient_names  || '[]'); } catch{ return []; } })();
+      const emails = (() => { try { return JSON.parse(e.recipient_emails || '[]'); } catch{ return []; } })();
+      const errors = (() => { try { return JSON.parse(e.error_log        || '[]'); } catch{ return []; } })();
+
+      const statusStyle = {
+        sent:    { bg:'rgba(45,198,83,0.12)',  clr:'#2dc653',  label:'Sent' },
+        partial: { bg:'rgba(232,192,39,0.12)', clr:'#e8c027',  label:'Partial' },
+        failed:  { bg:'rgba(230,57,70,0.12)',  clr:'#e63946',  label:'Failed' },
+        pending: { bg:'rgba(107,116,148,0.15)',clr:'#6B7494',  label:'Pending' },
+      };
+      const st = statusStyle[e.status] || statusStyle.pending;
+
+      Modal.show('Email Detail', `
+        <div class="space-y-5">
+          <!-- Meta -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="glass rounded-xl p-4">
+              <div class="text-xs mb-1" style="color:var(--txt-muted);">SUBJECT</div>
+              <div class="font-bold" style="color:var(--txt-primary);">${e.subject}</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+              <div class="text-xs mb-1" style="color:var(--txt-muted);">STATUS</div>
+              <span class="px-2 py-0.5 rounded text-xs font-bold uppercase" style="background:${st.bg};color:${st.clr};">${st.label}</span>
+              <span class="ml-2 text-xs" style="color:var(--txt-muted);">${e.sent_count}/${e.total_recipients} delivered</span>
+            </div>
+            <div class="glass rounded-xl p-4">
+              <div class="text-xs mb-1" style="color:var(--txt-muted);">SENT BY</div>
+              <div class="font-semibold" style="color:var(--txt-primary);">${e.sender_name || '—'}</div>
+            </div>
+            <div class="glass rounded-xl p-4">
+              <div class="text-xs mb-1" style="color:var(--txt-muted);">DATE SENT</div>
+              <div class="font-semibold" style="color:var(--txt-primary);">${e.sent_at ? Utils.formatDateTime(e.sent_at) : '—'}</div>
+            </div>
+          </div>
+
+          <!-- Recipients -->
+          <div>
+            <div class="text-xs font-bold mb-2" style="color:var(--txt-muted);">RECIPIENTS (${names.length})</div>
+            <div class="flex flex-wrap gap-1 p-3 rounded-xl" style="background:var(--bg-surface);max-height:120px;overflow-y:auto;">
+              ${names.map((n,i) => `
+                <span class="px-2 py-0.5 rounded-full text-xs" style="background:rgba(246,201,69,0.1);color:var(--felta-yellow);border:1px solid rgba(246,201,69,0.25);">${n}<span style="opacity:0.6;"> &lt;${emails[i]||''}&gt;</span></span>
+              `).join('')}
+              ${names.length === 0 ? '<span style="color:var(--txt-muted);font-size:12px;">—</span>' : ''}
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div>
+            <div class="text-xs font-bold mb-2" style="color:var(--txt-muted);">MESSAGE</div>
+            <div class="rounded-xl p-4" style="background:white;color:#1a1a2e;font-size:13px;line-height:1.7;border:1px solid var(--border-subtle);max-height:240px;overflow-y:auto;">${e.message || '—'}</div>
+          </div>
+
+          ${e.attachment_name ? `
+          <div>
+            <div class="text-xs font-bold mb-2" style="color:var(--txt-muted);">ATTACHMENT</div>
+            <div class="flex items-center gap-2" style="color:var(--txt-secondary);font-size:13px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              ${e.attachment_name}
+            </div>
+          </div>` : ''}
+
+          ${errors.length > 0 ? `
+          <div>
+            <div class="text-xs font-bold mb-2" style="color:#e63946;">DELIVERY ERRORS (${errors.length})</div>
+            <div class="rounded-xl p-3" style="background:rgba(230,57,70,0.06);border:1px solid rgba(230,57,70,0.15);max-height:120px;overflow-y:auto;">
+              ${errors.map(err => `<div class="text-xs mb-1" style="color:#e63946;">• <strong>${err.email}</strong>: ${err.error}</div>`).join('')}
+            </div>
+          </div>` : ''}
+        </div>`,
+        `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl text-sm font-semibold border transition" style="border-color:var(--border-primary);color:var(--txt-primary);">Close</button>`,
+        'max-w-2xl'
+      );
+    } catch (err) {
+      console.error('[DirectEmail] View detail error:', err);
+      Toast.error('Failed to load email details.');
+    }
   },
 };
 
