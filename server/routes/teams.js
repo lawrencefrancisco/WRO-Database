@@ -174,22 +174,7 @@ router.put('/:id', async (req, res) => {
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [teamId]);
     rows[0].members = await getMembers(teamId);
 
-    // ── Auto-create Delegation when team is newly qualified ──────
     if (d.qualificationStatus === 'qualified') {
-      const [existDel] = await pool.execute(
-        'SELECT id FROM delegation WHERE team_id = ? AND is_deleted = 0 LIMIT 1', [teamId]
-      );
-      if (existDel.length === 0) {
-        const delCode = `DEL_${Date.now()}`;
-        await pool.execute(
-          `INSERT INTO delegation (delegation_code, team_id, destination_country, wro_year,
-           passport_status, visa_status, parent_consent, dietary_restrictions, shirt_size,
-           status, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-          [delCode, teamId, 'TBD', new Date().getFullYear(),
-           'submitted', 'not required', 0, 'None', 'M', 'pending']
-        );
-      }
       // Auto-log in communications
       const [existComm] = await pool.execute(
         'SELECT id FROM communications WHERE team_id = ? AND is_deleted = 0 LIMIT 1', [teamId]

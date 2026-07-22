@@ -66,7 +66,6 @@ async function autoInitDatabase(pool) {
     await dropIfBadSchema(conn, 'payments',     'or_number');
     await dropIfBadSchema(conn, 'seasons',      'name');
     await dropIfBadSchema(conn, 'judging',      'judging_code'); // old 'judging' was wrong table
-    await dropIfBadSchema(conn, 'delegation',   'delegation_code');
     await dropIfBadSchema(conn, 'judges',       'email');
 
     // ── Step 2: CREATE TABLE IF NOT EXISTS (correct schemas) ──────────
@@ -377,33 +376,6 @@ async function autoInitDatabase(pool) {
     `);
 
     await conn.execute(`
-      CREATE TABLE IF NOT EXISTS delegation (
-        id                    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-        delegation_code       VARCHAR(60)   NOT NULL,
-        team_id               INT UNSIGNED  DEFAULT NULL,
-        destination_country   VARCHAR(200)  DEFAULT NULL,
-        wro_year              YEAR          DEFAULT NULL,
-        passport_status       ENUM('submitted','processing','approved','expired') DEFAULT 'submitted',
-        passport_expiry       DATE          DEFAULT NULL,
-        visa_status           ENUM('not required','applied','approved','denied') DEFAULT 'not required',
-        parent_consent        TINYINT(1)    DEFAULT 0,
-        flight                VARCHAR(300)  DEFAULT NULL,
-        hotel                 VARCHAR(200)  DEFAULT NULL,
-        dietary_restrictions  VARCHAR(200)  DEFAULT 'None',
-        shirt_size            ENUM('XS','S','M','L','XL','XXL') DEFAULT 'M',
-        emergency_contact     VARCHAR(200)  DEFAULT NULL,
-        status                ENUM('confirmed','pending','cancelled') DEFAULT 'pending',
-        is_deleted            TINYINT(1)    DEFAULT 0,
-        deleted_at            DATETIME      DEFAULT NULL,
-        created_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        UNIQUE KEY uq_delegation_code (delegation_code),
-        KEY idx_team (team_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    `);
-
-    await conn.execute(`
       CREATE TABLE IF NOT EXISTS audit_logs (
         id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
         log_code    VARCHAR(80)   NOT NULL,
@@ -429,8 +401,8 @@ async function autoInitDatabase(pool) {
         title               VARCHAR(300)  NOT NULL,
         body                LONGTEXT,
         image_url           MEDIUMTEXT    DEFAULT NULL,
-        category            ENUM('general','payment','qualification','delegation','competition') DEFAULT 'general',
-        recipients          ENUM('all','schools','coaches','teams','judges','volunteers','delegates') DEFAULT 'all',
+        category            ENUM('general','payment','qualification','competition') DEFAULT 'general',
+        recipients          ENUM('all','schools','coaches','teams','judges','volunteers') DEFAULT 'all',
         status              ENUM('draft','published','archived') DEFAULT 'draft',
         publish_at          DATETIME      DEFAULT NULL,
         created_by          INT UNSIGNED  DEFAULT NULL,

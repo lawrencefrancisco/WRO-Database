@@ -63,12 +63,11 @@ const PortalAnnouncements = {
 
   _catMeta() {
     return {
-      colors: { general:'#1d6fa4', payment:'#2dc653', qualification:'#e8c027', delegation:'#8338ec', competition:'#e63946' },
+      colors: { general:'#1d6fa4', payment:'#2dc653', qualification:'#e8c027', competition:'#e63946' },
       icons:  {
         general:      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
         payment:      '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
         qualification:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
-        delegation:   '<path d="M22 2 11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
         competition:  '<path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/><path d="M4 22h16"/>',
       },
     };
@@ -92,7 +91,7 @@ const PortalAnnouncements = {
 
         <!-- Scrollable filter chips -->
         <div class="p-filters" id="ann-filters">
-          ${['all','general','payment','qualification','delegation','competition'].map(cat => `
+          ${['all','general','payment','qualification','competition'].map(cat => `
             <button class="p-filter-btn ${cat === 'all' ? 'active' : ''}" data-cat="${cat}"
               onclick="PortalAnnouncements.filterBy('${cat}')">
               ${cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}

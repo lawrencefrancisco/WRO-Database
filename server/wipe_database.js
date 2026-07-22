@@ -10,20 +10,25 @@ require('dotenv').config(); // Ensure environment variables are loaded
 const pool = require('./db/pool');
 
 const tables = [
+  'announcement_reads',
+  'announcements',
   'audit_logs',
-  'delegation',
-  'communications',
-  'payments',
   'awards',
+  'coaches',
+  'communications',
+  'competitions',
+  'email_log',
   'judge_assignments',
+  'judges',
+  'judging',
+  'notification_log',
+  'payment_logs',
+  'payments',
+  'schools',
+  'seasons',
+  'students',
   'team_members',
   'teams',
-  'judges',
-  'competitions',
-  'seasons',
-  'coaches',
-  'students',
-  'schools',
   'users'
 ];
 
@@ -40,11 +45,8 @@ async function wipeDatabase() {
     // 2. Truncate all tables (with exception for users)
     for (const table of tables) {
       if (table === 'users') {
-        // Delete everyone except the super admin
-        await conn.execute("DELETE FROM users WHERE user_code != 'USER_SUPERADMIN'");
-        // Reset AUTO_INCREMENT (MySQL will automatically adjust to max(id) + 1)
-        await conn.execute("ALTER TABLE users AUTO_INCREMENT = 1");
-        console.log(`🧹 Wiped table: users (kept USER_SUPERADMIN)`);
+        // Keep all user accounts as requested
+        console.log(`🧹 Skipped table: users (preserved all user accounts)`);
       } else {
         await conn.execute(`TRUNCATE TABLE ${table}`);
         console.log(`🧹 Truncated table: ${table}`);
