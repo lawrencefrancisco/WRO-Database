@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
       `INSERT INTO schools (school_code, school_name, school_type, school_level, region,
        province, city, address, contact_number, email, school_head, robotics_coordinator, website,
        years_joined, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [schoolCode, d.schoolName, d.schoolType, d.schoolLevel,
        d.region, d.province, d.city, d.address, d.contactNumber, d.email,
        d.schoolHead, d.roboticsCoordinator, d.website || null,
