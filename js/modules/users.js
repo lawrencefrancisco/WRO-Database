@@ -35,51 +35,63 @@ const Users = {
           }).join('')}
         </div>
 
-        <div class="glass rounded-2xl overflow-hidden">
-          <div class="p-4 border-b border-slate-700/50">
-            <h3 class="text-sm font-semibold text-white">System Users</h3>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead>
-                <tr><th>User</th><th>Username</th><th>Role</th><th>Last Login</th><th>Status</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                ${all.map(u => {
-                  const ri = AUTH.getRoleInfo(u.role);
-                  return `
-                    <tr class="table-row">
-                      <td>
-                        <div class="flex items-center gap-3">
-                          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                            ${(u.name||'?').charAt(0)}
-                          </div>
-                          <div>
-                            <div class="font-semibold text-white text-sm">${u.name}</div>
-                            <div class="text-xs text-slate-500">${u.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="font-mono text-sm text-slate-300">${u.username}</td>
-                      <td><span class="badge badge-${ri.color}">${ri.label}</span></td>
-                      <td class="text-sm text-slate-400">${Utils.formatDateTime(u.lastLogin)}</td>
-                      <td>${Utils.statusBadge(u.isActive ? 'active' : 'inactive')}</td>
-                      <td>
-                        <div class="flex gap-2">
-                          <button onclick="Users.openForm('${u.id}')" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/></svg></button>
-                        <button onclick="Users.toggleActive('${u.id}',${!u.isActive})" class="p-1.5 rounded-lg ${u.isActive?'bg-red-500/20 text-red-400':'bg-green-500/20 text-green-400'} hover:opacity-80 text-xs transition flex items-center gap-1">
-                          ${u.isActive
-                            ? `<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg> Deactivate`
-                            : `<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 9.9-1'/></svg> Activate`}
-                        </button>
-                        </div>
-                      </td>
-                    </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        ${(() => {
+          const admins = all.filter(u => u.role === 'SUPER_ADMIN' || u.role === 'EVENT_ADMIN');
+          const standards = all.filter(u => u.role === 'STANDARD_USER');
+
+          const renderTable = (title, users) => `
+            <div class="glass rounded-2xl overflow-hidden">
+              <div class="p-4 border-b border-slate-700/50">
+                <h3 class="text-sm font-semibold text-white">${title} <span class="text-xs text-slate-400 ml-2">(${users.length})</span></h3>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>User</th><th>Username</th><th>Role</th><th>Last Login</th><th>Status</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    ${users.map(u => {
+                      const ri = AUTH.getRoleInfo(u.role);
+                      return `
+                        <tr class="table-row">
+                          <td>
+                            <div class="flex items-center gap-3">
+                              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                ${(u.name||'?').charAt(0)}
+                              </div>
+                              <div>
+                                <div class="font-semibold text-white text-sm">${u.name}</div>
+                                <div class="text-xs text-slate-500">${u.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="font-mono text-sm text-slate-300">${u.username}</td>
+                          <td><span class="badge badge-${ri.color}">${ri.label}</span></td>
+                          <td class="text-sm text-slate-400">${Utils.formatDateTime(u.lastLogin)}</td>
+                          <td>${Utils.statusBadge(u.isActive ? 'active' : 'inactive')}</td>
+                          <td>
+                            <div class="flex gap-2">
+                              <button onclick="Users.openForm('${u.id}')" class="p-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-400 text-xs transition flex items-center"><svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/></svg></button>
+                            <button onclick="Users.toggleActive('${u.id}',${!u.isActive})" class="p-1.5 rounded-lg ${u.isActive?'bg-red-500/20 text-red-400':'bg-green-500/20 text-green-400'} hover:opacity-80 text-xs transition flex items-center gap-1" title="${u.isActive?'Deactivate':'Activate'}">
+                              ${u.isActive
+                                ? `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg>`
+                                : `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 9.9-1'/></svg>`}
+                            </button>
+                            <button onclick="Users.deleteUser('${u.id}', '${u.username}')" class="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs transition flex items-center" title="Delete User">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            </button>
+                            </div>
+                          </td>
+                        </tr>`;
+                    }).join('')}
+                    ${users.length === 0 ? '<tr><td colspan="6" class="text-center py-8 text-slate-500">No users found</td></tr>' : ''}
+                  </tbody>
+                </table>
+              </div>
+            </div>`;
+
+          return renderTable('System & Event Administrators', admins) + '<div class="h-6"></div>' + renderTable('Standard Users (School Heads/Coaches)', standards);
+        })()}
       </div>`;
   },
 
@@ -154,6 +166,29 @@ const Users = {
       Toast.success('User added!');
     }
     Modal.close(); await this.render();
+  },
+
+  async deleteUser(id, username) {
+    if (!AUTH.can('users.write')) return Toast.error('Permission denied');
+    if (id == AUTH.currentUser().id) return Toast.error('You cannot delete yourself!');
+
+    Modal.confirm(
+      `Are you sure you want to completely remove user <strong>${username}</strong>? This action cannot be undone.`,
+      async () => {
+        try {
+          const res = await DB.delete('users', id);
+          if (res) {
+            Toast.success('User deleted successfully');
+            this.render();
+          } else {
+            Toast.error('Failed to delete user');
+          }
+        } catch (err) {
+          console.error(err);
+          Toast.error('Failed to delete user');
+        }
+      }
+    );
   },
 
   async toggleActive(id, active) {

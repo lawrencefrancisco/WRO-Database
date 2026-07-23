@@ -51,7 +51,7 @@ const AUTH = {
         return {
           success: false,
           error: 'This portal is for administrators only. Standard Users should use the Standard User Portal.',
-          redirect: 'portal-login.html',
+          redirect: 'portal-login',
         };
       }
 
@@ -73,7 +73,7 @@ const AUTH = {
   /** Logout – clears session and redirects */
   logout() {
     sessionStorage.removeItem(this._SESSION_KEY);
-    window.location.href = 'index.html';
+    window.location.href = 'admin';
   },
 
   /** Get current logged-in user (reads from sessionStorage) */
@@ -100,7 +100,7 @@ const AUTH = {
   /** Guard – redirect to login if not authenticated */
   guard() {
     if (!this.isLoggedIn()) {
-      window.location.href = 'index.html';
+      window.location.href = 'admin';
       return false;
     }
     return true;

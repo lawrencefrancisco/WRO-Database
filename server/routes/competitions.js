@@ -20,8 +20,10 @@ router.get('/stats', async (req, res) => {
   }
   try {
     const [[teamRow]] = await pool.execute(
-      `SELECT COUNT(*) AS teams, COUNT(DISTINCT coach_id) AS coaches
-       FROM teams WHERE season = ? AND is_deleted = 0`,
+      `SELECT COUNT(*) AS teams, COUNT(DISTINCT co.id) AS coaches
+       FROM teams t
+       LEFT JOIN coaches co ON co.id = t.coach_id AND co.is_deleted = 0
+       WHERE t.season = ? AND t.is_deleted = 0`,
       [season]
     );
 
@@ -125,7 +127,7 @@ router.get('/season-details', async (req, res) => {
     // Coaches assigned to teams in this season
     const [coachRows] = await pool.execute(
       `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile,
-                       co.position, co.years_coaching, co.certifications,
+                       co.position,
                        sc.school_name AS school_name
        FROM   coaches co
        JOIN   teams   t  ON t.coach_id = co.id AND t.season = ? AND t.is_deleted = 0
@@ -137,11 +139,21 @@ router.get('/season-details', async (req, res) => {
 
     // Judges for this season
     const [judgeRows] = await pool.execute(
-      `SELECT id, full_name, contact_number, gender, judging_category, status
-       FROM   judges
-       WHERE  season = ? AND is_deleted = 0
-       ORDER  BY full_name ASC`,
-      [season]
+      `SELECT j.id, j.full_name, j.contact_number, j.gender, j.status,
+              COALESCE(
+                (SELECT GROUP_CONCAT(ja.category ORDER BY ja.category SEPARATOR ', ')
+                 FROM judge_assignments ja
+                 WHERE ja.judge_id = j.id AND ja.season = ?),
+                j.judging_category
+              ) AS judging_category
+       FROM   judges j
+       WHERE  (j.season = ? OR EXISTS (
+                SELECT 1 FROM judge_assignments ja 
+                WHERE ja.judge_id = j.id AND ja.season = ?
+              )) 
+          AND j.is_deleted = 0
+       ORDER  BY j.full_name ASC`,
+      [season, season, season]
     );
 
     // Distinct students
@@ -249,7 +261,7 @@ router.get('/details/:id', async (req, res) => {
     // 5. Coaches assigned to teams in this season
     const [coachRows] = await pool.execute(
       `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile,
-                       co.position, co.years_coaching, co.certifications,
+                       co.position,
                        sc.school_name AS school_name
        FROM   coaches co
        JOIN   teams   t  ON t.coach_id = co.id AND t.season = ? AND t.is_deleted = 0
@@ -261,11 +273,21 @@ router.get('/details/:id', async (req, res) => {
 
     // 6. Judges assigned to this season
     const [judgeRows] = await pool.execute(
-      `SELECT id, full_name, contact_number, gender, judging_category, status
-       FROM   judges
-       WHERE  season = ? AND is_deleted = 0
-       ORDER  BY full_name ASC`,
-      [season]
+      `SELECT j.id, j.full_name, j.contact_number, j.gender, j.status,
+              COALESCE(
+                (SELECT GROUP_CONCAT(ja.category ORDER BY ja.category SEPARATOR ', ')
+                 FROM judge_assignments ja
+                 WHERE ja.judge_id = j.id AND ja.season = ?),
+                j.judging_category
+              ) AS judging_category
+       FROM   judges j
+       WHERE  (j.season = ? OR EXISTS (
+                SELECT 1 FROM judge_assignments ja 
+                WHERE ja.judge_id = j.id AND ja.season = ?
+              )) 
+          AND j.is_deleted = 0
+       ORDER  BY j.full_name ASC`,
+      [season, season, season]
     );
 
     // 7. Distinct students participating

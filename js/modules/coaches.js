@@ -31,7 +31,7 @@ const Coaches = {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Coach</th><th>School</th><th>Position</th><th>Mobile</th><th>Experience</th><th>Status</th><th>Actions</th>
+                  <th>Coach</th><th>School</th><th>Position</th><th>Mobile</th><th>Status</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody id="coaches-tbody"></tbody>
@@ -84,7 +84,7 @@ const Coaches = {
     if (!tbody) return;
 
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No coaches found</div></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div style="opacity:0.3;display:flex;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div><div class="text-lg font-semibold text-slate-300 mt-2">No coaches found</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = page.map(c => {
@@ -105,7 +105,6 @@ const Coaches = {
           <td class="text-sm text-slate-300">${Utils.truncate(school?.schoolName, 30) || '—'}</td>
           <td class="text-sm text-slate-400">${c.position || '—'}</td>
           <td class="text-sm text-slate-300">${c.mobile || '—'}</td>
-          <td><span class="badge badge-blue">${c.yearsCoaching || 0} yrs</span></td>
           <td>${Utils.statusBadge(c.status)}</td>
           <td>
             <div class="flex gap-2">
@@ -188,18 +187,6 @@ const Coaches = {
           <input class="form-input" name="emergencyContact" value="${c?.emergencyContact||''}">
         </div>
         <div>
-          <label class="form-label">Certifications</label>
-          <input class="form-input" name="certifications" value="${c?.certifications||''}">
-        </div>
-        <div>
-          <label class="form-label">Years Coaching</label>
-          <input class="form-input" type="number" name="yearsCoaching" value="${c?.yearsCoaching||0}">
-        </div>
-        <div>
-          <label class="form-label">Previous Awards</label>
-          <input class="form-input" name="previousAwards" value="${c?.previousAwards||''}">
-        </div>
-        <div>
           <label class="form-label">Status</label>
           <select class="form-input" name="status">
             <option ${c?.status==='active'?'selected':''} value="active">Active</option>
@@ -250,9 +237,6 @@ const Coaches = {
         <div><span class="text-slate-500">Mobile:</span> <span class="text-slate-200">${c.mobile}</span></div>
         <div><span class="text-slate-500">Birthday:</span> <span class="text-slate-200">${Utils.formatDate(c.birthday)}</span></div>
         <div><span class="text-slate-500">Gender:</span> <span class="text-slate-200">${c.gender}</span></div>
-        <div><span class="text-slate-500">Certifications:</span> <span class="text-slate-200">${c.certifications}</span></div>
-        <div><span class="text-slate-500">Years Coaching:</span> <span class="text-slate-200">${c.yearsCoaching}</span></div>
-        <div class="col-span-2"><span class="text-slate-500">Awards:</span> <span class="text-slate-200">${c.previousAwards}</span></div>
       </div>
       <div class="grid grid-cols-2 gap-4 mt-4">
         <div class="glass-light rounded-xl p-4 text-center">
@@ -270,10 +254,10 @@ const Coaches = {
     const _schoolsMap = await DB.getLookup('schools');
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Coaches.csv',
-      ['ID','Full Name','Gender','Email','Mobile','School','Position','Years Coaching','Certifications','Status'],
+      ['ID','Full Name','Gender','Email','Mobile','School','Position','Status'],
       rows.map(c => {
         const s = _schoolsMap[c.schoolId];
-        return [c.id,c.fullName,c.gender,c.email,c.mobile,s?.schoolName||'',c.position,c.yearsCoaching,c.certifications,c.status];
+        return [c.id,c.fullName,c.gender,c.email,c.mobile,s?.schoolName||'',c.position,c.status];
       })
     );
     Toast.success('Coach list exported!');

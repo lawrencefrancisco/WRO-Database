@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>WRO Philippines – Standard User Portal</title>
-  <meta name="description" content="WRO Philippines Standard User Portal – Access your school and team information.">
+  <title>WRO Philippines – Sign Up</title>
+  <meta name="description" content="WRO Philippines Standard User Portal – Create an account.">
 
   <!-- Tailwind CSS (static build) -->
   <link rel="stylesheet" href="assets/css/output.css">
@@ -24,9 +24,6 @@
   </script>
 
   <link rel="stylesheet" href="css/custom.css">
-  <script src="js/core/db.js"></script>
-  <script src="js/core/utils.js"></script>
-  <script src="js/portal/portal-auth.js"></script>
 
   <style>
     /* ── Input icon wrapper ── */
@@ -159,57 +156,6 @@
         0 2px 12px rgba(246,201,69,0.06);
     }
 
-    /* ── Portal badge ── */
-    .portal-badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      background: rgba(246,201,69,0.16);
-      border: 1px solid rgba(246,201,69,0.32);
-      color: #F6C945;
-      padding: 0.28rem 0.85rem;
-      border-radius: 999px;
-      font-size: 0.70rem; font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.07em;
-    }
-    html.light-mode .portal-badge {
-      background: rgba(246,201,69,0.10);
-      border-color: rgba(246,201,69,0.24);
-      color: #8B6914;
-    }
-
-    /* ── Status pill ── */
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 0.35rem 1rem;
-      border-radius: 999px;
-      font-size: 0.72rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.07em;
-    }
-    .status-pill { background: rgba(20,30,70,0.60); border: 1px solid rgba(246,201,69,0.20); color: #F6C945; }
-    html.light-mode .status-pill { background: rgba(246,201,69,0.07); border: 1px solid rgba(246,201,69,0.18); color: #8B6914; }
-
-    /* ── Pulse dot (blue) ── */
-    .status-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: #4aadde;
-      box-shadow: 0 0 0 0 rgba(246,201,69,0.5);
-      animation: dotPulseBlue 2.2s ease-in-out infinite;
-    }
-    html.light-mode .status-dot { background: #1555a0; }
-    @keyframes dotPulseBlue {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(246,201,69,0.5); }
-      50%       { box-shadow: 0 0 0 7px rgba(246,201,69,0); }
-    }
-
-    /* ── Divider ── */
-    .form-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.25), transparent);
-      margin: 1.5rem 0;
-    }
-    html.light-mode .form-divider {
-      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.18), transparent);
-    }
-
     /* ── Form inputs ── */
     .login-input {
       background: rgba(5, 9, 28, 0.85);
@@ -253,18 +199,6 @@
     /* ── Input icon ── */
     .input-icon { color: rgba(107,116,148,0.7); }
     html.light-mode .input-icon { color: #9EB3CE; }
-
-    /* ── Eye toggle button ── */
-    .eye-btn {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer;
-      color: rgba(107,116,148,0.7);
-      display: flex; align-items: center;
-      transition: color 0.18s;
-    }
-    .eye-btn:hover { color: #F6C945; }
-    html.light-mode .eye-btn { color: #9EB3CE; }
-    html.light-mode .eye-btn:hover { color: #8B6914; }
 
     /* ── Submit button (blue) ── */
     .portal-submit-btn {
@@ -314,27 +248,21 @@
     .login-footer a { color: #F6C945; font-weight: 700; text-decoration: none; transition: opacity 0.18s; }
     .login-footer a:hover { opacity: 0.75; }
     html.light-mode .login-footer a { color: #8B6914; }
-    .copyright-text { font-size: 11px; color: rgba(107,116,148,0.5) !important; margin-top: 2px; }
-    html.light-mode .copyright-text { color: #A3B5CE !important; }
 
     /* ── Page title text ── */
-    .login-title { color: #EEF0F8; font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
+    .login-title { color: #EEF0F8; font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; text-align: center; }
     html.light-mode .login-title { color: #0D1B3E; }
-    .login-subtitle { color: rgba(107,116,148,0.85); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; }
+    .login-subtitle { color: rgba(107,116,148,0.85); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; text-align: center; margin-bottom: 1.5rem; }
     html.light-mode .login-subtitle { color: #7A90B4; }
   </style>
 </head>
 
 <body class="login-page">
-
   <!-- Background layers -->
   <div class="login-orb login-orb-1"></div>
   <div class="login-orb login-orb-2"></div>
   <div class="login-orb login-orb-3"></div>
   <div class="dot-grid"></div>
-
-  <!-- Toast -->
-  <div id="toast-container"></div>
 
   <!-- Login card -->
   <div class="login-card-wrap">
@@ -348,135 +276,107 @@
                style="height:88px; width:auto; object-fit:contain; max-width:100%;
                       filter:drop-shadow(0 2px 14px rgba(246,201,69,0.30));">
         </div>
-
-        <!-- WRO Rainbow bar -->
-        <div class="wro-rainbow-bar rounded-full" style="margin-bottom:1.1rem;"></div>
-
-        <!-- Portal badge + title -->
-        <div style="margin-bottom:0.85rem;">
-          <span class="portal-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Standard User Portal
-          </span>
-        </div>
-        <h1 class="login-title">Welcome Back</h1>
-        <p class="login-subtitle">WRO Philippines · Participant Access</p>
-
-        <!-- Status pill -->
-        <div style="margin-top:1rem;">
-          <span class="status-pill">
-            <span class="status-dot"></span>
-            System Online
-          </span>
-        </div>
       </div>
-
-      <!-- Divider -->
-      <div class="form-divider"></div>
-
+      
+      <h1 class="login-title">Create an Account</h1>
+      <p class="login-subtitle">Join WRO Philippines to manage your teams.</p>
+      
       <!-- Login Form -->
-      <form id="portal-login-form" onsubmit="handlePortalLogin(event)" autocomplete="on" novalidate>
-
-        <!-- Username -->
+      <form id="signup-form">
+        <!-- Full Name -->
         <div style="margin-bottom:1rem;">
-          <label class="login-label" for="portal-username">Email Address</label>
+          <label class="login-label" for="name">Full Name</label>
           <div class="input-wrap">
             <span class="input-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </span>
-            <input id="portal-username" type="email" class="login-input"
-              placeholder="Enter your email address" autocomplete="username" required>
+            <input id="name" type="text" class="login-input"
+              placeholder="e.g. John Doe" required>
+          </div>
+        </div>
+
+        <!-- Email Address -->
+        <div style="margin-bottom:1rem;">
+          <label class="login-label" for="email">Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </span>
+            <input id="email" type="email" class="login-input"
+              placeholder="john@example.com" required>
           </div>
         </div>
 
         <!-- Password -->
         <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
-            <label class="login-label" for="portal-password" style="margin-bottom:0;">Password</label>
-            <a href="forgot-password" style="font-size: 11px; color: #F6C945; font-weight: 700; text-decoration: none; opacity: 0.9;">Forgot Password?</a>
-          </div>
+          <label class="login-label" for="password">Password</label>
           <div class="input-wrap">
             <span class="input-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </span>
-            <input id="portal-password" type="password" class="login-input"
-              style="padding-right:44px;"
-              placeholder="Enter your password" autocomplete="current-password" required>
-            <button type="button" onclick="togglePortalPwd()" class="eye-btn" aria-label="Toggle password visibility">
-              <span id="portal-pwd-eye">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </span>
-            </button>
+            <input id="password" type="password" class="login-input"
+              placeholder="Create a password" required minlength="6">
           </div>
         </div>
 
         <!-- Submit button -->
-        <button type="submit" id="portal-login-btn" class="portal-submit-btn">
-          <span id="portal-login-icon" style="display:flex;align-items:center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          </span>
-          <span id="portal-login-text">Sign In to Portal</span>
+        <button type="submit" id="submit-btn" class="portal-submit-btn">
+          Sign Up
         </button>
-        
-        <div style="text-align: center; margin-top: 1rem;">
-          <a href="signup" style="font-size: 0.9rem; color: #3a86ff; text-decoration: none; font-weight: 500;">Don't have an account? Sign Up</a>
-        </div>
 
         <!-- Error message -->
-        <div id="portal-login-error" class="login-error"></div>
+        <div id="error-msg" class="login-error"></div>
       </form>
     </div>
 
     <!-- Footer -->
     <div class="login-footer">
       <p>
-        Are you an administrator?
-        <a href="admin">Go to Admin Portal →</a>
+        Already have an account? <a href="portal-login">Sign In</a>
       </p>
-      <p class="copyright-text">FELTA Multimedia · WRO Philippines © 2025 · Standard User Portal</p>
     </div>
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      if (PORTAL_AUTH.isLoggedIn()) { window.location.href = 'portal'; }
-    });
-
-    async function handlePortalLogin(e) {
+    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api';
+    
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = document.getElementById('portal-username').value.trim();
-      const password = document.getElementById('portal-password').value;
-      const btn      = document.getElementById('portal-login-btn');
-      const errEl    = document.getElementById('portal-login-error');
-
+      const btn = document.getElementById('submit-btn');
+      const errBox = document.getElementById('error-msg');
+      
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      btn.textContent = 'Registering...';
       btn.disabled = true;
-      document.getElementById('portal-login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>`;
-      document.getElementById('portal-login-text').textContent = 'Signing in…';
-      errEl.style.display = 'none';
+      errBox.style.display = 'none';
 
-      const result = await PORTAL_AUTH.login(username, password);
-      if (result.success) {
-        document.getElementById('portal-login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>`;
-        document.getElementById('portal-login-text').textContent = 'Welcome!';
-        setTimeout(() => { window.location.href = 'portal'; }, 600);
-      } else {
-        errEl.textContent = result.error;
-        errEl.style.display = 'block';
+      try {
+        const res = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          // Redirect to OTP Verification page with email in URL
+          window.location.href = `verify?email=${encodeURIComponent(email)}`;
+        } else {
+          errBox.textContent = data.error || 'Registration failed.';
+          errBox.style.display = 'block';
+          btn.textContent = 'Sign Up';
+          btn.disabled = false;
+        }
+      } catch (err) {
+        errBox.textContent = 'Network error. Please try again.';
+        errBox.style.display = 'block';
+        btn.textContent = 'Sign Up';
         btn.disabled = false;
-        document.getElementById('portal-login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;
-        document.getElementById('portal-login-text').textContent = 'Sign In to Portal';
       }
-    }
-
-    function togglePortalPwd() {
-      const pwd  = document.getElementById('portal-password');
-      const eye  = document.getElementById('portal-pwd-eye');
-      const open   = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`;
-      const closed = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>`;
-      if (pwd.type === 'password') { pwd.type = 'text';     eye.innerHTML = closed; }
-      else                         { pwd.type = 'password'; eye.innerHTML = open;   }
-    }
+    });
   </script>
-
 </body>
 </html>

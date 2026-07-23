@@ -48,12 +48,10 @@ router.post('/', async (req, res) => {
 
     const [result] = await pool.execute(
       `INSERT INTO coaches (coach_code, full_name, birthday, gender, email, mobile, school_id,
-       position, shirt_size, emergency_contact, certifications, years_coaching, previous_awards,
-       status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       position, shirt_size, emergency_contact, status, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [coachCode, d.fullName, d.birthday || null, d.gender, d.email, d.mobile,
-       schoolId, d.position, d.shirtSize, d.emergencyContact,
-       d.certifications, d.yearsCoaching || 0, d.previousAwards, d.status || 'active']
+       schoolId, d.position, d.shirtSize, d.emergencyContact, d.status || 'active']
     );
     const [rows] = await pool.execute('SELECT * FROM coaches WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);
@@ -76,11 +74,9 @@ router.put('/:id', async (req, res) => {
 
     await pool.execute(
       `UPDATE coaches SET full_name=?, birthday=?, gender=?, email=?, mobile=?,
-       school_id=?, position=?, shirt_size=?, emergency_contact=?, certifications=?,
-       years_coaching=?, previous_awards=?, status=?, updated_at=NOW() WHERE id = ?`,
+       school_id=?, position=?, shirt_size=?, emergency_contact=?, status=?, updated_at=NOW() WHERE id = ?`,
       [d.fullName, d.birthday || null, d.gender, d.email,
-       d.mobile, schoolId, d.position, d.shirtSize, d.emergencyContact,
-       d.certifications, d.yearsCoaching || 0, d.previousAwards, d.status, req.params.id]
+       d.mobile, schoolId, d.position, d.shirtSize, d.emergencyContact, d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM coaches WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

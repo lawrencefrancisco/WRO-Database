@@ -68,6 +68,31 @@ async function autoInitDatabase(pool) {
     await dropIfBadSchema(conn, 'judging',      'judging_code'); // old 'judging' was wrong table
     await dropIfBadSchema(conn, 'judges',       'email');
 
+    // Drop deped_id column if present
+    try {
+      const [cols] = await conn.execute("SHOW COLUMNS FROM schools LIKE 'deped_id'");
+      if (cols.length > 0) {
+        await conn.execute("ALTER TABLE schools DROP COLUMN deped_id");
+        console.log("✅ Dropped deped_id column from schools table.");
+      }
+    } catch (err) {
+      console.warn("⚠️ Could not drop deped_id column:", err.message);
+    }
+
+    // Drop coaches columns if present
+    try {
+      const columnsToDrop = ['certifications', 'years_coaching', 'previous_awards'];
+      for (const col of columnsToDrop) {
+        const [cols] = await conn.execute(`SHOW COLUMNS FROM coaches LIKE '${col}'`);
+        if (cols.length > 0) {
+          await conn.execute(`ALTER TABLE coaches DROP COLUMN ${col}`);
+          console.log(`✅ Dropped ${col} column from coaches table.`);
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ Could not drop coach columns:", err.message);
+    }
+
     // ── Step 2: CREATE TABLE IF NOT EXISTS (correct schemas) ──────────
 
     await conn.execute(`
@@ -102,7 +127,6 @@ async function autoInitDatabase(pool) {
         school_name             VARCHAR(300)  NOT NULL,
         school_type             ENUM('Private','Public','Sectarian') DEFAULT 'Private',
         school_level            VARCHAR(100)  DEFAULT NULL,
-        deped_id                VARCHAR(50)   DEFAULT NULL,
         region                  VARCHAR(200)  DEFAULT NULL,
         province                VARCHAR(200)  DEFAULT NULL,
         city                    VARCHAR(200)  DEFAULT NULL,
@@ -139,9 +163,6 @@ async function autoInitDatabase(pool) {
         position            VARCHAR(200)  DEFAULT NULL,
         shirt_size          ENUM('XS','S','M','L','XL','XXL') DEFAULT 'M',
         emergency_contact   VARCHAR(300)  DEFAULT NULL,
-        certifications      VARCHAR(300)  DEFAULT NULL,
-        years_coaching      INT           DEFAULT 0,
-        previous_awards     VARCHAR(300)  DEFAULT NULL,
         status              ENUM('active','inactive') NOT NULL DEFAULT 'active',
         is_deleted          TINYINT(1)    NOT NULL DEFAULT 0,
         deleted_at          DATETIME      DEFAULT NULL,

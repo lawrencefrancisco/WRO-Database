@@ -3,18 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>WRO Philippines – Standard User Portal</title>
-  <meta name="description" content="WRO Philippines Standard User Portal – Access your school and team information.">
+  <title>WRO Philippines – Admin Sign In</title>
+  <meta name="description" content="WRO Philippines Integrated Database System – Official platform for managing participants, competitions, and records.">
 
   <!-- Tailwind CSS (static build) -->
   <link rel="stylesheet" href="assets/css/output.css">
 
-  <!-- Early theme init -->
+  <!-- Early theme init: default is LIGHT, only dark if explicitly saved -->
   <script>
     (function() {
       const saved = localStorage.getItem('wro_ph_theme');
       const isLight = saved !== 'dark';
-      if (isLight) document.documentElement.classList.add('light-mode');
+      if (isLight) {
+        document.documentElement.classList.add('light-mode');
+      }
       document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.js-theme-logo').forEach(img => {
           img.src = isLight ? 'assets/image/FELTA_LOGO_LIGHT.png' : 'assets/image/FELTA_LOGO_DARK.png';
@@ -25,8 +27,11 @@
 
   <link rel="stylesheet" href="css/custom.css">
   <script src="js/core/db.js"></script>
+  <script src="js/core/auth.js"></script>
   <script src="js/core/utils.js"></script>
-  <script src="js/portal/portal-auth.js"></script>
+  <script src="js/core/seed.js"></script>
+  <!-- SheetJS – client-side Excel (.xlsx) generation -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     /* ── Input icon wrapper ── */
@@ -58,22 +63,22 @@
     }
     html.light-mode body.login-page::before { opacity: 0.04; }
 
-    /* ── Dark mode background (blue-accented) ── */
+    /* ── Dark mode background ── */
     body.login-page {
       background:
-        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.18) 0%, transparent 52%),
+        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.13) 0%, transparent 52%),
         radial-gradient(ellipse at 92% 12%, rgba(20,32,87,0.95) 0%, transparent 55%),
-        radial-gradient(ellipse at 55% 92%, rgba(246,201,69,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 55% 92%, rgba(30,108,180,0.10) 0%, transparent 50%),
         #070c20;
     }
 
     /* ── Light mode background ── */
     html.light-mode body.login-page {
       background:
-        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.10) 0%, transparent 52%),
-        radial-gradient(ellipse at 92% 12%, rgba(246,201,69,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.09) 0%, transparent 52%),
+        radial-gradient(ellipse at 92% 12%, rgba(29,111,164,0.07) 0%, transparent 55%),
         radial-gradient(ellipse at 55% 92%, rgba(246,201,69,0.06) 0%, transparent 50%),
-        linear-gradient(155deg, #EAF2FC 0%, #F5F9FF 45%, #E4EEF8 100%);
+        linear-gradient(155deg, #EAF0FC 0%, #F5F8FF 45%, #E6EDF8 100%);
     }
 
     /* ── Animated background orbs ── */
@@ -87,25 +92,25 @@
     }
     .login-orb-1 {
       width: 520px; height: 520px;
-      background: radial-gradient(circle, rgba(246,201,69,0.20), transparent 70%);
+      background: radial-gradient(circle, rgba(246,201,69,0.11), transparent 70%);
       top: -160px; left: -160px;
       animation-delay: 0s;
     }
     .login-orb-2 {
       width: 380px; height: 380px;
-      background: radial-gradient(circle, rgba(246,201,69,0.10), transparent 70%);
+      background: radial-gradient(circle, rgba(29,111,164,0.10), transparent 70%);
       bottom: -100px; right: -100px;
       animation-delay: -4s;
     }
     .login-orb-3 {
       width: 260px; height: 260px;
-      background: radial-gradient(circle, rgba(30,158,191,0.10), transparent 70%);
+      background: radial-gradient(circle, rgba(240,120,48,0.07), transparent 70%);
       top: 40%; left: 65%;
       animation-delay: -7s;
     }
     html.light-mode .login-orb-1 { background: radial-gradient(circle, rgba(246,201,69,0.14), transparent 70%); }
-    html.light-mode .login-orb-2 { background: radial-gradient(circle, rgba(246,201,69,0.09), transparent 70%); }
-    html.light-mode .login-orb-3 { background: radial-gradient(circle, rgba(30,158,191,0.09), transparent 70%); }
+    html.light-mode .login-orb-2 { background: radial-gradient(circle, rgba(29,111,164,0.09), transparent 70%); }
+    html.light-mode .login-orb-3 { background: radial-gradient(circle, rgba(240,120,48,0.08), transparent 70%); }
 
     @keyframes orbFloat {
       0%, 100% { transform: translateY(0) scale(1); }
@@ -116,11 +121,11 @@
     /* ── Dot grid overlay ── */
     .dot-grid {
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image: radial-gradient(rgba(246,201,69,0.65) 1px, transparent 1px);
+      background-image: radial-gradient(rgba(246,201,69,0.7) 1px, transparent 1px);
       background-size: 32px 32px;
       opacity: 0.020;
     }
-    html.light-mode .dot-grid { opacity: 0.012; }
+    html.light-mode .dot-grid { opacity: 0.013; }
 
     /* ── Login card container ── */
     .login-card-wrap {
@@ -140,39 +145,39 @@
       background: rgba(13, 20, 56, 0.82);
       backdrop-filter: blur(24px) saturate(180%);
       -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid rgba(246,201,69,0.28);
+      border: 1px solid rgba(246,201,69,0.18);
       border-radius: 20px;
       padding: 2.2rem 2rem;
       box-shadow:
         0 0 0 1px rgba(246,201,69,0.08),
         0 8px 48px rgba(0,0,0,0.60),
-        0 0 80px rgba(246,201,69,0.10);
+        0 0 80px rgba(246,201,69,0.07);
     }
     html.light-mode .login-card {
       background: rgba(255,255,255,0.95);
       backdrop-filter: blur(28px) saturate(160%);
       -webkit-backdrop-filter: blur(28px) saturate(160%);
-      border: 1px solid rgba(246,201,69,0.16);
+      border: 1px solid rgba(182,140,30,0.18);
       box-shadow:
-        0 0 0 1px rgba(246,201,69,0.06),
+        0 0 0 1px rgba(182,140,30,0.08),
         0 10px 48px rgba(10,20,60,0.11),
-        0 2px 12px rgba(246,201,69,0.06);
+        0 2px 12px rgba(10,20,60,0.06);
     }
 
-    /* ── Portal badge ── */
-    .portal-badge {
+    /* ── Admin badge ── */
+    .admin-badge {
       display: inline-flex; align-items: center; gap: 0.4rem;
-      background: rgba(246,201,69,0.16);
-      border: 1px solid rgba(246,201,69,0.32);
+      background: rgba(246,201,69,0.12);
+      border: 1px solid rgba(246,201,69,0.28);
       color: #F6C945;
       padding: 0.28rem 0.85rem;
       border-radius: 999px;
       font-size: 0.70rem; font-weight: 800;
       text-transform: uppercase; letter-spacing: 0.07em;
     }
-    html.light-mode .portal-badge {
-      background: rgba(246,201,69,0.10);
-      border-color: rgba(246,201,69,0.24);
+    html.light-mode .admin-badge {
+      background: rgba(182,140,30,0.10);
+      border-color: rgba(182,140,30,0.26);
       color: #8B6914;
     }
 
@@ -184,18 +189,18 @@
       font-size: 0.72rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.07em;
     }
-    .status-pill { background: rgba(20,30,70,0.60); border: 1px solid rgba(246,201,69,0.20); color: #F6C945; }
-    html.light-mode .status-pill { background: rgba(246,201,69,0.07); border: 1px solid rgba(246,201,69,0.18); color: #8B6914; }
+    .status-pill { background: rgba(20,30,70,0.60); border: 1px solid rgba(246,201,69,0.14); color: #F6C945; }
+    html.light-mode .status-pill { background: rgba(246,201,69,0.08); border: 1px solid rgba(182,140,30,0.18); color: #8B6914; }
 
-    /* ── Pulse dot (blue) ── */
+    /* ── Pulse dot ── */
     .status-dot {
       width: 7px; height: 7px; border-radius: 50%;
-      background: #4aadde;
+      background: #F6C945;
       box-shadow: 0 0 0 0 rgba(246,201,69,0.5);
-      animation: dotPulseBlue 2.2s ease-in-out infinite;
+      animation: dotPulse 2.2s ease-in-out infinite;
     }
-    html.light-mode .status-dot { background: #1555a0; }
-    @keyframes dotPulseBlue {
+    html.light-mode .status-dot { background: #D4A017; }
+    @keyframes dotPulse {
       0%, 100% { box-shadow: 0 0 0 0 rgba(246,201,69,0.5); }
       50%       { box-shadow: 0 0 0 7px rgba(246,201,69,0); }
     }
@@ -203,17 +208,17 @@
     /* ── Divider ── */
     .form-divider {
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.25), transparent);
+      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.20), transparent);
       margin: 1.5rem 0;
     }
     html.light-mode .form-divider {
-      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.18), transparent);
+      background: linear-gradient(90deg, transparent, rgba(182,140,30,0.18), transparent);
     }
 
-    /* ── Form inputs ── */
+    /* ── Form inputs override for dark mode ── */
     .login-input {
       background: rgba(5, 9, 28, 0.85);
-      border: 1px solid rgba(246,201,69,0.20);
+      border: 1px solid rgba(246,201,69,0.16);
       color: #EEF0F8;
       border-radius: 12px;
       padding: 11px 14px 11px 40px;
@@ -225,18 +230,18 @@
     .login-input:focus {
       outline: none;
       border-color: #F6C945;
-      box-shadow: 0 0 0 3px rgba(246,201,69,0.18);
+      box-shadow: 0 0 0 3px rgba(246,201,69,0.14);
     }
     .login-input::placeholder { color: rgba(107,116,148,0.7); }
     html.light-mode .login-input {
       background: #ffffff;
-      border: 1px solid rgba(246,201,69,0.20);
+      border: 1px solid rgba(182,140,30,0.24);
       color: #0D1B3E;
       box-shadow: inset 0 1px 3px rgba(10,20,60,0.04);
     }
     html.light-mode .login-input:focus {
-      border-color: #1d6fa4;
-      box-shadow: 0 0 0 3px rgba(246,201,69,0.14);
+      border-color: #F6C945;
+      box-shadow: 0 0 0 3px rgba(246,201,69,0.16);
     }
     html.light-mode .login-input::placeholder { color: #9EB3CE; }
 
@@ -250,7 +255,7 @@
     }
     html.light-mode .login-label { color: #5A6E96; }
 
-    /* ── Input icon ── */
+    /* ── Input icon color ── */
     .input-icon { color: rgba(107,116,148,0.7); }
     html.light-mode .input-icon { color: #9EB3CE; }
 
@@ -264,10 +269,10 @@
     }
     .eye-btn:hover { color: #F6C945; }
     html.light-mode .eye-btn { color: #9EB3CE; }
-    html.light-mode .eye-btn:hover { color: #8B6914; }
+    html.light-mode .eye-btn:hover { color: #D4A017; }
 
-    /* ── Submit button (blue) ── */
-    .portal-submit-btn {
+    /* ── Submit button ── */
+    .admin-submit-btn {
       width: 100%;
       padding: 13px;
       border-radius: 12px;
@@ -278,17 +283,17 @@
       display: flex; align-items: center; justify-content: center; gap: 8px;
       background: linear-gradient(135deg, #F6C945 0%, #C9A012 100%);
       color: #07100e;
-      box-shadow: 0 4px 20px rgba(246,201,69,0.40), 0 1px 4px rgba(0,0,0,0.25);
+      box-shadow: 0 4px 20px rgba(246,201,69,0.35), 0 1px 4px rgba(0,0,0,0.25);
       transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       margin-top: 1.4rem;
     }
-    .portal-submit-btn:hover:not(:disabled) {
+    .admin-submit-btn:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(246,201,69,0.60), 0 2px 8px rgba(0,0,0,0.25);
+      box-shadow: 0 8px 32px rgba(246,201,69,0.55), 0 2px 8px rgba(0,0,0,0.25);
       background: linear-gradient(135deg, #FAD966 0%, #F6C945 100%);
     }
-    .portal-submit-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
-    .portal-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+    .admin-submit-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+    .admin-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* ── Error box ── */
     .login-error {
@@ -313,7 +318,7 @@
     html.light-mode .login-footer p { color: #7A90B4; }
     .login-footer a { color: #F6C945; font-weight: 700; text-decoration: none; transition: opacity 0.18s; }
     .login-footer a:hover { opacity: 0.75; }
-    html.light-mode .login-footer a { color: #8B6914; }
+    html.light-mode .login-footer a { color: #C9A012; }
     .copyright-text { font-size: 11px; color: rgba(107,116,148,0.5) !important; margin-top: 2px; }
     html.light-mode .copyright-text { color: #A3B5CE !important; }
 
@@ -352,15 +357,15 @@
         <!-- WRO Rainbow bar -->
         <div class="wro-rainbow-bar rounded-full" style="margin-bottom:1.1rem;"></div>
 
-        <!-- Portal badge + title -->
+        <!-- Admin badge + title -->
         <div style="margin-bottom:0.85rem;">
-          <span class="portal-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Standard User Portal
+          <span class="admin-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Administrator Portal
           </span>
         </div>
-        <h1 class="login-title">Welcome Back</h1>
-        <p class="login-subtitle">WRO Philippines · Participant Access</p>
+        <h1 class="login-title">Integrated Database System</h1>
+        <p class="login-subtitle">Official Competition Management Platform</p>
 
         <!-- Status pill -->
         <div style="margin-top:1rem;">
@@ -375,35 +380,32 @@
       <div class="form-divider"></div>
 
       <!-- Login Form -->
-      <form id="portal-login-form" onsubmit="handlePortalLogin(event)" autocomplete="on" novalidate>
+      <form id="login-form" onsubmit="handleLogin(event)" autocomplete="on" novalidate>
 
         <!-- Username -->
         <div style="margin-bottom:1rem;">
-          <label class="login-label" for="portal-username">Email Address</label>
+          <label class="login-label" for="username">Username</label>
           <div class="input-wrap">
             <span class="input-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </span>
-            <input id="portal-username" type="email" class="login-input"
-              placeholder="Enter your email address" autocomplete="username" required>
+            <input id="username" type="text" class="login-input"
+              placeholder="Enter your username" autocomplete="username" required>
           </div>
         </div>
 
         <!-- Password -->
         <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
-            <label class="login-label" for="portal-password" style="margin-bottom:0;">Password</label>
-            <a href="forgot-password" style="font-size: 11px; color: #F6C945; font-weight: 700; text-decoration: none; opacity: 0.9;">Forgot Password?</a>
-          </div>
+          <label class="login-label" for="password">Password</label>
           <div class="input-wrap">
             <span class="input-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </span>
-            <input id="portal-password" type="password" class="login-input"
+            <input id="password" type="password" class="login-input"
               style="padding-right:44px;"
               placeholder="Enter your password" autocomplete="current-password" required>
-            <button type="button" onclick="togglePortalPwd()" class="eye-btn" aria-label="Toggle password visibility">
-              <span id="portal-pwd-eye">
+            <button type="button" id="pwd-toggle" onclick="togglePwd()" class="eye-btn" aria-label="Toggle password visibility">
+              <span id="pwd-eye">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </span>
             </button>
@@ -411,70 +413,70 @@
         </div>
 
         <!-- Submit button -->
-        <button type="submit" id="portal-login-btn" class="portal-submit-btn">
-          <span id="portal-login-icon" style="display:flex;align-items:center;">
+        <button type="submit" id="login-btn" class="admin-submit-btn">
+          <span id="login-icon" style="display:flex;align-items:center;">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           </span>
-          <span id="portal-login-text">Sign In to Portal</span>
+          <span id="login-text">Sign In</span>
         </button>
-        
-        <div style="text-align: center; margin-top: 1rem;">
-          <a href="signup" style="font-size: 0.9rem; color: #3a86ff; text-decoration: none; font-weight: 500;">Don't have an account? Sign Up</a>
-        </div>
 
         <!-- Error message -->
-        <div id="portal-login-error" class="login-error"></div>
+        <div id="login-error" class="login-error"></div>
       </form>
     </div>
 
     <!-- Footer -->
     <div class="login-footer">
       <p>
-        Are you an administrator?
-        <a href="admin">Go to Admin Portal →</a>
+        Are you a participant?
+        <a href="portal-login">Standard User Portal →</a>
       </p>
-      <p class="copyright-text">FELTA Multimedia · WRO Philippines © 2025 · Standard User Portal</p>
+      <p class="copyright-text">FELTA Multimedia · WRO Philippines © 2025 · Database System v2.0</p>
     </div>
   </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      if (PORTAL_AUTH.isLoggedIn()) { window.location.href = 'portal'; }
+      if (AUTH.isLoggedIn()) { window.location.href = 'dashboard'; }
     });
 
-    async function handlePortalLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
-      const username = document.getElementById('portal-username').value.trim();
-      const password = document.getElementById('portal-password').value;
-      const btn      = document.getElementById('portal-login-btn');
-      const errEl    = document.getElementById('portal-login-error');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const btn      = document.getElementById('login-btn');
+      const errEl    = document.getElementById('login-error');
 
       btn.disabled = true;
-      document.getElementById('portal-login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>`;
-      document.getElementById('portal-login-text').textContent = 'Signing in…';
+      document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>`;
+      document.getElementById('login-text').textContent = 'Signing in...';
       errEl.style.display = 'none';
 
-      const result = await PORTAL_AUTH.login(username, password);
+      const result = await AUTH.login(username, password);
       if (result.success) {
-        document.getElementById('portal-login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>`;
-        document.getElementById('portal-login-text').textContent = 'Welcome!';
-        setTimeout(() => { window.location.href = 'portal'; }, 600);
+        document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>`;
+        document.getElementById('login-text').textContent = 'Welcome!';
+        setTimeout(() => { window.location.href = 'dashboard'; }, 600);
       } else {
-        errEl.textContent = result.error;
+        if (result.redirect) {
+          errEl.innerHTML = result.error + ` <a href="${result.redirect}" style="color:#F6C945;font-weight:700;text-decoration:underline;">Go to Standard User Portal →</a>`;
+        } else {
+          errEl.textContent = result.error;
+        }
         errEl.style.display = 'block';
         btn.disabled = false;
-        document.getElementById('portal-login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;
-        document.getElementById('portal-login-text').textContent = 'Sign In to Portal';
+        document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;
+        document.getElementById('login-text').textContent = 'Sign In';
       }
     }
 
-    function togglePortalPwd() {
-      const pwd  = document.getElementById('portal-password');
-      const eye  = document.getElementById('portal-pwd-eye');
-      const open   = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`;
-      const closed = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>`;
-      if (pwd.type === 'password') { pwd.type = 'text';     eye.innerHTML = closed; }
-      else                         { pwd.type = 'password'; eye.innerHTML = open;   }
+    function togglePwd() {
+      const pwd = document.getElementById('password');
+      const eye = document.getElementById('pwd-eye');
+      const icon_open   = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`;
+      const icon_closed = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>`;
+      if (pwd.type === 'password') { pwd.type = 'text';     eye.innerHTML = icon_closed; }
+      else                         { pwd.type = 'password'; eye.innerHTML = icon_open;   }
     }
   </script>
 

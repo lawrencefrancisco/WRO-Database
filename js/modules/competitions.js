@@ -731,8 +731,6 @@ const Competitions = {
             ${_row('School', c.school_name)}
             ${_row('Mobile', c.mobile)}
             ${_row('Email', c.email)}
-            ${c.years_coaching ? _row('Experience', `${c.years_coaching} year${c.years_coaching !== 1 ? 's' : ''}`) : ''}
-            ${_row('Certifications', c.certifications)}
           </div>`).join('')}
       </div>`;
 
@@ -745,7 +743,7 @@ const Competitions = {
               <div class="font-bold text-white text-sm">${j.full_name}</div>
               ${_statusBadge(j.status)}
             </div>
-            ${_row('Category', j.judging_category)}
+            ${_row('Category', j.judging_category ? j.judging_category.split(',').map(c => _badge(c.trim(), '#a890f0')).join(' ') : '—')}
             ${_row('Gender', j.gender)}
             ${_row('Contact', j.contact_number)}
           </div>`).join('')}
@@ -989,8 +987,6 @@ const Competitions = {
             ${_row('School', c.school_name)}
             ${_row('Mobile', c.mobile)}
             ${_row('Email', c.email)}
-            ${c.years_coaching ? _row('Experience', `${c.years_coaching} yr${c.years_coaching !== 1 ? 's' : ''}`) : ''}
-            ${_row('Certifications', c.certifications)}
           </div>`).join('')}
       </div>`;
 
@@ -1003,7 +999,7 @@ const Competitions = {
               <div class="font-bold text-white text-sm">${j.full_name}</div>
               ${_statusBadge(j.status)}
             </div>
-            ${_row('Category', j.judging_category)}
+            ${_row('Category', j.judging_category ? j.judging_category.split(',').map(c => _badge(c.trim(), '#a890f0')).join(' ') : '—')}
             ${_row('Gender', j.gender)}
             ${_row('Contact', j.contact_number)}
           </div>`).join('')}
@@ -1182,8 +1178,6 @@ const Competitions = {
       'Position':       c.position        || '',
       'Mobile':         c.mobile          || '',
       'Email':          c.email           || '',
-      'Years Coaching': c.years_coaching  ?? '',
-      'Certifications': c.certifications  || '',
     })));
 
     // ── Sheet 5: Judges ───────────────────────────────────

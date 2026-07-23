@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>WRO Philippines – Verify Account</title>
+  
+  <link rel="stylesheet" href="assets/css/output.css">
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --felta-yellow: #F6C945;
+      --felta-yellow-d: #C9A012;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+    /* ── Dark mode background (yellow-accented) ── */
+    body.login-page {
+      background:
+        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.18) 0%, transparent 52%),
+        radial-gradient(ellipse at 92% 12%, rgba(20,32,87,0.95) 0%, transparent 55%),
+        radial-gradient(ellipse at 55% 92%, rgba(246,201,69,0.08) 0%, transparent 50%),
+        #070c20;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem 1rem; position: relative; overflow-x: hidden;
+    }
+
+    /* ── Light mode background ── */
+    html.light-mode body.login-page {
+      background:
+        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.10) 0%, transparent 52%),
+        radial-gradient(ellipse at 92% 12%, rgba(246,201,69,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 55% 92%, rgba(246,201,69,0.06) 0%, transparent 50%),
+        linear-gradient(155deg, #EAF2FC 0%, #F5F9FF 45%, #E4EEF8 100%);
+    }
+
+    /* ── Floating animated orbs ── */
+    .login-orb {
+      position: absolute; border-radius: 50%; filter: blur(70px);
+      z-index: 0; pointer-events: none; opacity: 0.6;
+      animation: orbFloat 24s ease-in-out infinite alternate;
+    }
+    .login-orb-1 {
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(246,201,69,0.20), transparent 70%);
+      top: -160px; left: -160px;
+      animation-delay: 0s;
+    }
+    .login-orb-2 {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, rgba(20,32,87,0.8), transparent 70%);
+      bottom: -100px; right: -100px;
+      animation-delay: -12s;
+    }
+    .login-orb-3 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(30,158,191,0.12), transparent 70%);
+      top: 40%; left: 65%;
+      animation-delay: -7s;
+    }
+    html.light-mode .login-orb-1 { background: radial-gradient(circle, rgba(246,201,69,0.14), transparent 70%); }
+    html.light-mode .login-orb-2 { background: radial-gradient(circle, rgba(246,201,69,0.09), transparent 70%); }
+    html.light-mode .login-orb-3 { background: radial-gradient(circle, rgba(30,158,191,0.09), transparent 70%); }
+
+    @keyframes orbFloat {
+      0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+      100% { transform: translate(120px, 80px) rotate(45deg) scale(1.15); }
+    }
+
+    /* ── Dot grid overlay ── */
+    .dot-grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(rgba(246,201,69,0.65) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.020;
+    }
+    html.light-mode .dot-grid {
+      background-image: radial-gradient(rgba(10,20,60,0.50) 1px, transparent 1px);
+      opacity: 0.040;
+    }
+
+    /* ── Container ── */
+    .login-card-wrap {
+      width: 100%; max-width: 440px; position: relative; z-index: 10;
+      animation: formSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0; transform: translateY(24px) scale(0.98);
+    }
+    @keyframes formSlideUp {
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── The card itself ── */
+    .login-card {
+      background: rgba(13, 20, 56, 0.82);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(246,201,69,0.28);
+      border-radius: 20px;
+      padding: 2.2rem 2rem;
+      box-shadow:
+        0 0 0 1px rgba(246,201,69,0.08),
+        0 8px 48px rgba(0,0,0,0.60),
+        0 0 80px rgba(246,201,69,0.10);
+    }
+    html.light-mode .login-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      border: 1px solid rgba(246,201,69,0.16);
+      box-shadow:
+        0 0 0 1px rgba(246,201,69,0.06),
+        0 10px 48px rgba(10,20,60,0.11),
+        0 2px 12px rgba(246,201,69,0.06);
+    }
+
+    /* ── Portal badge ── */
+    .portal-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(246,201,69,0.16);
+      border: 1px solid rgba(246,201,69,0.32);
+      color: #F6C945;
+      padding: 0.28rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.70rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    html.light-mode .portal-badge {
+      background: rgba(246,201,69,0.10);
+      border-color: rgba(246,201,69,0.24);
+      color: #8B6914;
+    }
+
+    /* ── Status pill ── */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 0.35rem 1rem;
+      border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .status-pill { background: rgba(20,30,70,0.60); border: 1px solid rgba(246,201,69,0.20); color: #F6C945; }
+    html.light-mode .status-pill { background: rgba(246,201,69,0.07); border: 1px solid rgba(246,201,69,0.18); color: #8B6914; }
+
+    /* ── Pulse dot ── */
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #F6C945;
+      box-shadow: 0 0 0 0 rgba(246,201,69,0.5);
+      animation: dotPulseBlue 2.2s ease-in-out infinite;
+    }
+    html.light-mode .status-dot { background: #D4A017; }
+    @keyframes dotPulseBlue {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(246,201,69,0.5); }
+      50%       { box-shadow: 0 0 0 7px rgba(246,201,69,0); }
+    }
+
+    /* ── Divider ── */
+    .form-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.25), transparent);
+      margin: 1.5rem 0;
+    }
+    html.light-mode .form-divider {
+      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.18), transparent);
+    }
+
+    /* ── OTP Form inputs ── */
+    .otp-input {
+      background: rgba(5, 9, 28, 0.85);
+      border: 1px solid rgba(246,201,69,0.20);
+      color: #EEF0F8;
+      border-radius: 12px;
+      padding: 14px;
+      width: 100%;
+      font-size: 24px;
+      letter-spacing: 0.4em;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .otp-input:focus {
+      outline: none;
+      border-color: #F6C945;
+      box-shadow: 0 0 0 3px rgba(246,201,69,0.18);
+    }
+    .otp-input::placeholder { color: rgba(107,116,148,0.7); letter-spacing: 0.4em; font-weight: 400; }
+    
+    html.light-mode .otp-input {
+      background: #ffffff;
+      border: 1px solid rgba(246,201,69,0.20);
+      color: #0D1B3E;
+      box-shadow: inset 0 1px 3px rgba(10,20,60,0.04);
+    }
+    html.light-mode .otp-input:focus {
+      border-color: #C9A012;
+      box-shadow: 0 0 0 3px rgba(246,201,69,0.14);
+    }
+    html.light-mode .otp-input::placeholder { color: #9EB3CE; }
+
+    /* ── Label ── */
+    .login-label {
+      display: block;
+      font-size: 13px; font-weight: 700;
+      color: rgba(238,240,248,0.9);
+      margin-bottom: 7px;
+    }
+    html.light-mode .login-label { color: #324765; }
+
+    /* ── Submit button ── */
+    .portal-submit-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: linear-gradient(135deg, #F6C945 0%, #C9A012 100%);
+      color: #07100e;
+      box-shadow: 0 4px 20px rgba(246,201,69,0.40), 0 1px 4px rgba(0,0,0,0.25);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: 1.4rem;
+    }
+    .portal-submit-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(246,201,69,0.60), 0 2px 8px rgba(0,0,0,0.25);
+      background: linear-gradient(135deg, #FAD966 0%, #F6C945 100%);
+    }
+    .portal-submit-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+    .portal-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Message boxes ── */
+    #error-msg, #success-msg {
+      margin-top: 1rem;
+      padding: 10px 14px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+      border-radius: 8px;
+    }
+    #error-msg {
+      color: #ff006e;
+      background: rgba(255, 0, 110, 0.1);
+      border: 1px solid rgba(255, 0, 110, 0.2);
+    }
+    #success-msg {
+      color: #2dc653;
+      background: rgba(45, 198, 83, 0.1);
+      border: 1px solid rgba(45, 198, 83, 0.2);
+    }
+
+    /* ── Footer text ── */
+    .login-footer { margin-top: 1.2rem; text-align: center; }
+    .login-footer a { color: #F6C945; font-weight: 700; text-decoration: none; transition: opacity 0.18s; font-size: 0.85rem; }
+    .login-footer a:hover { opacity: 0.75; }
+    html.light-mode .login-footer a { color: #8B6914; }
+
+    /* ── Page title text ── */
+    .login-title { color: #EEF0F8; font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; text-align: center; }
+    html.light-mode .login-title { color: #0D1B3E; }
+    .login-subtitle { color: rgba(107,116,148,0.85); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; text-align: center; }
+    html.light-mode .login-subtitle { color: #7A90B4; }
+
+    /* ── WRO Rainbow ── */
+    .wro-rainbow-bar {
+      height: 4px;
+      background: linear-gradient(90deg, #E62228 16.66%, #F57F20 16.66% 33.32%, #FBDC00 33.32% 49.98%, #39B54A 49.98% 66.64%, #0072BC 66.64% 83.3%, #662D91 83.3%);
+      width: 180px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+
+<body class="login-page">
+
+  <!-- Background layers -->
+  <div class="login-orb login-orb-1"></div>
+  <div class="login-orb login-orb-2"></div>
+  <div class="login-orb login-orb-3"></div>
+  <div class="dot-grid"></div>
+
+  <!-- Login card -->
+  <div class="login-card-wrap">
+    <div class="login-card">
+
+      <!-- Header: Logo + branding -->
+      <div style="text-align:center; margin-bottom:1.6rem;">
+        <div style="display:flex; justify-content:center; margin-bottom:1.1rem;">
+          <img src="assets/image/FELTA_LOGO_DARK.png" alt="FELTA WRO Philippines"
+               class="js-theme-logo"
+               style="height:88px; width:auto; object-fit:contain; max-width:100%;
+                      filter:drop-shadow(0 2px 14px rgba(246,201,69,0.30));">
+        </div>
+        
+        <!-- WRO Rainbow bar -->
+        <div class="wro-rainbow-bar rounded-full" style="margin-bottom:1.1rem;"></div>
+        
+        <h1 class="login-title">Verify Account</h1>
+        <p class="login-subtitle">WRO Philippines · Participant Access</p>
+      </div>
+
+      <!-- Divider -->
+      <div class="form-divider"></div>
+      
+      <p style="text-align: center; color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.4;">
+        We've sent a 6-digit code to <br><strong id="display-email" style="color: #EEF0F8;"></strong>
+      </p>
+
+      <form id="verify-form">
+        <!-- OTP -->
+        <div style="margin-bottom:1rem;">
+          <input id="otp" type="text" class="otp-input"
+            placeholder="000000" maxlength="6" autocomplete="off" required>
+        </div>
+
+        <!-- Submit button -->
+        <button type="submit" id="submit-btn" class="portal-submit-btn">
+          Verify Account
+        </button>
+        
+        <div id="error-msg"></div>
+        <div id="success-msg"></div>
+      </form>
+      
+      <div class="login-footer">
+        <a href="signup">Did not receive code? Sign up again.</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple theme switcher logic to handle logo if dark mode is toggled at system level
+    const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    function handleThemeChange(e) {
+      const logos = document.querySelectorAll('.js-theme-logo');
+      const isDark = e.matches;
+      // In this setup, "dark" mode is default body class. "light-mode" is set on HTML if selected.
+      if (!document.documentElement.classList.contains('light-mode') && !document.documentElement.classList.contains('dark-mode')) {
+        logos.forEach(img => img.src = isDark ? 'assets/image/FELTA_LOGO_DARK.png' : 'assets/image/FELTA_LOGO.png');
+      }
+    }
+    themeMediaQuery.addEventListener('change', handleThemeChange);
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.add('light-mode');
+      document.querySelectorAll('.js-theme-logo').forEach(img => img.src = 'assets/image/FELTA_LOGO.png');
+    } else {
+      handleThemeChange(themeMediaQuery);
+    }
+
+    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api';
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get('email');
+    
+    if (!emailParam) {
+      window.location.href = 'signup';
+    } else {
+      document.getElementById('display-email').textContent = emailParam;
+    }
+
+    document.getElementById('verify-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const errBox = document.getElementById('error-msg');
+      const succBox = document.getElementById('success-msg');
+      
+      const otp = document.getElementById('otp').value.trim();
+      
+      btn.textContent = 'Verifying...';
+      btn.disabled = true;
+      errBox.style.display = 'none';
+      succBox.style.display = 'none';
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailParam, otp })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          succBox.textContent = 'Account verified! Redirecting to login...';
+          succBox.style.display = 'block';
+          setTimeout(() => {
+            window.location.href = 'portal-login';
+          }, 2000);
+        } else {
+          errBox.textContent = data.error || 'Verification failed.';
+          errBox.style.display = 'block';
+          btn.textContent = 'Verify Account';
+          btn.disabled = false;
+        }
+      } catch (err) {
+        errBox.textContent = 'Network error. Please try again.';
+        errBox.style.display = 'block';
+        btn.textContent = 'Verify Account';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

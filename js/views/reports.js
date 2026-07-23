@@ -54,8 +54,8 @@ const Reports = {
     const rows = (await DB.getAll('schools')).filter(s => !s.isDeleted);
     if (format === 'csv') {
       Utils.downloadCSV('WRO_Schools.csv',
-        ['ID','School Name','Type','Level','Region','Province','City','DepEd ID','Email','Contact','Head','Coordinator','Status'],
-        rows.map(s => [s.id,s.schoolName,s.schoolType,s.schoolLevel,s.region,s.province,s.city,s.depedId,s.email,s.contactNumber,s.schoolHead,s.roboticsCoordinator,s.status])
+        ['ID','School Name','Type','Level','Region','Province','City','Email','Contact','Head','Coordinator','Status'],
+        rows.map(s => [s.id,s.schoolName,s.schoolType,s.schoolLevel,s.region,s.province,s.city,s.email,s.contactNumber,s.schoolHead,s.roboticsCoordinator,s.status])
       );
     } else {
       this._printReport('WRO Philippines School Master List', rows, ['School Name','Type','Region','City','Coordinator','Status'], (s) => [s.schoolName,s.schoolType,(s.region||'').slice(0,20),s.city,s.roboticsCoordinator,s.status]);
@@ -68,10 +68,10 @@ const Reports = {
     const _schoolsMap = await DB.getLookup('schools');
     if (format === 'csv') {
       Utils.downloadCSV('WRO_Coaches.csv',
-        ['ID','Full Name','Gender','Email','Mobile','School','Position','Certifications','Years Coaching','Status'],
+        ['ID','Full Name','Gender','Email','Mobile','School','Position','Status'],
         rows.map(c => {
           const s = _schoolsMap[c.schoolId];
-          return [c.id,c.fullName,c.gender,c.email,c.mobile,s?.schoolName||'',c.position,c.certifications,c.yearsCoaching,c.status];
+          return [c.id,c.fullName,c.gender,c.email,c.mobile,s?.schoolName||'',c.position,c.status];
         })
       );
     } else {

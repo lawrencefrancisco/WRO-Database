@@ -3,482 +3,806 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>WRO Philippines – Admin Sign In</title>
-  <meta name="description" content="WRO Philippines Integrated Database System – Official platform for managing participants, competitions, and records.">
+  <title>WRO Philippines – World Robot Olympiad Official Portal</title>
+  <meta name="description" content="Official Portal of WRO Philippines. Register your team, manage participants, and join the world's largest robotics competition.">
 
-  <!-- Tailwind CSS (static build) -->
-  <link rel="stylesheet" href="assets/css/output.css">
-
-  <!-- Early theme init: default is LIGHT, only dark if explicitly saved -->
-  <script>
-    (function() {
-      const saved = localStorage.getItem('wro_ph_theme');
-      const isLight = saved !== 'dark';
-      if (isLight) {
-        document.documentElement.classList.add('light-mode');
-      }
-      document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.js-theme-logo').forEach(img => {
-          img.src = isLight ? 'assets/image/FELTA_LOGO_LIGHT.png' : 'assets/image/FELTA_LOGO_DARK.png';
-        });
-      });
-    })();
-  </script>
-
-  <link rel="stylesheet" href="css/custom.css">
-  <script src="js/core/db.js"></script>
-  <script src="js/core/auth.js"></script>
-  <script src="js/core/utils.js"></script>
-  <script src="js/core/seed.js"></script>
-  <!-- SheetJS – client-side Excel (.xlsx) generation -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    /* ── Input icon wrapper ── */
-    .input-wrap { position: relative; }
-    .input-wrap .input-icon {
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      pointer-events: none; display: flex; align-items: center;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --c-bg: #04081a;
+      --c-surface: rgba(255,255,255,0.035);
+      --c-border: rgba(255,255,255,0.07);
+      --c-text: #e8eaf6;
+      --c-muted: rgba(232,234,246,0.55);
+      --c-blue: #3a86ff;
+      --c-purple: #f6c945;
+      --c-pink: #ff006e;
+      --c-gold: #f6c945;
+      --font: 'Inter', sans-serif;
     }
 
-    /* ── Login page body ── */
-    body.login-page {
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--c-bg);
+      color: var(--c-text);
+      overflow-x: hidden;
       min-height: 100vh;
+    }
+
+    /* ══════════════════════════════════════════
+       CANVAS PARTICLE BACKGROUND
+    ══════════════════════════════════════════ */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ══════════════════════════════════════════
+       MESH GRADIENT BACKGROUND
+    ══════════════════════════════════════════ */
+    .mesh-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(246,201,69,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(58,134,255,0.16) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255,0,110,0.08) 0%, transparent 65%),
+        radial-gradient(ellipse 70% 60% at 80% 10%, rgba(246,201,69,0.07) 0%, transparent 55%),
+        #04081a;
+      animation: meshShift 18s ease-in-out infinite alternate;
+    }
+    @keyframes meshShift {
+      0%   { background-position: 0% 0%; filter: hue-rotate(0deg); }
+      100% { background-position: 100% 100%; filter: hue-rotate(15deg); }
+    }
+
+    /* ══════════════════════════════════════════
+       NAVIGATION
+    ══════════════════════════════════════════ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(1.5rem, 5vw, 4rem);
+      height: 88px;
+      background: rgba(4, 8, 26, 0.5);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid var(--c-border);
+      transition: background 0.3s;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    .nav-logo img { height: 60px; width: auto; object-fit: contain; }
+
+    .nav-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1.4rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-decoration: none;
+      transition: all 0.22s cubic-bezier(0.2,0.8,0.2,1);
+      cursor: pointer;
+      border: none;
+      letter-spacing: 0.01em;
+    }
+    .btn-ghost {
+      color: rgba(232,234,246,0.85);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    .btn-primary {
+      background: var(--felta-yellow, #F6C945);
+      color: #070c20;
+      box-shadow: 0 4px 18px rgba(246,201,69,0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(246,201,69,0.5);
+    }
+
+    /* ══════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════ */
+    .hero {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 7rem clamp(1.5rem, 6vw, 4rem) 5rem;
+      overflow: hidden;
+    }
+
+    /* Animated radial ring behind hero text */
+    .hero-ring {
+      position: absolute;
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      border: 1px solid rgba(58,134,255,0.1);
+      animation: ringPulse 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .hero-ring:nth-child(1) { animation-delay: 0s; }
+    .hero-ring:nth-child(2) { width: 680px; height: 680px; border-color: rgba(246,201,69,0.15); animation-delay: -2s; }
+    .hero-ring:nth-child(3) { width: 460px; height: 460px; border-color: rgba(255,0,110,0.1); animation-delay: -4s; }
+    @keyframes ringPulse {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.04); opacity: 1; }
+    }
+
+    /* WRO Rainbow Bar */
+    .hero-rainbow {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 2.2rem;
+      animation: fadeSlideDown 0.8s cubic-bezier(0.2,0.8,0.2,1) 0.1s both;
+    }
+    .hero-rainbow span {
+      display: block;
+      height: 4px;
+      width: 38px;
+      border-radius: 999px;
+    }
+
+    /* Live Badge */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(58,134,255,0.1);
+      border: 1px solid rgba(58,134,255,0.25);
+      color: #78b4ff;
+      padding: 0.35rem 1.1rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.8rem;
+      animation: fadeSlideDown 0.8s cubic-bezier(0.2,0.8,0.2,1) 0.2s both;
+    }
+    .hero-badge-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #3a86ff;
+      animation: pulseDot 2s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(58,134,255,0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(58,134,255,0); }
+    }
+
+    .hero-eyebrow {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(120,180,255,0.8);
+      margin-bottom: 1rem;
+      animation: fadeSlideDown 0.8s cubic-bezier(0.2,0.8,0.2,1) 0.25s both;
+    }
+
+    .hero-title {
+      font-size: clamp(3.2rem, 8vw, 6.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      margin-bottom: 1.6rem;
+      max-width: 16ch;
+      animation: fadeSlideUp 0.9s cubic-bezier(0.2,0.8,0.2,1) 0.3s both;
+    }
+    .hero-title-line1 {
+      display: block;
+      background: linear-gradient(100deg, #ffffff 0%, #c8d8ff 50%, #f6c945 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-title-line2 {
+      display: block;
+      background: linear-gradient(100deg, #60a5fa 0%, #f6c945 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(1.05rem, 2.5vw, 1.3rem);
+      color: var(--c-muted);
+      max-width: 640px;
+      line-height: 1.7;
+      margin-bottom: 3rem;
+      font-weight: 400;
+      animation: fadeSlideUp 0.9s cubic-bezier(0.2,0.8,0.2,1) 0.45s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      animation: fadeSlideUp 0.9s cubic-bezier(0.2,0.8,0.2,1) 0.55s both;
+    }
+
+    .btn-cta {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1rem 2.6rem;
+      border-radius: 999px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--c-pink) 0%, var(--c-purple) 55%, var(--c-blue) 100%);
+      box-shadow: 0 8px 32px rgba(255,0,110,0.35);
+      transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1);
+      overflow: hidden;
+      display: none;
+    }
+    .btn-cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .btn-cta:hover::before { opacity: 1; }
+    .btn-cta:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 16px 48px rgba(255,0,110,0.45);
+    }
+    .btn-cta:active { transform: scale(0.98); }
+    /* Animated glow */
+    .btn-cta::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      background: linear-gradient(135deg, var(--c-pink), var(--c-purple), var(--c-blue));
+      z-index: -1;
+      filter: blur(18px);
+      opacity: 0.6;
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.45; transform: scale(0.98); }
+      50% { opacity: 0.75; transform: scale(1.04); }
+    }
+
+    .btn-portal {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2.2rem;
+      border-radius: 999px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: rgba(232,234,246,0.85);
+      text-decoration: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: all 0.22s ease;
+    }
+    .btn-portal:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .registration-closed {
+      font-size: 0.9rem;
+      color: rgba(232,234,246,0.45);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      display: none;
+    }
+
+    /* ══════════════════════════════════════════
+       STATS SECTION
+    ══════════════════════════════════════════ */
+    .stats-section {
+      position: relative;
+      z-index: 10;
+      padding: 0 clamp(1.5rem, 5vw, 4rem) 6rem;
+      animation: fadeSlideUp 1s cubic-bezier(0.2,0.8,0.2,1) 0.7s both;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .stat-card {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .stat-card:hover::before { opacity: 1; }
+    .stat-card:hover {
+      background: rgba(255,255,255,0.06);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+    .stat-card[data-accent="blue"] { --accent: #3a86ff; }
+    .stat-card[data-accent="purple"] { --accent: #f6c945; }
+    .stat-card[data-accent="pink"] { --accent: #ff006e; }
+    .stat-card[data-accent="gold"] { --accent: #f6c945; }
+
+    .stat-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
-      overflow: hidden;
-      position: relative;
+      margin: 0 auto 1rem;
+      font-size: 1.4rem;
+    }
+    .stat-value {
+      font-size: 2.4rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--c-muted);
     }
 
-    /* ── Low opacity background image ── */
-    body.login-page::before {
-      content: '';
-      position: fixed; inset: 0;
-      background: url('assets/image/login-background.jpg') center/cover no-repeat;
-      opacity: 0.06;
-      pointer-events: none;
-      z-index: 0;
-    }
-    html.light-mode body.login-page::before { opacity: 0.04; }
-
-    /* ── Dark mode background ── */
-    body.login-page {
-      background:
-        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.13) 0%, transparent 52%),
-        radial-gradient(ellipse at 92% 12%, rgba(20,32,87,0.95) 0%, transparent 55%),
-        radial-gradient(ellipse at 55% 92%, rgba(30,108,180,0.10) 0%, transparent 50%),
-        #070c20;
-    }
-
-    /* ── Light mode background ── */
-    html.light-mode body.login-page {
-      background:
-        radial-gradient(ellipse at 8% 45%, rgba(246,201,69,0.09) 0%, transparent 52%),
-        radial-gradient(ellipse at 92% 12%, rgba(29,111,164,0.07) 0%, transparent 55%),
-        radial-gradient(ellipse at 55% 92%, rgba(246,201,69,0.06) 0%, transparent 50%),
-        linear-gradient(155deg, #EAF0FC 0%, #F5F8FF 45%, #E6EDF8 100%);
-    }
-
-    /* ── Animated background orbs ── */
-    .login-orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(80px);
-      animation: orbFloat 10s ease-in-out infinite;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .login-orb-1 {
-      width: 520px; height: 520px;
-      background: radial-gradient(circle, rgba(246,201,69,0.11), transparent 70%);
-      top: -160px; left: -160px;
-      animation-delay: 0s;
-    }
-    .login-orb-2 {
-      width: 380px; height: 380px;
-      background: radial-gradient(circle, rgba(29,111,164,0.10), transparent 70%);
-      bottom: -100px; right: -100px;
-      animation-delay: -4s;
-    }
-    .login-orb-3 {
-      width: 260px; height: 260px;
-      background: radial-gradient(circle, rgba(240,120,48,0.07), transparent 70%);
-      top: 40%; left: 65%;
-      animation-delay: -7s;
-    }
-    html.light-mode .login-orb-1 { background: radial-gradient(circle, rgba(246,201,69,0.14), transparent 70%); }
-    html.light-mode .login-orb-2 { background: radial-gradient(circle, rgba(29,111,164,0.09), transparent 70%); }
-    html.light-mode .login-orb-3 { background: radial-gradient(circle, rgba(240,120,48,0.08), transparent 70%); }
-
-    @keyframes orbFloat {
-      0%, 100% { transform: translateY(0) scale(1); }
-      33% { transform: translateY(-24px) scale(1.04); }
-      66% { transform: translateY(12px) scale(0.97); }
-    }
-
-    /* ── Dot grid overlay ── */
-    .dot-grid {
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image: radial-gradient(rgba(246,201,69,0.7) 1px, transparent 1px);
-      background-size: 32px 32px;
-      opacity: 0.020;
-    }
-    html.light-mode .dot-grid { opacity: 0.013; }
-
-    /* ── Login card container ── */
-    .login-card-wrap {
-      width: 100%;
-      max-width: 420px;
+    /* ══════════════════════════════════════════
+       FEATURES SECTION
+    ══════════════════════════════════════════ */
+    .features-section {
       position: relative;
       z-index: 10;
-      animation: cardEntrance 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    }
-    @keyframes cardEntrance {
-      from { opacity: 0; transform: translateY(44px) scale(0.96); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
+      padding: 5rem clamp(1.5rem, 5vw, 4rem);
     }
 
-    /* ── The card itself ── */
-    .login-card {
-      background: rgba(13, 20, 56, 0.82);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid rgba(246,201,69,0.18);
-      border-radius: 20px;
-      padding: 2.2rem 2rem;
-      box-shadow:
-        0 0 0 1px rgba(246,201,69,0.08),
-        0 8px 48px rgba(0,0,0,0.60),
-        0 0 80px rgba(246,201,69,0.07);
-    }
-    html.light-mode .login-card {
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
-      border: 1px solid rgba(182,140,30,0.18);
-      box-shadow:
-        0 0 0 1px rgba(182,140,30,0.08),
-        0 10px 48px rgba(10,20,60,0.11),
-        0 2px 12px rgba(10,20,60,0.06);
-    }
-
-    /* ── Admin badge ── */
-    .admin-badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      background: rgba(246,201,69,0.12);
-      border: 1px solid rgba(246,201,69,0.28);
-      color: #F6C945;
-      padding: 0.28rem 0.85rem;
-      border-radius: 999px;
-      font-size: 0.70rem; font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.07em;
-    }
-    html.light-mode .admin-badge {
-      background: rgba(182,140,30,0.10);
-      border-color: rgba(182,140,30,0.26);
-      color: #8B6914;
-    }
-
-    /* ── Status pill ── */
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 0.35rem 1rem;
-      border-radius: 999px;
-      font-size: 0.72rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.07em;
-    }
-    .status-pill { background: rgba(20,30,70,0.60); border: 1px solid rgba(246,201,69,0.14); color: #F6C945; }
-    html.light-mode .status-pill { background: rgba(246,201,69,0.08); border: 1px solid rgba(182,140,30,0.18); color: #8B6914; }
-
-    /* ── Pulse dot ── */
-    .status-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: #F6C945;
-      box-shadow: 0 0 0 0 rgba(246,201,69,0.5);
-      animation: dotPulse 2.2s ease-in-out infinite;
-    }
-    html.light-mode .status-dot { background: #D4A017; }
-    @keyframes dotPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(246,201,69,0.5); }
-      50%       { box-shadow: 0 0 0 7px rgba(246,201,69,0); }
-    }
-
-    /* ── Divider ── */
-    .form-divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(246,201,69,0.20), transparent);
-      margin: 1.5rem 0;
-    }
-    html.light-mode .form-divider {
-      background: linear-gradient(90deg, transparent, rgba(182,140,30,0.18), transparent);
-    }
-
-    /* ── Form inputs override for dark mode ── */
-    .login-input {
-      background: rgba(5, 9, 28, 0.85);
-      border: 1px solid rgba(246,201,69,0.16);
-      color: #EEF0F8;
-      border-radius: 12px;
-      padding: 11px 14px 11px 40px;
-      width: 100%;
-      font-size: 14px;
-      font-family: 'Inter', sans-serif;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .login-input:focus {
-      outline: none;
-      border-color: #F6C945;
-      box-shadow: 0 0 0 3px rgba(246,201,69,0.14);
-    }
-    .login-input::placeholder { color: rgba(107,116,148,0.7); }
-    html.light-mode .login-input {
-      background: #ffffff;
-      border: 1px solid rgba(182,140,30,0.24);
-      color: #0D1B3E;
-      box-shadow: inset 0 1px 3px rgba(10,20,60,0.04);
-    }
-    html.light-mode .login-input:focus {
-      border-color: #F6C945;
-      box-shadow: 0 0 0 3px rgba(246,201,69,0.16);
-    }
-    html.light-mode .login-input::placeholder { color: #9EB3CE; }
-
-    /* ── Label ── */
-    .login-label {
-      display: block;
-      font-size: 11px; font-weight: 700;
-      color: rgba(107,116,148,0.9);
-      text-transform: uppercase; letter-spacing: 0.8px;
-      margin-bottom: 6px;
-    }
-    html.light-mode .login-label { color: #5A6E96; }
-
-    /* ── Input icon color ── */
-    .input-icon { color: rgba(107,116,148,0.7); }
-    html.light-mode .input-icon { color: #9EB3CE; }
-
-    /* ── Eye toggle button ── */
-    .eye-btn {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer;
-      color: rgba(107,116,148,0.7);
-      display: flex; align-items: center;
-      transition: color 0.18s;
-    }
-    .eye-btn:hover { color: #F6C945; }
-    html.light-mode .eye-btn { color: #9EB3CE; }
-    html.light-mode .eye-btn:hover { color: #D4A017; }
-
-    /* ── Submit button ── */
-    .admin-submit-btn {
-      width: 100%;
-      padding: 13px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      font-size: 13px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      background: linear-gradient(135deg, #F6C945 0%, #C9A012 100%);
-      color: #07100e;
-      box-shadow: 0 4px 20px rgba(246,201,69,0.35), 0 1px 4px rgba(0,0,0,0.25);
-      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-      margin-top: 1.4rem;
-    }
-    .admin-submit-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(246,201,69,0.55), 0 2px 8px rgba(0,0,0,0.25);
-      background: linear-gradient(135deg, #FAD966 0%, #F6C945 100%);
-    }
-    .admin-submit-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
-    .admin-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-
-    /* ── Error box ── */
-    .login-error {
-      margin-top: 0.9rem;
-      color: #E8384F;
-      background: rgba(232,56,79,0.10);
-      border: 1px solid rgba(232,56,79,0.24);
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 13px;
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(120,180,255,0.7);
       text-align: center;
-      display: none;
+      margin-bottom: 0.75rem;
     }
-    html.light-mode .login-error {
-      background: rgba(232,56,79,0.07);
-      border-color: rgba(232,56,79,0.20);
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      text-align: center;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .section-sub {
+      font-size: 1.05rem;
+      color: var(--c-muted);
+      text-align: center;
+      max-width: 520px;
+      margin: 0 auto 3.5rem;
+      line-height: 1.65;
     }
 
-    /* ── Footer text ── */
-    .login-footer { margin-top: 1.2rem; text-align: center; }
-    .login-footer p { font-size: 12px; color: rgba(107,116,148,0.8); margin-bottom: 4px; }
-    html.light-mode .login-footer p { color: #7A90B4; }
-    .login-footer a { color: #F6C945; font-weight: 700; text-decoration: none; transition: opacity 0.18s; }
-    .login-footer a:hover { opacity: 0.75; }
-    html.light-mode .login-footer a { color: #C9A012; }
-    .copyright-text { font-size: 11px; color: rgba(107,116,148,0.5) !important; margin-top: 2px; }
-    html.light-mode .copyright-text { color: #A3B5CE !important; }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
 
-    /* ── Page title text ── */
-    .login-title { color: #EEF0F8; font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
-    html.light-mode .login-title { color: #0D1B3E; }
-    .login-subtitle { color: rgba(107,116,148,0.85); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; }
-    html.light-mode .login-subtitle { color: #7A90B4; }
+    .feature-card {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 24px;
+      padding: 2.2rem 2rem;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card:hover {
+      background: rgba(255,255,255,0.06);
+      transform: translateY(-6px);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .feature-card-glow {
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      filter: blur(50px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .feature-icon-wrap {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.3rem;
+      font-size: 1.6rem;
+    }
+    .feature-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+    .feature-desc {
+      font-size: 0.9rem;
+      color: var(--c-muted);
+      line-height: 1.65;
+    }
+
+    /* ══════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════ */
+    .footer {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 3rem clamp(1.5rem, 5vw, 4rem);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: center;
+      background: rgba(4,8,26,0.5);
+      backdrop-filter: blur(12px);
+    }
+    .footer-copy {
+      font-size: 0.85rem;
+      color: rgba(232,234,246,0.45);
+    }
+    .footer-admin {
+      font-size: 0.75rem;
+      color: rgba(232,234,246,0.2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-admin:hover { color: rgba(232,234,246,0.5); }
+
+    /* ══════════════════════════════════════════
+       ANIMATIONS
+    ══════════════════════════════════════════ */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Scroll-reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .hero-title { font-size: clamp(2.4rem, 10vw, 3.8rem); }
+      .btn-cta, .btn-portal { padding: 0.85rem 1.8rem; font-size: 0.95rem; }
+    }
   </style>
 </head>
+<body>
 
-<body class="login-page">
+<!-- Background -->
+<div class="mesh-bg"></div>
+<canvas id="particle-canvas"></canvas>
 
-  <!-- Background layers -->
-  <div class="login-orb login-orb-1"></div>
-  <div class="login-orb login-orb-2"></div>
-  <div class="login-orb login-orb-3"></div>
-  <div class="dot-grid"></div>
+<!-- ══ NAVIGATION ══ -->
+<nav class="nav">
+  <a href="/" class="nav-logo">
+    <img src="assets/image/FELTA_LOGO_DARK.png" alt="FELTA WRO Philippines" id="nav-logo-img">
+  </a>
+  <div class="nav-actions">
+    <a href="portal-login" class="btn btn-ghost">Sign In</a>
+    <a href="signup" class="btn btn-primary">Sign Up</a>
+  </div>
+</nav>
 
-  <!-- Toast -->
-  <div id="toast-container"></div>
+<!-- ══ HERO ══ -->
+<main>
+  <section class="hero">
+    <!-- Decorative rings -->
+    <div class="hero-ring"></div>
+    <div class="hero-ring"></div>
+    <div class="hero-ring"></div>
 
-  <!-- Login card -->
-  <div class="login-card-wrap">
-    <div class="login-card">
+    <!-- WRO Rainbow -->
+    <div class="hero-rainbow">
+      <span style="background:#e53935;"></span>
+      <span style="background:#fb8c00;"></span>
+      <span style="background:#fdd835;"></span>
+      <span style="background:#43a047;"></span>
+      <span style="background:#1e88e5;"></span>
+      <span style="background:#8e24aa;"></span>
+    </div>
 
-      <!-- Header: Logo + branding -->
-      <div style="text-align:center; margin-bottom:1.6rem;">
-        <div style="display:flex; justify-content:center; margin-bottom:1.1rem;">
-          <img src="assets/image/FELTA_LOGO_DARK.png" alt="FELTA WRO Philippines"
-               class="js-theme-logo"
-               style="height:88px; width:auto; object-fit:contain; max-width:100%;
-                      filter:drop-shadow(0 2px 14px rgba(246,201,69,0.30));">
-        </div>
+    <!-- Badge -->
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Official WRO Philippines Portal
+    </div>
 
-        <!-- WRO Rainbow bar -->
-        <div class="wro-rainbow-bar rounded-full" style="margin-bottom:1.1rem;"></div>
+    <!-- Eyebrow -->
+    <p class="hero-eyebrow">World Robot Olympiad · Philippines</p>
 
-        <!-- Admin badge + title -->
-        <div style="margin-bottom:0.85rem;">
-          <span class="admin-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Administrator Portal
-          </span>
-        </div>
-        <h1 class="login-title">Integrated Database System</h1>
-        <p class="login-subtitle">Official Competition Management Platform</p>
+    <!-- Title -->
+    <h1 class="hero-title">
+      <span class="hero-title-line1">Innovate.</span>
+      <span class="hero-title-line2">Create. Compete.</span>
+    </h1>
 
-        <!-- Status pill -->
-        <div style="margin-top:1rem;">
-          <span class="status-pill">
-            <span class="status-dot"></span>
-            System Online
-          </span>
-        </div>
+    <!-- Subtitle -->
+    <p class="hero-sub">
+      Join thousands of students from across the Philippines in the ultimate robotics competition. Design intelligent robots, solve real-world challenges, and build the future.
+    </p>
+
+    <!-- Actions -->
+    <div class="hero-actions">
+      <a href="#" id="registration-btn" class="btn-cta" target="_blank" rel="noopener noreferrer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Register Your Team
+      </a>
+      <a href="portal-login" class="btn-portal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Sign In to Portal
+      </a>
+    </div>
+
+    <div id="registration-closed-msg" class="registration-closed" style="margin-top:1.5rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Team registration is currently closed. Please check back later.
+    </div>
+  </section>
+
+  <!-- ══ STATS ══ -->
+  <section class="stats-section reveal">
+    <div class="stats-grid">
+      <div class="stat-card" data-accent="blue">
+        <div class="stat-icon" style="background:rgba(58,134,255,0.12);color:#3a86ff;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="stat-value" style="background:linear-gradient(135deg,#60a5fa,#3a86ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">500+</div>
+        <div class="stat-label">Schools Nationwide</div>
+      </div>
+      <div class="stat-card" data-accent="purple">
+        <div class="stat-icon" style="background:rgba(246,201,69,0.12);color:#f6c945;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M12 2v4M8 11V9a4 4 0 0 1 8 0v2"/><circle cx="9" cy="16" r="1" fill="currentColor"/><circle cx="15" cy="16" r="1" fill="currentColor"/></svg></div>
+        <div class="stat-value" style="background:linear-gradient(135deg,#fde68a,#f6c945);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">2,000+</div>
+        <div class="stat-label">Teams Competing</div>
+      </div>
+      <div class="stat-card" data-accent="pink">
+        <div class="stat-icon" style="background:rgba(255,0,110,0.12);color:#ff006e;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/></svg></div>
+        <div class="stat-value" style="background:linear-gradient(135deg,#f472b6,#ff006e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">10,000+</div>
+        <div class="stat-label">Student Participants</div>
+      </div>
+      <div class="stat-card" data-accent="gold">
+        <div class="stat-icon" style="background:rgba(246,201,69,0.12);color:#f6c945;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg></div>
+        <div class="stat-value" style="background:linear-gradient(135deg,#fde68a,#f6c945);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">15+</div>
+        <div class="stat-label">Years of Innovation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ FEATURES ══ -->
+  <section class="features-section reveal">
+    <p class="section-label">What We Offer</p>
+    <h2 class="section-title">Everything You Need to Compete</h2>
+    <p class="section-sub">Our platform provides a seamless experience for students, coaches, and administrators from registration to competition day.</p>
+
+    <div class="features-grid">
+
+      <div class="feature-card reveal">
+        <div class="feature-card-glow" style="background:#3a86ff;"></div>
+        <div class="feature-icon-wrap" style="background:rgba(58,134,255,0.12);color:#3a86ff;"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></div>
+        <h3 class="feature-title">Team Registration</h3>
+        <p class="feature-desc">Seamlessly register your robotics team, manage members, and submit entries for upcoming WRO Philippines competitions.</p>
       </div>
 
-      <!-- Divider -->
-      <div class="form-divider"></div>
+      <div class="feature-card reveal" style="transition-delay:0.1s">
+        <div class="feature-card-glow" style="background:#f6c945;"></div>
+        <div class="feature-icon-wrap" style="background:rgba(246,201,69,0.12);color:#f6c945;"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg></div>
+        <h3 class="feature-title">Competition Management</h3>
+        <p class="feature-desc">Track your competition schedule, view assigned categories, and get real-time updates on results and standings.</p>
+      </div>
 
-      <!-- Login Form -->
-      <form id="login-form" onsubmit="handleLogin(event)" autocomplete="on" novalidate>
+      <div class="feature-card reveal" style="transition-delay:0.2s">
+        <div class="feature-card-glow" style="background:#ff006e;"></div>
+        <div class="feature-icon-wrap" style="background:rgba(255,0,110,0.12);color:#ff006e;"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <h3 class="feature-title">Live Judging & Scores</h3>
+        <p class="feature-desc">Access live scoring, judging criteria, and performance analytics to track your team's progress throughout the event.</p>
+      </div>
 
-        <!-- Username -->
-        <div style="margin-bottom:1rem;">
-          <label class="login-label" for="username">Username</label>
-          <div class="input-wrap">
-            <span class="input-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </span>
-            <input id="username" type="text" class="login-input"
-              placeholder="Enter your username" autocomplete="username" required>
-          </div>
-        </div>
+      <div class="feature-card reveal" style="transition-delay:0.3s">
+        <div class="feature-card-glow" style="background:#f6c945;"></div>
+        <div class="feature-icon-wrap" style="background:rgba(246,201,69,0.12);color:#f6c945;"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></div>
+        <h3 class="feature-title">Awards & Recognition</h3>
+        <p class="feature-desc">Discover all award categories and recognition opportunities across WRO's exciting robotics challenges.</p>
+      </div>
 
-        <!-- Password -->
-        <div>
-          <label class="login-label" for="password">Password</label>
-          <div class="input-wrap">
-            <span class="input-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </span>
-            <input id="password" type="password" class="login-input"
-              style="padding-right:44px;"
-              placeholder="Enter your password" autocomplete="current-password" required>
-            <button type="button" id="pwd-toggle" onclick="togglePwd()" class="eye-btn" aria-label="Toggle password visibility">
-              <span id="pwd-eye">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </span>
-            </button>
-          </div>
-        </div>
+      <div class="feature-card reveal" style="transition-delay:0.4s">
+        <div class="feature-card-glow" style="background:#06d6a0;"></div>
+        <div class="feature-icon-wrap" style="background:rgba(6,214,160,0.12);color:#06d6a0;"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg></div>
+        <h3 class="feature-title">Announcements</h3>
+        <p class="feature-desc">Stay updated with the latest news, event reminders, and important announcements from WRO Philippines organizers.</p>
+      </div>
 
-        <!-- Submit button -->
-        <button type="submit" id="login-btn" class="admin-submit-btn">
-          <span id="login-icon" style="display:flex;align-items:center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          </span>
-          <span id="login-text">Sign In</span>
-        </button>
+      <div class="feature-card reveal" style="transition-delay:0.5s">
+        <div class="feature-card-glow" style="background:#48cae4;"></div>
+        <div class="feature-icon-wrap" style="background:rgba(72,202,228,0.12);color:#48cae4;"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <h3 class="feature-title">Global Community</h3>
+        <p class="feature-desc">Connect with the global WRO community and represent the Philippines on the world stage of robotics excellence.</p>
+      </div>
 
-        <!-- Error message -->
-        <div id="login-error" class="login-error"></div>
-      </form>
     </div>
+  </section>
+</main>
 
-    <!-- Footer -->
-    <div class="login-footer">
-      <p>
-        Not an administrator?
-        <a href="portal-login.html">Standard User Portal →</a>
-      </p>
-      <p class="copyright-text">FELTA Multimedia · WRO Philippines © 2025 · Database System v2.0</p>
-    </div>
-  </div>
+<!-- ══ FOOTER ══ -->
+<footer class="footer">
+  <img src="assets/image/FELTA_LOGO_DARK.png" alt="FELTA" style="height:36px;opacity:0.5;margin-bottom:0.25rem;" id="footer-logo">
+  <p class="footer-copy">FELTA Multimedia · WRO Philippines © 2026 · All rights reserved.</p>
+  <a href="admin" class="footer-admin">Admin Portal</a>
+</footer>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      if (AUTH.isLoggedIn()) { window.location.href = 'dashboard.html'; }
-    });
+<script>
+  /* ── Particle Canvas ── */
+  (function() {
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [];
 
-    async function handleLogin(e) {
-      e.preventDefault();
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const btn      = document.getElementById('login-btn');
-      const errEl    = document.getElementById('login-error');
+    const COLORS = ['rgba(58,134,255,', 'rgba(246,201,69,', 'rgba(255,0,110,', 'rgba(246,201,69,'];
 
-      btn.disabled = true;
-      document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>`;
-      document.getElementById('login-text').textContent = 'Signing in...';
-      errEl.style.display = 'none';
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
 
-      const result = await AUTH.login(username, password);
-      if (result.success) {
-        document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>`;
-        document.getElementById('login-text').textContent = 'Welcome!';
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
-      } else {
-        if (result.redirect) {
-          errEl.innerHTML = result.error + ` <a href="${result.redirect}" style="color:#F6C945;font-weight:700;text-decoration:underline;">Go to Standard User Portal →</a>`;
-        } else {
-          errEl.textContent = result.error;
-        }
-        errEl.style.display = 'block';
-        btn.disabled = false;
-        document.getElementById('login-icon').innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/><polyline points='10 17 15 12 10 7'/><line x1='15' y1='12' x2='3' y2='12'/></svg>`;
-        document.getElementById('login-text').textContent = 'Sign In';
+    function mkParticle() {
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.8 + 0.4,
+        dx: (Math.random() - 0.5) * 0.35,
+        dy: (Math.random() - 0.5) * 0.35,
+        a: Math.random() * 0.6 + 0.2,
+        da: (Math.random() - 0.5) * 0.004,
+        color,
+      };
+    }
+
+    function init() {
+      resize();
+      particles = Array.from({ length: 120 }, mkParticle);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of particles) {
+        p.x += p.dx; p.y += p.dy; p.a += p.da;
+        if (p.x < 0 || p.x > W) p.dx *= -1;
+        if (p.y < 0 || p.y > H) p.dy *= -1;
+        p.a = Math.max(0.1, Math.min(0.8, p.a));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + p.a + ')';
+        ctx.fill();
       }
+      requestAnimationFrame(draw);
     }
 
-    function togglePwd() {
-      const pwd = document.getElementById('password');
-      const eye = document.getElementById('pwd-eye');
-      const icon_open   = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>`;
-      const icon_closed = `<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>`;
-      if (pwd.type === 'password') { pwd.type = 'text';     eye.innerHTML = icon_closed; }
-      else                         { pwd.type = 'password'; eye.innerHTML = icon_open;   }
-    }
-  </script>
+    window.addEventListener('resize', resize);
+    init();
+    draw();
+  })();
 
+  /* ── Scroll Reveal ── */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  /* ── Registration Settings ── */
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:3000/api'
+        : window.location.origin + '/api';
+      const res  = await fetch(`${API_BASE}/settings`);
+      const data = await res.json();
+      if (data.success && data.settings) {
+        const btn = document.getElementById('registration-btn');
+        const msg = document.getElementById('registration-closed-msg');
+        if (data.settings.team_registration_enabled === 'true') {
+          btn.href = data.settings.team_registration_link || '#';
+          btn.style.display = 'inline-flex';
+          msg.style.display = 'none';
+        } else {
+          btn.style.display = 'none';
+          msg.style.display = 'flex';
+        }
+      }
+    } catch (err) {
+      console.error('Settings load failed:', err);
+    }
+  });
+</script>
 </body>
 </html>

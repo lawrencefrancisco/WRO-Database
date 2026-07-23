@@ -65,6 +65,14 @@ const DB = {
     }
   },
 
+  async get(path) {
+    return this._request('GET', path);
+  },
+
+  async post(path, body) {
+    return this._request('POST', path, body);
+  },
+
   _route(table) {
     return TABLE_ROUTES[table] || table;
   },
@@ -243,7 +251,6 @@ const DB = {
       school_name:            'schoolName',
       school_type:            'schoolType',
       school_level:           'schoolLevel',
-      deped_id:               'depedId',
       school_head:            'schoolHead',
       robotics_coordinator:   'roboticsCoordinator',
       years_joined:           'yearsJoined',
@@ -251,8 +258,6 @@ const DB = {
       full_name:              'fullName',
       school_id:              'schoolId',
       coach_id:               'coachId',
-      years_coaching:         'yearsCoaching',
-      previous_awards:        'previousAwards',
       emergency_contact:      'emergencyContact',
       shirt_size:             'shirtSize',
       grade_level:            'gradeLevel',

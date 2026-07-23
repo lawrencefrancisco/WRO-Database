@@ -32,7 +32,7 @@ const PortalRouter = {
       if (name === 'announcement_detail' && opts.id) {
         history.pushState({ name, opts }, '', `${base}announcements/${opts.id}`);
       } else {
-        history.pushState({ name, opts }, '', `${base}portal.html`);
+        history.pushState({ name, opts }, '', `${base}portal`);
       }
     }
 
