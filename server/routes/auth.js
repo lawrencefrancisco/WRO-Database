@@ -97,23 +97,32 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
     }
 
-    // Check if email already exists
-    const [existing] = await pool.execute('SELECT id FROM users WHERE email = ? AND is_deleted = 0 LIMIT 1', [email]);
+    // Reject if email already belongs to a fully verified account
+    const [existing] = await pool.execute(
+      'SELECT id FROM users WHERE (email = ? OR username = ?) AND is_deleted = 0 LIMIT 1',
+      [email, email]
+    );
     if (existing.length > 0) {
       return res.status(400).json({ success: false, error: 'Email is already registered.' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const userCode = 'U' + Date.now().toString().slice(-6);
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // Upsert into staging table (handles re-registration before verification)
     await pool.execute(
-      `INSERT INTO users (user_code, username, name, email, password_hash, role, is_verified, otp_code, otp_expires_at) 
-       VALUES (?, ?, ?, ?, ?, 'STANDARD_USER', 0, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))`,
-      [userCode, email, name, email, passwordHash, otpCode]
+      `INSERT INTO pending_registrations (email, name, password_hash, otp_code, otp_expires_at)
+       VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))
+       ON DUPLICATE KEY UPDATE
+         name          = VALUES(name),
+         password_hash = VALUES(password_hash),
+         otp_code      = VALUES(otp_code),
+         otp_expires_at = VALUES(otp_expires_at),
+         created_at    = NOW()`,
+      [email, name, passwordHash, otpCode]
     );
 
-    // Send real email via SMTP
+    // Send OTP email
     const emailSent = await sendOTPEmail(email, otpCode);
     if (!emailSent) {
       console.warn(`[Auth] Failed to send OTP email to ${email}`);
@@ -132,19 +141,38 @@ router.post('/verify', async (req, res) => {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ success: false, error: 'Email and OTP required.' });
 
-    const [rows] = await pool.execute('SELECT id, otp_code, otp_expires_at FROM users WHERE email = ? AND is_verified = 0 LIMIT 1', [email]);
-    if (rows.length === 0) return res.status(400).json({ success: false, error: 'User not found or already verified.' });
-
-    const user = rows[0];
-    if (user.otp_code !== otp) {
-      return res.status(400).json({ success: false, error: 'Invalid OTP code.' });
-    }
-    
-    if (new Date() > new Date(user.otp_expires_at)) {
-      return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new one.' });
+    // Look up in the staging table
+    const [rows] = await pool.execute(
+      'SELECT * FROM pending_registrations WHERE email = ? LIMIT 1',
+      [email]
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'No pending registration found. Please sign up again.' });
     }
 
-    await pool.execute('UPDATE users SET is_verified = 1, otp_code = NULL, otp_expires_at = NULL WHERE id = ?', [user.id]);
+    const pending = rows[0];
+
+    if (new Date() > new Date(pending.otp_expires_at)) {
+      // Clean up expired entry so they can re-register cleanly
+      await pool.execute('DELETE FROM pending_registrations WHERE email = ?', [email]);
+      return res.status(400).json({ success: false, error: 'Verification code has expired. Please sign up again.' });
+    }
+
+    if (pending.otp_code !== otp) {
+      return res.status(400).json({ success: false, error: 'Invalid verification code.' });
+    }
+
+    // OTP is valid — create the real user record
+    const userCode = 'U' + Date.now().toString().slice(-6);
+    await pool.execute(
+      `INSERT INTO users (user_code, username, name, email, password_hash, role, is_verified, is_active)
+       VALUES (?, ?, ?, ?, ?, 'STANDARD_USER', 1, 1)`,
+      [userCode, email, pending.name, email, pending.password_hash]
+    );
+
+    // Remove from staging table
+    await pool.execute('DELETE FROM pending_registrations WHERE email = ?', [email]);
+
     res.json({ success: true, message: 'Account verified successfully. You can now login.' });
   } catch (err) {
     console.error('[Auth] Verify error:', err);

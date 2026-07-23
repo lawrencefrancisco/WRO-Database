@@ -47,6 +47,7 @@ const PORTAL_DB = {
   me()            { return this.get('/portal/me'); },
   dashboard()     { return this.get('/portal/dashboard'); },
   teams()         { return this.get('/portal/teams'); },
+  linkTeam(token) { return this.post('/portal/link-team', { qr_token: token }); },
   payments()      { return this.get('/portal/payments'); },
   announcements() { return this.get('/portal/announcements'); },
   notifications() { return this.get('/portal/notifications'); },

@@ -97,10 +97,13 @@ router.get('/season-details', async (req, res) => {
       const ph = teamIds.map(() => '?').join(',');
       const [memberRows] = await pool.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
-                s.gender, sc.school_name AS student_school
+                s.gender,
+                COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
-         JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
-         LEFT JOIN schools sc ON sc.id = s.school_id
+         JOIN   students s   ON s.id  = tm.student_id AND s.is_deleted = 0
+         JOIN   teams t      ON t.id  = tm.team_id
+         LEFT JOIN schools sc_s ON sc_s.id = s.school_id
+         LEFT JOIN schools sc_t ON sc_t.id = t.school_id
          WHERE  tm.team_id IN (${ph})`,
         teamIds
       );
@@ -231,10 +234,13 @@ router.get('/details/:id', async (req, res) => {
       const ph = teamIds.map(() => '?').join(',');
       const [memberRows] = await pool.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
-                s.gender, sc.school_name AS student_school
+                s.gender,
+                COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
-         JOIN   students s  ON s.id  = tm.student_id  AND s.is_deleted = 0
-         LEFT JOIN schools sc ON sc.id = s.school_id
+         JOIN   students s   ON s.id  = tm.student_id  AND s.is_deleted = 0
+         JOIN   teams t      ON t.id  = tm.team_id
+         LEFT JOIN schools sc_s ON sc_s.id = s.school_id
+         LEFT JOIN schools sc_t ON sc_t.id = t.school_id
          WHERE  tm.team_id IN (${ph})`,
         teamIds
       );

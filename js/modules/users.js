@@ -114,15 +114,8 @@ const Users = {
           <input class="form-input" type="email" name="email" value="${u?.email||''}">
         </div>
         <div><label class="form-label">Role</label>
-          <select class="form-input" name="role" onchange="Users._toggleSchoolField(this.value)">
+          <select class="form-input" name="role">
             ${Object.entries(AUTH.ROLES).map(([r,info])=>`<option value="${r}" ${u?.role===r?'selected':''}>${info.label}</option>`).join('')}
-          </select>
-        </div>
-        <div id="school-field-wrap" class="md:col-span-2" style="${u?.role==='STANDARD_USER'||!id?'':'display:none;'}">
-          <label class="form-label">Linked School <span style="color:var(--txt-muted);font-weight:400;">(Required for Standard Users)</span></label>
-          <select class="form-input" name="schoolId">
-            <option value="">— No school linked —</option>
-            ${schools.map(s=>`<option value="${s.id}" ${(u?.schoolId == s.id || u?.school_id == s.id)?'selected':''}>${s.schoolName}</option>`).join('')}
           </select>
         </div>
         <div><label class="form-label">Active</label>
@@ -136,27 +129,18 @@ const Users = {
        <button onclick="Users._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save User</button>`,
       'max-w-2xl'
     );
-
-    // Show/hide school field based on initial role
-    setTimeout(() => Users._toggleSchoolField(u?.role || 'STANDARD_USER'), 50);
-  },
-
-  _toggleSchoolField(role) {
-    const wrap = document.getElementById('school-field-wrap');
-    if (wrap) wrap.style.display = role === 'STANDARD_USER' ? '' : 'none';
   },
 
   async _save(id) {
     const form = document.getElementById('user-form');
     const data = Object.fromEntries(new FormData(form));
     data.isActive = data.isActive === 'true';
-    data.schoolId = data.schoolId || null;
     if (!id && !data.password) { Toast.error('Password is required for new users.'); return; }
     if (!data.name || !data.username) { Toast.error('Name and username are required.'); return; }
     if (id) {
       const changes = {
         name: data.name, username: data.username, email: data.email,
-        role: data.role, isActive: data.isActive, schoolId: data.schoolId,
+        role: data.role, isActive: data.isActive,
       };
       if (data.password) changes.password = data.password;
       await DB.update('users', id, changes);

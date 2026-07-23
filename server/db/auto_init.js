@@ -247,17 +247,32 @@ async function autoInitDatabase(pool) {
         payment_status          ENUM('unpaid','partial','paid') DEFAULT 'unpaid',
         qualification_status    ENUM('pending','qualified','disqualified') DEFAULT 'pending',
         status                  ENUM('active','inactive') NOT NULL DEFAULT 'active',
+        qr_token                VARCHAR(64)   DEFAULT NULL,
         is_deleted              TINYINT(1)    NOT NULL DEFAULT 0,
         deleted_at              DATETIME      DEFAULT NULL,
         created_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         UNIQUE KEY uq_team_code (team_code),
+        UNIQUE KEY uq_qr_token  (qr_token),
         KEY idx_competition (competition_id),
         KEY idx_school      (school_id),
         KEY idx_coach       (coach_id),
         KEY idx_season      (season),
         KEY idx_category    (category(100))
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS user_team_links (
+        id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id    INT UNSIGNED NOT NULL,
+        team_id    INT UNSIGNED NOT NULL,
+        linked_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_user_team (user_id, team_id),
+        KEY idx_user_id (user_id),
+        KEY idx_team_id (team_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -507,6 +522,21 @@ async function autoInitDatabase(pool) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // ── Pending Registrations (email verification staging table) ──────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS pending_registrations (
+        id             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+        email          VARCHAR(200)  NOT NULL,
+        name           VARCHAR(200)  NOT NULL,
+        password_hash  VARCHAR(255)  NOT NULL,
+        otp_code       VARCHAR(10)   NOT NULL,
+        otp_expires_at DATETIME      NOT NULL,
+        created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_pending_email (email)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     await conn.execute('SET FOREIGN_KEY_CHECKS = 1');
     console.log('✅ All tables verified/created with correct schemas.');
 
@@ -524,6 +554,57 @@ async function autoInitDatabase(pool) {
     if (!hasSchoolId) {
       await conn.execute('ALTER TABLE users ADD COLUMN school_id INT UNSIGNED DEFAULT NULL AFTER email');
       console.log('🛠️  Added school_id to users.');
+    }
+
+    // teams.qr_token
+    const hasQrToken = await columnExists(conn, 'teams', 'qr_token');
+    if (!hasQrToken) {
+      await conn.execute('ALTER TABLE teams ADD COLUMN qr_token VARCHAR(64) DEFAULT NULL');
+      await conn.execute('ALTER TABLE teams ADD UNIQUE KEY uq_qr_token (qr_token)');
+      console.log('🛠️  Added qr_token to teams.');
+    }
+
+    // Generate qr_token for existing teams that don't have one
+    try {
+      const crypto = require('crypto');
+      const [teamsWithoutToken] = await conn.execute(
+        'SELECT id FROM teams WHERE qr_token IS NULL AND is_deleted = 0'
+      );
+      for (const t of teamsWithoutToken) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await conn.execute('UPDATE teams SET qr_token = ? WHERE id = ?', [token, t.id]);
+      }
+      if (teamsWithoutToken.length > 0) {
+        console.log(`🛠️  Generated QR tokens for ${teamsWithoutToken.length} existing team(s).`);
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not auto-generate QR tokens:', e.message);
+    }
+
+    // users.is_verified
+    const hasIsVerified = await columnExists(conn, 'users', 'is_verified');
+    if (!hasIsVerified) {
+      await conn.execute('ALTER TABLE users ADD COLUMN is_verified TINYINT(1) NOT NULL DEFAULT 1 AFTER school_id');
+      console.log('🛠️  Added is_verified to users (defaulting existing records to verified).');
+    }
+
+    // users.otp_code / otp_expires_at (kept for forgot-password flow)
+    const hasOtpCode = await columnExists(conn, 'users', 'otp_code');
+    if (!hasOtpCode) {
+      await conn.execute('ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL AFTER is_verified');
+      await conn.execute('ALTER TABLE users ADD COLUMN otp_expires_at DATETIME DEFAULT NULL AFTER otp_code');
+      console.log('🛠️  Added otp_code and otp_expires_at to users.');
+    }
+
+    // Clean up old unverified ghost accounts left by the old registration flow
+    try {
+      const [ghosts] = await conn.execute('SELECT COUNT(*) AS cnt FROM users WHERE is_verified = 0');
+      if (ghosts[0].cnt > 0) {
+        await conn.execute('DELETE FROM users WHERE is_verified = 0');
+        console.log(`🧹 Cleaned up ${ghosts[0].cnt} unverified ghost account(s).`);
+      }
+    } catch (e) {
+      // Column may not exist yet on first run; safe to ignore
     }
 
     // ── Seed default accounts if empty ───────────────────────
