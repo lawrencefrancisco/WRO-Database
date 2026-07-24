@@ -3,9 +3,11 @@
 // ============================================================
 
 require('dotenv').config();
-const express = require('express');
-const cors    = require('cors');
-const pool    = require('./db/pool');
+const express   = require('express');
+const cors      = require('cors');
+const helmet    = require('helmet');
+const rateLimit = require('express-rate-limit');
+const pool      = require('./db/pool');
 const autoInitDatabase = require('./db/auto_init');
 const chatRoute = require('./routes/chat');
 
@@ -14,13 +16,32 @@ const PORT = process.env.PORT || 3000;
 
 
 
-// ── Middleware ────────────────────────────────────────────────
+// ── Security Middleware ───────────────────────────────────────
+// Helmet sets secure HTTP headers. CSP is disabled because
+// the frontend loads CDN scripts (QRCode, html5-qrcode, Google Fonts)
+// that a strict CSP would block.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Rate limit on auth routes only (login, register, verify, forgot-password)
+// Blocks brute-force OTP/password attacks. 50 attempts per 15 min is
+// far more than any legitimate user needs.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many attempts. Please try again in 15 minutes.' },
+});
+
+// ── General Middleware ────────────────────────────────────────
 app.use(cors({
   origin: process.env.CORS_ORIGIN || true,
   credentials: true,
 }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// 10mb limit: email attachments can be up to 5MB files,
+// which become ~6.7MB when base64-encoded inside JSON.
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 const path = require('path');
 
@@ -50,7 +71,7 @@ app.get('/announcements/:id', (req, res) => {
 });
 
 // ── Routes ────────────────────────────────────────────────────
-app.use('/api/auth',           require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/chat', chatRoute);
 app.use('/api/settings',       require('./routes/settings'));
 app.use('/api/schools',        require('./routes/schools'));
@@ -69,6 +90,8 @@ app.use('/api/portal',         require('./routes/portal'));
 app.use('/api/dashboard',      require('./routes/dashboard'));
 app.use('/api/users',          require('./routes/users'));
 app.use('/api/emails',         require('./routes/emails'));
+app.use('/api/import',         require('./routes/import'));
+
 
 // ── Audit log alias (standalone endpoint) ─────────────────────
 app.get('/api/audit-logs', require('./middleware/auth').authMiddleware, async (req, res) => {
