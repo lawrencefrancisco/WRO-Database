@@ -99,11 +99,13 @@ router.post('/link-team', async (req, res) => {
     const [teams] = await pool.execute(
       `SELECT t.id, t.team_name, t.season, t.category, t.age_group,
               t.registration_status, t.payment_status, t.qualification_status,
-              s.school_name, c.full_name AS coach_name
+              s.school_name, GROUP_CONCAT(c.full_name SEPARATOR ', ') AS coach_name
        FROM teams t
        LEFT JOIN schools s ON s.id = t.school_id
-       LEFT JOIN coaches c ON c.id = t.coach_id
-       WHERE t.qr_token = ? AND t.is_deleted = 0`,
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches c ON c.id = tc.coach_id
+       WHERE t.qr_token = ? AND t.is_deleted = 0
+       GROUP BY t.id, t.team_name, t.season, t.category, t.age_group, t.registration_status, t.payment_status, t.qualification_status, s.school_name`,
       [qr_token]
     );
     if (!teams[0]) return res.status(404).json({ success: false, error: 'Invalid or expired QR code.' });
@@ -155,14 +157,17 @@ router.get('/teams', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT t.id, t.team_name, t.team_code, t.category, t.age_group, t.season,
               t.registration_status, t.payment_status, t.qualification_status, t.status,
-              c.full_name AS coach_name, c.mobile AS coach_mobile,
+              GROUP_CONCAT(c.full_name SEPARATOR ', ') AS coach_name, 
+              GROUP_CONCAT(c.mobile SEPARATOR ', ') AS coach_mobile,
               comp.name AS competition_name,
               s.school_name
        FROM teams t
-       LEFT JOIN coaches c    ON c.id   = t.coach_id
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches c    ON c.id   = tc.coach_id
        LEFT JOIN competitions comp ON comp.id = t.competition_id
        LEFT JOIN schools s    ON s.id   = t.school_id
        WHERE t.id IN (${ph}) AND t.is_deleted = 0
+       GROUP BY t.id, t.team_name, t.team_code, t.category, t.age_group, t.season, t.registration_status, t.payment_status, t.qualification_status, t.status, comp.name, s.school_name
        ORDER BY t.team_name ASC`,
       teamIds
     );

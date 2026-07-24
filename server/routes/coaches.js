@@ -8,9 +8,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // GET /api/coaches
 router.get('/', async (req, res) => {
@@ -35,7 +37,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/coaches
 // Body may pass schoolId (integer) or schoolCode (e.g. 'SCH_001'); integer wins.
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     const coachCode = d.coachCode || d.coach_code || `COA_${Date.now()}`;
@@ -62,7 +64,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/coaches/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
 
@@ -86,7 +88,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/coaches/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM coaches WHERE id = ?', [req.params.id]);

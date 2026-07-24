@@ -7,9 +7,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // Helper: resolve integer FK from either integer or business-code string
 async function resolveId(table, codeCol, value) {
@@ -98,7 +100,7 @@ router.get('/:id/logs', async (req, res) => {
 });
 
 // ── POST / (upsert) ──────────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const d           = req.body;
@@ -235,7 +237,7 @@ router.post('/', async (req, res) => {
 });
 
 // ── PUT /:id ─────────────────────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const d           = req.body;
@@ -312,7 +314,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ── DELETE /:id ───────────────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     // Fetch team_id before deleting so we can sync status
     const [pRows] = await pool.execute('SELECT team_id FROM payments WHERE id = ?', [req.params.id]);

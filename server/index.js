@@ -36,6 +36,16 @@ const authLimiter = rateLimit({
   message: { success: false, error: 'Too many attempts. Please try again in 15 minutes.' },
 });
 
+// General API rate limit: 200 requests per minute per IP.
+// Prevents scraping and DoS on data routes.
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1 minute
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests. Please slow down.' },
+});
+
 // ── General Middleware ────────────────────────────────────────
 app.use(cors({
   origin: process.env.CORS_ORIGIN || true,
@@ -76,24 +86,24 @@ app.get('/announcements/:id', (req, res) => {
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/chat', chatRoute);
-app.use('/api/settings',       require('./routes/settings'));
-app.use('/api/schools',        require('./routes/schools'));
-app.use('/api/coaches',        require('./routes/coaches'));
-app.use('/api/students',       require('./routes/students'));
-app.use('/api/teams',          require('./routes/teams'));
-app.use('/api/competitions',   require('./routes/competitions'));
-app.use('/api/seasons',        require('./routes/seasons'));
-app.use('/api/judging',        require('./routes/judging'));
-app.use('/api/awards',         require('./routes/awards'));
-app.use('/api/payments',       require('./routes/payments'));
+app.use('/api/settings',       apiLimiter, require('./routes/settings'));
+app.use('/api/schools',        apiLimiter, require('./routes/schools'));
+app.use('/api/coaches',        apiLimiter, require('./routes/coaches'));
+app.use('/api/students',       apiLimiter, require('./routes/students'));
+app.use('/api/teams',          apiLimiter, require('./routes/teams'));
+app.use('/api/competitions',   apiLimiter, require('./routes/competitions'));
+app.use('/api/seasons',        apiLimiter, require('./routes/seasons'));
+app.use('/api/judging',        apiLimiter, require('./routes/judging'));
+app.use('/api/awards',         apiLimiter, require('./routes/awards'));
+app.use('/api/payments',       apiLimiter, require('./routes/payments'));
 
-app.use('/api/announcements',  require('./routes/announcements'));
-app.use('/api/notifications',  require('./routes/notifications'));
-app.use('/api/portal',         require('./routes/portal'));
-app.use('/api/dashboard',      require('./routes/dashboard'));
-app.use('/api/users',          require('./routes/users'));
-app.use('/api/emails',         require('./routes/emails'));
-app.use('/api/import',         require('./routes/import'));
+app.use('/api/announcements',  apiLimiter, require('./routes/announcements'));
+app.use('/api/notifications',  apiLimiter, require('./routes/notifications'));
+app.use('/api/portal',         apiLimiter, require('./routes/portal'));
+app.use('/api/dashboard',      apiLimiter, require('./routes/dashboard'));
+app.use('/api/users',          apiLimiter, require('./routes/users'));
+app.use('/api/emails',         apiLimiter, require('./routes/emails'));
+app.use('/api/import',         apiLimiter, require('./routes/import'));
 
 
 // ── Audit log alias (standalone endpoint) ─────────────────────

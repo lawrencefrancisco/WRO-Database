@@ -100,7 +100,8 @@ const Teams = {
     }
     tbody.innerHTML = page.map(t => {
       const school = _schoolsMap[t.schoolId];
-      const coach  = _coachesMap[t.coachId];
+      const coachNames = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean);
+      const coachText  = coachNames.length > 0 ? coachNames.join(', ') : '—';
       return `
         <tr class="table-row cursor-pointer" onclick="Teams.viewDetail('${t.id}')">
           <td>
@@ -110,7 +111,7 @@ const Teams = {
           <td><span class="badge badge-purple">${t.season}</span></td>
           <td class="text-xs text-slate-300">${t.category}</td>
           <td class="text-sm text-slate-300">${Utils.truncate(school?.schoolName,25)||'—'}</td>
-          <td class="text-sm text-slate-300">${coach?.fullName||'—'}</td>
+          <td class="text-sm text-slate-300">${Utils.truncate(coachText,25)}</td>
           <td>${Utils.statusBadge(t.paymentStatus)}</td>
           <td>${Utils.statusBadge(t.qualificationStatus)}</td>
           <td>
@@ -146,6 +147,7 @@ const Teams = {
     const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
     const competitions = (await DB.getAll('competitions')).filter(c => !c.isDeleted);
     const selectedMembers = t?.members || [];
+    const selectedCoaches = t?.coaches || [];
 
     // Build lookup maps for auto-detection
     const schoolMap = {};  // id → schoolName
@@ -170,7 +172,7 @@ const Teams = {
     Modal.show(id ? 'Edit Team' : 'New Team', `
       <form id="team-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><label class="form-label">Team Name *</label>
-          <input class="form-input" name="teamName" value="${t?.teamName||''}" required>
+          <input class="form-input" name="teamName" value="${Utils.esc(t?.teamName||'')}" required>
         </div>
         <div><label class="form-label">Season *</label>
           <select class="form-input" name="season">
@@ -212,21 +214,41 @@ const Teams = {
                  value="${t?.schoolId || t?.school_id || ''}">
         </div>
 
-        <div><label class="form-label">Coach</label>
-          <select class="form-input" name="coachId">
-            <option value="">Select Coach</option>
-            ${coaches.map(c=>`<option value="${c.id}" ${t?.coachId===c.id?'selected':''}>${c.fullName}</option>`).join('')}
-          </select>
+        <!-- Coaches List -->
+        <div class="md:col-span-2"><label class="form-label">Coaches</label>
+          <!-- Search bar -->
+          <div class="relative mb-2">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search coaches…" oninput="Teams._filterList('coaches-list', this.value)"
+                   class="form-input pl-9 py-2 text-sm" style="margin-bottom:0;">
+          </div>
+          <div class="max-h-40 overflow-y-auto glass-light rounded-xl p-3 space-y-1" id="coaches-list">
+            ${coaches.map(c => `
+              <label class="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer team-list-item" data-search="${c.fullName.toLowerCase()}">
+                <input type="checkbox" name="coaches" value="${c.id}"
+                       ${selectedCoaches.includes(c.id)?'checked':''}
+                       class="rounded text-indigo-500">
+                <span class="text-sm text-slate-200 flex-1">${c.fullName}</span>
+                <span class="text-xs text-slate-500">${c.role||''}</span>
+              </label>`).join('')}
+          </div>
         </div>
 
         <!-- Team Members with per-student school badges -->
         <div class="md:col-span-2"><label class="form-label">Team Members (select 2–3)</label>
+          <!-- Search bar -->
+          <div class="relative mb-2">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search students by name or school…" oninput="Teams._filterList('members-list', this.value)"
+                   class="form-input pl-9 py-2 text-sm" style="margin-bottom:0;">
+          </div>
           <div class="max-h-52 overflow-y-auto glass-light rounded-xl p-3 space-y-1"
                id="members-list">
             ${students.map(s => {
               const info = studentSchoolMap[s.id];
               return `
-              <label class="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer"
+              <label class="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer team-list-item"
+                     data-search="${(s.fullName + ' ' + info.schoolName).toLowerCase()}"
                      title="${info.schoolName}">
                 <input type="checkbox" name="members" value="${s.id}"
                        data-school-id="${info.schoolId}"
@@ -278,6 +300,20 @@ const Teams = {
     );
   },
 
+  // Real-time filter for coaches / members list
+  // Hides non-matching items but always keeps checked items visible.
+  _filterList(listId, query) {
+    const q = query.trim().toLowerCase();
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.querySelectorAll('.team-list-item').forEach(label => {
+      const text    = label.dataset.search || '';
+      const checked = label.querySelector('input[type="checkbox"]')?.checked;
+      const match   = !q || text.includes(q) || checked;
+      label.style.display = match ? '' : 'none';
+    });
+  },
+
   // Called whenever a member checkbox changes — refreshes the school display
   _onMemberToggle() {
     const checked = [...document.querySelectorAll('#team-form input[name="members"]:checked')];
@@ -306,10 +342,17 @@ const Teams = {
   },
 
   async _save(id) {
-    const form    = document.getElementById('team-form');
-    const data    = Object.fromEntries(new FormData(form));
-    const members = [...form.querySelectorAll('input[name="members"]:checked')].map(cb => cb.value);
-    data.members  = members;
+    const form = document.getElementById('team-form');
+    const data = Object.fromEntries(new FormData(form));
+
+    // Gather selected member IDs
+    const memberCheckboxes = document.querySelectorAll('#team-form input[name="members"]:checked');
+    data.members = Array.from(memberCheckboxes).map(cb => cb.value);
+
+    // Gather selected coach IDs
+    const coachCheckboxes = document.querySelectorAll('#team-form input[name="coaches"]:checked');
+    data.coaches = Array.from(coachCheckboxes).map(cb => cb.value);
+
     // Payment status is managed exclusively in Payment Management — never send it from here
     delete data.paymentStatus;
     delete data.payment_status;
@@ -403,7 +446,10 @@ const Teams = {
   async viewDetail(id) {
     const t       = await DB.getById('teams', id);
     if (!t) return;
-    const coach   = await DB.getById('coaches', t.coachId);
+    const school  = await DB.getById('schools', t.schoolId);
+    const coaches = await Promise.all((t.coaches || []).map(cid => DB.getById('coaches', cid)));
+    const coachNames = coaches.map(c => c?.fullName).filter(Boolean);
+    const coachText = coachNames.length > 0 ? coachNames.join(', ') : '—';
 
     // Load both students and schools in one pass
     const _allStudents  = await DB.getAll('students');
@@ -439,7 +485,7 @@ const Teams = {
           <span class="text-slate-200">${schoolDisplay}</span>
           ${memberSchools.length > 1 ? '<span class="ml-2 px-1.5 py-0.5 rounded text-xs font-semibold" style="background:rgba(30,158,191,0.18);color:#1E9EBF;">Multi-school</span>' : ''}
         </div>
-        <div><span class="text-slate-500">Coach:</span> <span class="text-slate-200">${coach?.fullName||'—'}</span></div>
+        <div><span class="text-slate-500">Coach(es):</span> <span class="text-slate-200">${coachText}</span></div>
 
         <div><span class="text-slate-500">Registration:</span> ${Utils.statusBadge(t.registrationStatus)}</div>
         <div><span class="text-slate-500">Payment:</span> ${Utils.statusBadge(t.paymentStatus)}</div>
@@ -482,8 +528,12 @@ const Teams = {
       ['ID','Team Name','Season','Category','Age Group','School','Coach','Registration','Payment','Qualification'],
       rows.map(t => {
         const sc = _schoolsMap[t.schoolId];
-        const co = _coachesMap[t.coachId];
-        return [t.id,t.teamName,t.season,t.category,t.ageGroup,sc?.schoolName||'',co?.fullName||'',t.registrationStatus,t.paymentStatus,t.qualificationStatus];
+        const coachNames = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean);
+        return [
+          t.id, t.teamName, t.season, t.category, t.ageGroup,
+          sc?.schoolName || '', coachNames.join(', '),
+          t.registrationStatus, t.paymentStatus, t.qualificationStatus
+        ];
       })
     );
     Toast.success('Team list exported!');

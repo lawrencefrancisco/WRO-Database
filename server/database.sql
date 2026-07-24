@@ -182,7 +182,6 @@ CREATE TABLE teams (
   category                VARCHAR(200)  DEFAULT NULL,
   age_group               ENUM('Elementary','Junior','Senior','Open') DEFAULT NULL,
   school_id               INT UNSIGNED  DEFAULT NULL,           -- FK → schools.id
-  coach_id                INT UNSIGNED  DEFAULT NULL,           -- FK → coaches.id
   robot_platform          VARCHAR(200)  DEFAULT NULL,
   programming_language    VARCHAR(200)  DEFAULT NULL,
   registration_status     ENUM('registered','confirmed','waitlisted','withdrawn') DEFAULT 'registered',
@@ -197,12 +196,10 @@ CREATE TABLE teams (
   UNIQUE KEY uq_team_code (team_code),
   KEY idx_competition (competition_id),
   KEY idx_school      (school_id),
-  KEY idx_coach       (coach_id),
   KEY idx_season      (season),
   KEY idx_category    (category(100)),
   CONSTRAINT fk_teams_competition FOREIGN KEY (competition_id) REFERENCES competitions (id) ON DELETE SET NULL,
-  CONSTRAINT fk_teams_school      FOREIGN KEY (school_id)      REFERENCES schools      (id) ON DELETE SET NULL,
-  CONSTRAINT fk_teams_coach       FOREIGN KEY (coach_id)       REFERENCES coaches      (id) ON DELETE SET NULL
+  CONSTRAINT fk_teams_school      FOREIGN KEY (school_id)      REFERENCES schools      (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Team Members (junction table) ─────────────────────────────
@@ -212,6 +209,15 @@ CREATE TABLE team_members (
   PRIMARY KEY (team_id, student_id),
   CONSTRAINT fk_tm_team    FOREIGN KEY (team_id)    REFERENCES teams    (id) ON DELETE CASCADE,
   CONSTRAINT fk_tm_student FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Team Coaches (junction table) ─────────────────────────────
+CREATE TABLE team_coaches (
+  team_id     INT UNSIGNED NOT NULL,                           -- FK → teams.id
+  coach_id    INT UNSIGNED NOT NULL,                           -- FK → coaches.id
+  PRIMARY KEY (team_id, coach_id),
+  CONSTRAINT fk_tc_team  FOREIGN KEY (team_id)  REFERENCES teams   (id) ON DELETE CASCADE,
+  CONSTRAINT fk_tc_coach FOREIGN KEY (coach_id) REFERENCES coaches (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Judges (Master Data) ──────────────────────────────────────
@@ -274,6 +280,7 @@ CREATE TABLE awards (
   category        VARCHAR(200)  DEFAULT NULL,
   award           VARCHAR(200)  NOT NULL,
   year            YEAR          DEFAULT NULL,
+  competition_id  INT UNSIGNED  DEFAULT NULL,           -- FK → competitions.id
   event           VARCHAR(300)  DEFAULT NULL,
   has_trophy      TINYINT(1)    DEFAULT 0,
   has_medal       TINYINT(1)    DEFAULT 0,
@@ -290,7 +297,8 @@ CREATE TABLE awards (
   KEY idx_year   (year),
   CONSTRAINT fk_awards_team   FOREIGN KEY (team_id)   REFERENCES teams   (id) ON DELETE SET NULL,
   CONSTRAINT fk_awards_school FOREIGN KEY (school_id) REFERENCES schools (id) ON DELETE SET NULL,
-  CONSTRAINT fk_awards_coach  FOREIGN KEY (coach_id)  REFERENCES coaches (id) ON DELETE SET NULL
+  CONSTRAINT fk_awards_coach  FOREIGN KEY (coach_id)  REFERENCES coaches (id) ON DELETE SET NULL,
+  CONSTRAINT fk_awards_comp   FOREIGN KEY (competition_id) REFERENCES competitions (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Payments ──────────────────────────────────────────────────

@@ -168,7 +168,7 @@ const Schools = {
       <form id="school-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
           <label class="form-label">School Name *</label>
-          <input class="form-input" name="schoolName" value="${school?.schoolName||''}" required>
+          <input class="form-input" name="schoolName" value="${Utils.esc(school?.schoolName||'')}" required>
         </div>
         <div>
           <label class="form-label">School Type</label>
@@ -191,35 +191,35 @@ const Schools = {
         </div>
         <div>
           <label class="form-label">Province</label>
-          <input class="form-input" name="province" value="${school?.province||''}">
+          <input class="form-input" name="province" value="${Utils.esc(school?.province||'')}">
         </div>
         <div>
           <label class="form-label">City / Municipality</label>
-          <input class="form-input" name="city" value="${school?.city||''}">
+          <input class="form-input" name="city" value="${Utils.esc(school?.city||'')}">
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Complete Address</label>
-          <input class="form-input" name="address" value="${school?.address||''}">
+          <input class="form-input" name="address" value="${Utils.esc(school?.address||'')}">
         </div>
         <div>
           <label class="form-label">Contact Number</label>
-          <input class="form-input" name="contactNumber" value="${school?.contactNumber||''}">
+          <input class="form-input" name="contactNumber" value="${Utils.esc(school?.contactNumber||'')}">
         </div>
         <div>
           <label class="form-label">School Email</label>
-          <input class="form-input" type="email" name="email" value="${school?.email||''}">
+          <input class="form-input" type="email" name="email" value="${Utils.esc(school?.email||'')}">
         </div>
         <div>
           <label class="form-label">School Head</label>
-          <input class="form-input" name="schoolHead" value="${school?.schoolHead||''}">
+          <input class="form-input" name="schoolHead" value="${Utils.esc(school?.schoolHead||'')}">
         </div>
         <div>
           <label class="form-label">Robotics Coordinator</label>
-          <input class="form-input" name="roboticsCoordinator" value="${school?.roboticsCoordinator||''}">
+          <input class="form-input" name="roboticsCoordinator" value="${Utils.esc(school?.roboticsCoordinator||'')}">
         </div>
         <div>
           <label class="form-label">Website</label>
-          <input class="form-input" name="website" value="${school?.website||''}">
+          <input class="form-input" name="website" value="${Utils.esc(school?.website||'')}">
         </div>
         <div>
           <label class="form-label">Year First Joined WRO</label>

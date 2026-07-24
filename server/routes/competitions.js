@@ -7,9 +7,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // ── GET /api/competitions/stats?season=WRO+2026 ──────────────
 // Must be declared before /:id so Express does not treat "stats" as an id.
@@ -20,9 +22,10 @@ router.get('/stats', async (req, res) => {
   }
   try {
     const [[teamRow]] = await pool.execute(
-      `SELECT COUNT(*) AS teams, COUNT(DISTINCT co.id) AS coaches
+      `SELECT COUNT(*) AS teams, COUNT(DISTINCT tc.coach_id) AS coaches
        FROM teams t
-       LEFT JOIN coaches co ON co.id = t.coach_id AND co.is_deleted = 0
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches co ON co.id = tc.coach_id AND co.is_deleted = 0
        WHERE t.season = ? AND t.is_deleted = 0`,
       [season]
     );
@@ -81,11 +84,15 @@ router.get('/season-details', async (req, res) => {
       `SELECT t.id, t.team_name, t.category, t.age_group,
               t.registration_status, t.qualification_status, t.payment_status, t.status,
               sc.school_name,
-              co.full_name AS coach_name, co.email AS coach_email, co.mobile AS coach_mobile
+              GROUP_CONCAT(co.full_name SEPARATOR ', ') AS coach_name,
+              GROUP_CONCAT(co.email SEPARATOR ', ') AS coach_email,
+              GROUP_CONCAT(co.mobile SEPARATOR ', ') AS coach_mobile
        FROM   teams t
        LEFT JOIN schools sc ON sc.id = t.school_id
-       LEFT JOIN coaches co ON co.id = t.coach_id
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches co ON co.id = tc.coach_id
        WHERE  t.season = ? AND t.is_deleted = 0
+       GROUP BY t.id, t.team_name, t.category, t.age_group, t.registration_status, t.qualification_status, t.payment_status, t.status, sc.school_name
        ORDER  BY t.team_name ASC`,
       [season]
     );
@@ -133,7 +140,8 @@ router.get('/season-details', async (req, res) => {
                        co.position,
                        sc.school_name AS school_name
        FROM   coaches co
-       JOIN   teams   t  ON t.coach_id = co.id AND t.season = ? AND t.is_deleted = 0
+       JOIN   team_coaches tc ON tc.coach_id = co.id
+       JOIN   teams   t  ON t.id = tc.team_id AND t.season = ? AND t.is_deleted = 0
        LEFT JOIN schools sc ON sc.id = co.school_id
        WHERE  co.is_deleted = 0
        ORDER  BY co.full_name ASC`,
@@ -218,11 +226,15 @@ router.get('/details/:id', async (req, res) => {
               t.registration_status, t.qualification_status,
               t.payment_status, t.status,
               sc.school_name,
-              co.full_name AS coach_name, co.email AS coach_email, co.mobile AS coach_mobile
+              GROUP_CONCAT(co.full_name SEPARATOR ', ') AS coach_name,
+              GROUP_CONCAT(co.email SEPARATOR ', ') AS coach_email,
+              GROUP_CONCAT(co.mobile SEPARATOR ', ') AS coach_mobile
        FROM   teams t
        LEFT JOIN schools sc ON sc.id = t.school_id
-       LEFT JOIN coaches co ON co.id = t.coach_id
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches co ON co.id = tc.coach_id
        WHERE  t.season = ? AND t.is_deleted = 0
+       GROUP BY t.id, t.team_name, t.category, t.age_group, t.registration_status, t.qualification_status, t.payment_status, t.status, sc.school_name
        ORDER  BY t.team_name ASC`,
       [season]
     );
@@ -270,7 +282,8 @@ router.get('/details/:id', async (req, res) => {
                        co.position,
                        sc.school_name AS school_name
        FROM   coaches co
-       JOIN   teams   t  ON t.coach_id = co.id AND t.season = ? AND t.is_deleted = 0
+       JOIN   team_coaches tc ON tc.coach_id = co.id
+       JOIN   teams   t  ON t.id = tc.team_id AND t.season = ? AND t.is_deleted = 0
        LEFT JOIN schools sc ON sc.id = co.school_id
        WHERE  co.is_deleted = 0
        ORDER  BY co.full_name ASC`,
@@ -361,7 +374,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // ── POST /api/competitions ────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     const competitionCode = d.competitionCode || d.competition_code || `COMP_${Date.now()}`;
@@ -397,7 +410,7 @@ router.post('/', async (req, res) => {
 });
 
 // ── PUT /api/competitions/:id ─────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     await pool.execute(
@@ -428,7 +441,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ── DELETE /api/competitions/:id ──────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM competitions WHERE id = ?', [req.params.id]);

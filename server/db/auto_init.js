@@ -241,7 +241,6 @@ async function autoInitDatabase(pool) {
         category                VARCHAR(200)  DEFAULT NULL,
         age_group               ENUM('Elementary','Junior','Senior','Open') DEFAULT NULL,
         school_id               INT UNSIGNED  DEFAULT NULL,
-        coach_id                INT UNSIGNED  DEFAULT NULL,
         robot_platform          VARCHAR(200)  DEFAULT NULL,
         programming_language    VARCHAR(200)  DEFAULT NULL,
         registration_status     ENUM('registered','confirmed','waitlisted','withdrawn') DEFAULT 'registered',
@@ -283,6 +282,15 @@ async function autoInitDatabase(pool) {
         student_id  INT UNSIGNED NOT NULL,
         PRIMARY KEY (team_id, student_id),
         KEY idx_student (student_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS team_coaches (
+        team_id     INT UNSIGNED NOT NULL,
+        coach_id    INT UNSIGNED NOT NULL,
+        PRIMARY KEY (team_id, coach_id),
+        KEY idx_coach (coach_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -345,6 +353,7 @@ async function autoInitDatabase(pool) {
         category        VARCHAR(200)  DEFAULT NULL,
         award           VARCHAR(200)  NOT NULL,
         year            YEAR          DEFAULT NULL,
+        competition_id  INT UNSIGNED  DEFAULT NULL,
         event           VARCHAR(300)  DEFAULT NULL,
         has_trophy      TINYINT(1)    DEFAULT 0,
         has_medal       TINYINT(1)    DEFAULT 0,

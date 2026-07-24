@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Module 5 – Competition Management (Redesigned)
 // Seasons are first-class DB records; statistics are computed
 // live from the teams / team_members tables — never stored.
@@ -525,8 +525,8 @@ const Competitions = {
 
         <div class="md:col-span-2">
           <label class="form-label">Event Name <span style="color:#e63946">*</span></label>
-          <input class="form-input" name="name" value="${c?.name || ''}"
-            placeholder="e.g. WRO Philippines National Finals 2026" required>
+          <input class="form-input" name="name" value="${Utils.esc(c?.name || '')}"
+                 placeholder="e.g., WRO Philippines 2026 National Final" required>
         </div>
 
         <div>
@@ -539,14 +539,14 @@ const Competitions = {
 
         <div>
           <label class="form-label">Theme</label>
-          <input class="form-input" name="theme" value="${c?.theme || ''}"
-            placeholder="e.g. Connecting the World">
+          <input class="form-input" name="theme" value="${Utils.esc(c?.theme || '')}"
+                 placeholder="e.g., Earth Allies">
         </div>
 
         <div class="md:col-span-2">
           <label class="form-label">Venue</label>
-          <input class="form-input" name="venue" value="${c?.venue || ''}"
-            placeholder="e.g. SMX Convention Center, Manila">
+          <input class="form-input" name="venue" value="${Utils.esc(c?.venue || '')}"
+                 placeholder="e.g., SMX Convention Center, Manila">
         </div>
 
         <div>
@@ -563,7 +563,7 @@ const Competitions = {
         <div>
           <label class="form-label">Organizer</label>
           <input class="form-input" name="organizer"
-            value="${c?.organizer || 'WRO Philippines National Office'}">
+            value="${Utils.esc(c?.organizer || 'WRO Philippines National Office')}">
         </div>
 
         <div>

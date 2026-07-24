@@ -302,21 +302,25 @@ router.post('/teams', upload.single('file'), async (req, res) => {
 
         const [result] = await conn.execute(
           `INSERT INTO teams
-             (team_code, team_name, category, season, age_group, school_id, coach_id, competition_id,
+             (team_code, team_name, category, season, age_group, school_id, competition_id,
               registration_status, payment_status, qualification_status, status, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
           [
             code, teamName,
             opt(r['Category']  || r['category']),
             opt(r['Season']    || r['season']),
             opt(r['Age Group'] || r['age_group']),
             schoolId,
-            coachId,
             compId,
             'registered', 'unpaid', 'pending', 'active',
           ]
         );
         const newTeamId = result.insertId;
+        
+        if (coachId) {
+          await conn.execute('INSERT IGNORE INTO team_coaches (team_id, coach_id) VALUES (?,?)', [newTeamId, coachId]);
+        }
+
 
         // Resolve and link members (comma-separated full names)
         const memberStr = str(r['Members (comma-separated full names)'] || r['members'] || '');

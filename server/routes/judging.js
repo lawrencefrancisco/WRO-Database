@@ -7,9 +7,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // ── GET /api/judging – list all judges ────────────────────────
 router.get('/', async (req, res) => {
@@ -49,7 +51,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // ── POST /api/judging – create a judge ───────────────────────
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const d         = req.body;
     const judgeCode = d.judgeCode || d.judge_code || `JDG_${Date.now()}`;
@@ -83,7 +85,7 @@ router.post('/', async (req, res) => {
 });
 
 // ── PUT /api/judging/:id – update a judge ────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
 
@@ -114,7 +116,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ── DELETE /api/judging/:id – soft or hard delete ────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM judges WHERE id = ?', [req.params.id]);
@@ -156,7 +158,7 @@ const VALID_CATEGORIES = [
   'RoboSports', 'WeDo', 'Advanced Robotics',
 ];
 
-router.put('/:id/assignments', async (req, res) => {
+router.put('/:id/assignments', adminOnly, async (req, res) => {
   const judgeId = parseInt(req.params.id, 10);
   const { seasons = [], categories = [] } = req.body;
 

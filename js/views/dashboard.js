@@ -459,29 +459,56 @@ const Dashboard = {
   },
 
   async _renderTopSchools() {
-    const _schoolsMap = await DB.getLookup('schools');
-    const awards  = (await DB.getAll('awards')).filter(a => !a.isDeleted);
-    const bySchool= Utils.groupBy(awards, 'schoolId');
-    const sorted  = Object.entries(bySchool).sort((a,b) => b[1].length-a[1].length).slice(0,5);
-    const el      = document.getElementById('top-schools-dash');
+    const _schoolsMap  = await DB.getLookup('schools');
+    const _teamsMap    = await DB.getLookup('teams');
+    const _studentsMap = await DB.getLookup('students');
+    const awards = (await DB.getAll('awards')).filter(a => !a.isDeleted);
+
+    // Count awards per school by tracing: award → team → team members → school
+    const schoolCounts = {};
+    awards.forEach(a => {
+      const team = _teamsMap[a.teamId];
+      const sIds = new Set();
+
+      if (team && team.members && team.members.length > 0) {
+        team.members.forEach(mid => {
+          const sid = _studentsMap[mid]?.schoolId;
+          if (sid) sIds.add(sid);
+        });
+      }
+      // Fallback to team.schoolId if no members have school info
+      if (sIds.size === 0 && team?.schoolId) sIds.add(team.schoolId);
+
+      sIds.forEach(sid => {
+        schoolCounts[sid] = (schoolCounts[sid] || 0) + 1;
+      });
+    });
+
+    const sorted = Object.entries(schoolCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const el = document.getElementById('top-schools-dash');
     if (!el) return;
-    // Rank badge SVG icons
-    const rankColors = ['#F6C945','#F6C945','#cd7f32','#5a6a8a','#5a6a8a'];
+
+    const rankColors = ['#F6C945','#C0C0C0','#cd7f32','#5a6a8a','#5a6a8a'];
     const rankLabels = ['1st','2nd','3rd','4th','5th'];
-    el.innerHTML = sorted.map(([sid, aList], idx) => {
+
+    el.innerHTML = sorted.map(([sid, count], idx) => {
       const school = _schoolsMap[sid];
       const color  = rankColors[idx];
       return `
         <div class="flex items-center gap-3 p-3 glass-light rounded-xl">
           <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold" style="background:rgba(22,32,56,0.9);color:${color};border:1px solid ${color}40">${rankLabels[idx]}</div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm text-white truncate">${school?.schoolName||'Unknown'}</div>
-            <div class="text-xs text-slate-500">${school?.region||''}</div>
+            <div class="text-sm text-white truncate">${school?.schoolName || 'Unknown School'}</div>
+            <div class="text-xs text-slate-500">${school?.region || ''}</div>
           </div>
-          <span class="badge badge-yellow">${aList.length} awards</span>
+          <span class="badge badge-yellow">${count} award${count !== 1 ? 's' : ''}</span>
         </div>`;
     }).join('') || '<p class="text-slate-500 text-sm">No award data yet.</p>';
   },
+
 
   async _renderFinancial() {
     const payments = (await DB.getAll('payments')).filter(p => !p.isDeleted);

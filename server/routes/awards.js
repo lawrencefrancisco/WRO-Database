@@ -7,9 +7,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
-// router.use(authMiddleware);
+router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // Helper: resolve integer FK from either integer or business-code string
 async function resolveId(table, codeCol, value) {
@@ -38,21 +40,20 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const d         = req.body;
     const awardCode = d.awardCode || d.award_code || `AWD_${Date.now()}`;
 
-    const teamId   = await resolveId('teams',   'team_code',   d.teamId);
-    const schoolId = await resolveId('schools', 'school_code', d.schoolId);
-    const coachId  = await resolveId('coaches', 'coach_code',  d.coachId);
+    const teamId        = await resolveId('teams', 'team_code', d.teamId);
+    const competitionId = await resolveId('competitions', 'competition_code', d.competitionId);
 
     const [result] = await pool.execute(
-      `INSERT INTO awards (award_code, team_id, school_id, coach_id, category, award, year, event,
+      `INSERT INTO awards (award_code, team_id, school_id, coach_id, category, award, year, competition_id, event,
        has_trophy, has_medal, has_certificate, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [awardCode, teamId, schoolId, coachId,
-       d.category, d.award, d.year || new Date().getFullYear(), d.event || null,
+       VALUES (?,?,NULL,NULL,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+      [awardCode, teamId,
+       d.category, d.award, d.year || new Date().getFullYear(), competitionId, d.event || null,
        d.hasTrophy ? 1 : 0, d.hasMedal ? 1 : 0, d.hasCertificate ? 1 : 0,
        d.status || 'confirmed']
     );
@@ -64,20 +65,19 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
 
-    const teamId   = await resolveId('teams',   'team_code',   d.teamId);
-    const schoolId = await resolveId('schools', 'school_code', d.schoolId);
-    const coachId  = await resolveId('coaches', 'coach_code',  d.coachId);
+    const teamId        = await resolveId('teams', 'team_code', d.teamId);
+    const competitionId = await resolveId('competitions', 'competition_code', d.competitionId);
 
     await pool.execute(
-      `UPDATE awards SET team_id=?, school_id=?, coach_id=?, category=?, award=?,
-       year=?, event=?, has_trophy=?, has_medal=?, has_certificate=?, status=?, updated_at=NOW()
+      `UPDATE awards SET team_id=?, school_id=NULL, coach_id=NULL, category=?, award=?,
+       year=?, competition_id=?, event=?, has_trophy=?, has_medal=?, has_certificate=?, status=?, updated_at=NOW()
        WHERE id = ?`,
-      [teamId, schoolId, coachId,
-       d.category, d.award, d.year, d.event || null,
+      [teamId,
+       d.category, d.award, d.year, competitionId, d.event || null,
        d.hasTrophy ? 1 : 0, d.hasMedal ? 1 : 0, d.hasCertificate ? 1 : 0,
        d.status, req.params.id]
     );
@@ -88,7 +88,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM awards WHERE id = ?', [req.params.id]);
