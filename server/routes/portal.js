@@ -303,26 +303,25 @@ router.get('/notifications', async (req, res) => {
   try {
     const teamIds = await getLinkedTeamIds(uid(req));
 
-    // Collect all school IDs from linked teams for notifications
     let rows = [];
     if (teamIds.length > 0) {
       const ph = teamIds.map(() => '?').join(',');
-      const [schoolRows] = await pool.execute(
-        `SELECT DISTINCT school_id FROM teams WHERE id IN (${ph}) AND school_id IS NOT NULL`,
+      [rows] = await pool.execute(
+        `SELECT n.*, t.team_name
+         FROM notification_log n
+         LEFT JOIN teams t ON t.id = n.team_id
+         WHERE n.team_id IN (${ph}) OR n.team_id IS NULL
+         ORDER BY n.created_at DESC`,
         teamIds
       );
-      const schoolIds = schoolRows.map(r => r.school_id);
-      if (schoolIds.length > 0) {
-        const sph = schoolIds.map(() => '?').join(',');
-        [rows] = await pool.execute(
-          `SELECT n.*, t.team_name
-           FROM notification_log n
-           LEFT JOIN teams t ON t.id = n.team_id
-           WHERE n.school_id IN (${sph})
-           ORDER BY n.created_at DESC`,
-          schoolIds
-        );
-      }
+    } else {
+      [rows] = await pool.execute(
+        `SELECT n.*, t.team_name
+         FROM notification_log n
+         LEFT JOIN teams t ON t.id = n.team_id
+         WHERE n.team_id IS NULL
+         ORDER BY n.created_at DESC`
+      );
     }
     res.json(rows);
   } catch (err) {
@@ -349,18 +348,14 @@ router.put('/notifications/read-all', async (req, res) => {
     const teamIds = await getLinkedTeamIds(uid(req));
     if (teamIds.length > 0) {
       const ph = teamIds.map(() => '?').join(',');
-      const [schoolRows] = await pool.execute(
-        `SELECT DISTINCT school_id FROM teams WHERE id IN (${ph}) AND school_id IS NOT NULL`,
+      await pool.execute(
+        `UPDATE notification_log SET is_read=1, read_at=NOW() WHERE (team_id IN (${ph}) OR team_id IS NULL) AND is_read=0`,
         teamIds
       );
-      const schoolIds = schoolRows.map(r => r.school_id);
-      if (schoolIds.length > 0) {
-        const sph = schoolIds.map(() => '?').join(',');
-        await pool.execute(
-          `UPDATE notification_log SET is_read=1, read_at=NOW() WHERE school_id IN (${sph}) AND is_read=0`,
-          schoolIds
-        );
-      }
+    } else {
+      await pool.execute(
+        `UPDATE notification_log SET is_read=1, read_at=NOW() WHERE team_id IS NULL AND is_read=0`
+      );
     }
     res.json({ success: true });
   } catch (err) {
