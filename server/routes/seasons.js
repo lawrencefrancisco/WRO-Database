@@ -7,9 +7,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // ── GET /api/seasons ─────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -27,7 +29,7 @@ router.get('/', async (req, res) => {
 // Body: { year: 2026 }
 // Season name is auto-generated as "WRO <year>".
 // season_code is auto-generated as "WRO_<year>".
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const year = parseInt(req.body.year, 10);
     if (!year || year < 2000 || year > 2100) {
@@ -67,7 +69,7 @@ router.post('/', async (req, res) => {
 // ── DELETE /api/seasons/:id ───────────────────────────────────
 // Hard delete – seasons are lightweight reference data.
 // Teams referencing this season by name string are unaffected.
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     await pool.execute('DELETE FROM seasons WHERE id = ?', [req.params.id]);
     res.json({ success: true });

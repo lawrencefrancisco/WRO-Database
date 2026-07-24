@@ -99,11 +99,13 @@ router.post('/link-team', async (req, res) => {
     const [teams] = await pool.execute(
       `SELECT t.id, t.team_name, t.season, t.category, t.age_group,
               t.registration_status, t.payment_status, t.qualification_status,
-              s.school_name, c.full_name AS coach_name
+              s.school_name, GROUP_CONCAT(c.full_name SEPARATOR ', ') AS coach_name
        FROM teams t
        LEFT JOIN schools s ON s.id = t.school_id
-       LEFT JOIN coaches c ON c.id = t.coach_id
-       WHERE t.qr_token = ? AND t.is_deleted = 0`,
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches c ON c.id = tc.coach_id
+       WHERE t.qr_token = ? AND t.is_deleted = 0
+       GROUP BY t.id, t.team_name, t.season, t.category, t.age_group, t.registration_status, t.payment_status, t.qualification_status, s.school_name`,
       [qr_token]
     );
     if (!teams[0]) return res.status(404).json({ success: false, error: 'Invalid or expired QR code.' });
@@ -155,14 +157,17 @@ router.get('/teams', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT t.id, t.team_name, t.team_code, t.category, t.age_group, t.season,
               t.registration_status, t.payment_status, t.qualification_status, t.status,
-              c.full_name AS coach_name, c.mobile AS coach_mobile,
+              GROUP_CONCAT(c.full_name SEPARATOR ', ') AS coach_name, 
+              GROUP_CONCAT(c.mobile SEPARATOR ', ') AS coach_mobile,
               comp.name AS competition_name,
               s.school_name
        FROM teams t
-       LEFT JOIN coaches c    ON c.id   = t.coach_id
+       LEFT JOIN team_coaches tc ON tc.team_id = t.id
+       LEFT JOIN coaches c    ON c.id   = tc.coach_id
        LEFT JOIN competitions comp ON comp.id = t.competition_id
        LEFT JOIN schools s    ON s.id   = t.school_id
        WHERE t.id IN (${ph}) AND t.is_deleted = 0
+       GROUP BY t.id, t.team_name, t.team_code, t.category, t.age_group, t.season, t.registration_status, t.payment_status, t.qualification_status, t.status, comp.name, s.school_name
        ORDER BY t.team_name ASC`,
       teamIds
     );
@@ -298,26 +303,25 @@ router.get('/notifications', async (req, res) => {
   try {
     const teamIds = await getLinkedTeamIds(uid(req));
 
-    // Collect all school IDs from linked teams for notifications
     let rows = [];
     if (teamIds.length > 0) {
       const ph = teamIds.map(() => '?').join(',');
-      const [schoolRows] = await pool.execute(
-        `SELECT DISTINCT school_id FROM teams WHERE id IN (${ph}) AND school_id IS NOT NULL`,
+      [rows] = await pool.execute(
+        `SELECT n.*, t.team_name
+         FROM notification_log n
+         LEFT JOIN teams t ON t.id = n.team_id
+         WHERE n.team_id IN (${ph}) OR n.team_id IS NULL
+         ORDER BY n.created_at DESC`,
         teamIds
       );
-      const schoolIds = schoolRows.map(r => r.school_id);
-      if (schoolIds.length > 0) {
-        const sph = schoolIds.map(() => '?').join(',');
-        [rows] = await pool.execute(
-          `SELECT n.*, t.team_name
-           FROM notification_log n
-           LEFT JOIN teams t ON t.id = n.team_id
-           WHERE n.school_id IN (${sph})
-           ORDER BY n.created_at DESC`,
-          schoolIds
-        );
-      }
+    } else {
+      [rows] = await pool.execute(
+        `SELECT n.*, t.team_name
+         FROM notification_log n
+         LEFT JOIN teams t ON t.id = n.team_id
+         WHERE n.team_id IS NULL
+         ORDER BY n.created_at DESC`
+      );
     }
     res.json(rows);
   } catch (err) {
@@ -344,18 +348,14 @@ router.put('/notifications/read-all', async (req, res) => {
     const teamIds = await getLinkedTeamIds(uid(req));
     if (teamIds.length > 0) {
       const ph = teamIds.map(() => '?').join(',');
-      const [schoolRows] = await pool.execute(
-        `SELECT DISTINCT school_id FROM teams WHERE id IN (${ph}) AND school_id IS NOT NULL`,
+      await pool.execute(
+        `UPDATE notification_log SET is_read=1, read_at=NOW() WHERE (team_id IN (${ph}) OR team_id IS NULL) AND is_read=0`,
         teamIds
       );
-      const schoolIds = schoolRows.map(r => r.school_id);
-      if (schoolIds.length > 0) {
-        const sph = schoolIds.map(() => '?').join(',');
-        await pool.execute(
-          `UPDATE notification_log SET is_read=1, read_at=NOW() WHERE school_id IN (${sph}) AND is_read=0`,
-          schoolIds
-        );
-      }
+    } else {
+      await pool.execute(
+        `UPDATE notification_log SET is_read=1, read_at=NOW() WHERE team_id IS NULL AND is_read=0`
+      );
     }
     res.json({ success: true });
   } catch (err) {

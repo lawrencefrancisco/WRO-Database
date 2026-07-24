@@ -7,9 +7,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // GET /api/schools
 router.get('/', async (req, res) => {
@@ -36,7 +38,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/schools
 // Accepts school_code from body (or auto-generates one).
 // id is assigned by MySQL AUTO_INCREMENT.
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     const schoolCode = d.schoolCode || d.school_code || `SCH_${Date.now()}`;
@@ -61,7 +63,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/schools/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     await pool.execute(
@@ -83,7 +85,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/schools/:id  (soft delete; ?hard=true for permanent)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM schools WHERE id = ?', [req.params.id]);

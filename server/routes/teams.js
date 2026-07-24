@@ -8,9 +8,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // Helper: fetch members array for a team (returns array of integer student ids)
 async function getMembers(teamId) {
@@ -18,6 +20,14 @@ async function getMembers(teamId) {
     'SELECT student_id FROM team_members WHERE team_id = ?', [teamId]
   );
   return rows.map(r => r.student_id);
+}
+
+// Helper: fetch coaches array for a team (returns array of integer coach ids)
+async function getCoaches(teamId) {
+  const [rows] = await pool.execute(
+    'SELECT coach_id FROM team_coaches WHERE team_id = ?', [teamId]
+  );
+  return rows.map(r => r.coach_id);
 }
 
 // Helper: resolve an integer FK from either a raw integer or a code string.
@@ -46,8 +56,20 @@ router.get('/', async (req, res) => {
         if (!memberMap[r.team_id]) memberMap[r.team_id] = [];
         memberMap[r.team_id].push(r.student_id);
       });
+
+      const [coachRows] = await pool.execute(
+        `SELECT team_id, coach_id FROM team_coaches WHERE team_id IN (${placeholders})`,
+        teamIds
+      );
+      const coachMap = {};
+      coachRows.forEach(r => {
+        if (!coachMap[r.team_id]) coachMap[r.team_id] = [];
+        coachMap[r.team_id].push(r.coach_id);
+      });
+
       rows.forEach(t => {
         t.members = memberMap[t.id] || [];
+        t.coaches = coachMap[t.id] || [];
       });
     }
     res.json(rows);
@@ -63,6 +85,7 @@ router.get('/:id', async (req, res) => {
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ? AND is_deleted = 0', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     rows[0].members = await getMembers(req.params.id);
+    rows[0].coaches = await getCoaches(req.params.id);
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -70,7 +93,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/teams
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -79,11 +102,12 @@ router.post('/', async (req, res) => {
 
     // members: array of integer student ids or student_codes
     const members = Array.isArray(d.members) ? d.members : [];
+    // coaches: array of integer coach ids or coach_codes
+    const coaches = Array.isArray(d.coaches) ? d.coaches : [];
 
     // Resolve integer FKs (accept integer or business-code string)
     const competitionId = await resolveId(conn, 'competitions', 'competition_code', d.competitionId);
     let   schoolId      = await resolveId(conn, 'schools',      'school_code',      d.schoolId);
-    const coachId       = await resolveId(conn, 'coaches',      'coach_code',       d.coachId);
 
     // Auto-detect school_id from first member's student record if still unresolved
     if (!schoolId && members.length > 0) {
@@ -96,11 +120,11 @@ router.post('/', async (req, res) => {
 
     const [result] = await conn.execute(
       `INSERT INTO teams (team_code, season, competition_id, team_name, category, age_group,
-       school_id, coach_id, registration_status,
+       school_id, registration_status,
        payment_status, qualification_status, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [teamCode, d.season, competitionId, d.teamName, d.category, d.ageGroup || null,
-       schoolId, coachId,
+       schoolId,
        d.registrationStatus || 'registered',
        // payment_status is managed exclusively by Payment Management — always default to 'unpaid' on insert
        'unpaid',
@@ -114,9 +138,16 @@ router.post('/', async (req, res) => {
       if (sid) await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [newId, sid]);
     }
 
+    // Insert team coaches
+    for (const coachVal of coaches) {
+      const cid = await resolveId(conn, 'coaches', 'coach_code', coachVal);
+      if (cid) await conn.execute('INSERT IGNORE INTO team_coaches (team_id, coach_id) VALUES (?,?)', [newId, cid]);
+    }
+
     await conn.commit();
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [newId]);
     rows[0].members = await getMembers(newId);
+    rows[0].coaches = await getCoaches(newId);
     res.status(201).json(rows[0]);
   } catch (err) {
     await conn.rollback();
@@ -128,17 +159,17 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/teams/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const d       = req.body;
     const teamId  = parseInt(req.params.id, 10);
     const members = Array.isArray(d.members) ? d.members : [];
+    const coaches = Array.isArray(d.coaches) ? d.coaches : [];
 
     const competitionId = await resolveId(conn, 'competitions', 'competition_code', d.competitionId);
     let   schoolId      = await resolveId(conn, 'schools',      'school_code',      d.schoolId);
-    const coachId       = await resolveId(conn, 'coaches',      'coach_code',       d.coachId);
 
     if (!schoolId && members.length > 0) {
       const firstMember = await resolveId(conn, 'students', 'student_code', members[0]);
@@ -154,11 +185,11 @@ router.put('/:id', async (req, res) => {
 
     await conn.execute(
       `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?,
-       age_group=?, school_id=?, coach_id=?,
+       age_group=?, school_id=?,
        registration_status=?, payment_status=?, qualification_status=?, status=?, updated_at=NOW()
        WHERE id = ?`,
       [d.season, competitionId, d.teamName, d.category,
-       d.ageGroup || null, schoolId, coachId,
+       d.ageGroup || null, schoolId,
        d.registrationStatus, currentPaymentStatus,
        d.qualificationStatus, d.status, teamId]
     );
@@ -170,25 +201,19 @@ router.put('/:id', async (req, res) => {
       if (sid) await conn.execute('INSERT IGNORE INTO team_members (team_id, student_id) VALUES (?,?)', [teamId, sid]);
     }
 
+    // Replace coaches
+    await conn.execute('DELETE FROM team_coaches WHERE team_id = ?', [teamId]);
+    for (const coachVal of coaches) {
+      const cid = await resolveId(conn, 'coaches', 'coach_code', coachVal);
+      if (cid) await conn.execute('INSERT IGNORE INTO team_coaches (team_id, coach_id) VALUES (?,?)', [teamId, cid]);
+    }
+
     await conn.commit();
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [teamId]);
     rows[0].members = await getMembers(teamId);
+    rows[0].coaches = await getCoaches(teamId);
 
-    if (d.qualificationStatus === 'qualified') {
-      // Auto-log in communications
-      const [existComm] = await pool.execute(
-        'SELECT id FROM communications WHERE team_id = ? AND is_deleted = 0 LIMIT 1', [teamId]
-      );
-      if (existComm.length === 0) {
-        const commCode = `COM_${Date.now()}`;
-        await pool.execute(
-          `INSERT INTO communications (comm_code, team_id, registration_confirmation,
-           payment_confirmation, certificate_sent, announcement_received, feedback_submitted,
-           status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())`,
-          [commCode, teamId, 0, 0, 0, 0, 0, 'active']
-        );
-      }
-    }
+
 
     if (schoolId) {
       await pool.execute(
@@ -208,10 +233,11 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/teams/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM team_members WHERE team_id = ?', [req.params.id]);
+      await pool.execute('DELETE FROM team_coaches WHERE team_id = ?', [req.params.id]);
       await pool.execute('DELETE FROM teams WHERE id = ?', [req.params.id]);
     } else {
       await pool.execute('UPDATE teams SET is_deleted=1, deleted_at=NOW() WHERE id = ?', [req.params.id]);
@@ -223,7 +249,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST /api/teams/:id/generate-qr  — generate (or regenerate) a secure QR token
-router.post('/:id/generate-qr', async (req, res) => {
+router.post('/:id/generate-qr', adminOnly, async (req, res) => {
   try {
     const crypto = require('crypto');
     const token  = crypto.randomBytes(32).toString('hex');

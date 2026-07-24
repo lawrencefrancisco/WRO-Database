@@ -283,6 +283,17 @@ router.post('/teams', upload.single('file'), async (req, res) => {
         coachId = cr[0]?.id || null;
       }
 
+      // Resolve competition by name
+      let compId = null;
+      const compName = str(r['Competition'] || r['competition']);
+      if (compName) {
+        const [cor] = await pool.execute(
+          'SELECT id FROM competitions WHERE name = ? AND is_deleted = 0 LIMIT 1',
+          [compName]
+        );
+        compId = cor[0]?.id || null;
+      }
+
       const code = `TEAM_${Date.now()}_${i}`;
       const conn = await pool.getConnection();
 
@@ -291,7 +302,7 @@ router.post('/teams', upload.single('file'), async (req, res) => {
 
         const [result] = await conn.execute(
           `INSERT INTO teams
-             (team_code, team_name, category, season, age_group, school_id, coach_id,
+             (team_code, team_name, category, season, age_group, school_id, competition_id,
               registration_status, payment_status, qualification_status, status, created_at, updated_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
           [
@@ -299,11 +310,17 @@ router.post('/teams', upload.single('file'), async (req, res) => {
             opt(r['Category']  || r['category']),
             opt(r['Season']    || r['season']),
             opt(r['Age Group'] || r['age_group']),
-            schoolId, coachId,
+            schoolId,
+            compId,
             'registered', 'unpaid', 'pending', 'active',
           ]
         );
         const newTeamId = result.insertId;
+        
+        if (coachId) {
+          await conn.execute('INSERT IGNORE INTO team_coaches (team_id, coach_id) VALUES (?,?)', [newTeamId, coachId]);
+        }
+
 
         // Resolve and link members (comma-separated full names)
         const memberStr = str(r['Members (comma-separated full names)'] || r['members'] || '');

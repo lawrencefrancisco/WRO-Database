@@ -5,9 +5,11 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../db/pool');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'EVENT_ADMIN');
 
 // GET all announcements (published + drafts for admin)
 router.get('/', async (req, res) => {
@@ -36,7 +38,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST create announcement
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const d    = req.body;
     const code = d.announcementCode || `ANN_${Date.now()}`;
@@ -60,7 +62,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT update announcement – partial update (only updates fields provided in body)
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     const validRoles = ['SUPER_ADMIN', 'EVENT_ADMIN'];
@@ -110,7 +112,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE announcement (soft)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
   try {
     if (req.query.hard === 'true') {
       await pool.execute('DELETE FROM announcements WHERE id = ?', [req.params.id]);

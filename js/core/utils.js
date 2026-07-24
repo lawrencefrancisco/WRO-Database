@@ -59,6 +59,25 @@ const Utils = {
     return str.length > len ? str.slice(0, len) + '…' : str;
   },
 
+  /**
+   * Escapes HTML special characters to prevent XSS when rendering
+   * user-supplied content into the DOM via template literals.
+   * Always use this for any field that originates from user input.
+   */
+  escapeHTML(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  /** Short alias for escapeHTML — use inside template literals: ${esc(value)} */
+  esc(str) { return this.escapeHTML(str); },
+
+
   /** Generate a display ID */
   displayId(id) {
     if (!id) return '—';

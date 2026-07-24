@@ -148,7 +148,7 @@ const Coaches = {
       <form id="coach-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
           <label class="form-label">Full Name *</label>
-          <input class="form-input" name="fullName" value="${c?.fullName||''}" required>
+          <input class="form-input" name="fullName" value="${Utils.esc(c?.fullName||'')}" required>
         </div>
         <div>
           <label class="form-label">Birthday</label>
@@ -162,11 +162,11 @@ const Coaches = {
         </div>
         <div>
           <label class="form-label">Email</label>
-          <input class="form-input" type="email" name="email" value="${c?.email||''}">
+          <input class="form-input" type="email" name="email" value="${Utils.esc(c?.email||'')}">
         </div>
         <div>
           <label class="form-label">Mobile Number</label>
-          <input class="form-input" name="mobile" value="${c?.mobile||''}">
+          <input class="form-input" name="mobile" value="${Utils.esc(c?.mobile||'')}">
         </div>
         <div class="md:col-span-2">
           <label class="form-label">School *</label>
@@ -177,7 +177,7 @@ const Coaches = {
         </div>
         <div>
           <label class="form-label">Position</label>
-          <input class="form-input" name="position" value="${c?.position||''}">
+          <input class="form-input" name="position" value="${Utils.esc(c?.position||'')}">
         </div>
         <div>
           <label class="form-label">Shirt Size</label>
@@ -187,7 +187,7 @@ const Coaches = {
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Emergency Contact</label>
-          <input class="form-input" name="emergencyContact" value="${c?.emergencyContact||''}">
+          <input class="form-input" name="emergencyContact" value="${Utils.esc(c?.emergencyContact||'')}">
         </div>
         <div>
           <label class="form-label">Status</label>

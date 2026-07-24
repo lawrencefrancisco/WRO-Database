@@ -133,7 +133,7 @@ const PortalTeams = {
     const isMulti   = schools.length > 1;
 
     return `
-      <div class="p-team-card" style="margin-bottom:16px;">
+      <div class="p-team-card" style="margin-bottom:1.25rem;">
         <div class="p-team-card-top">
           <div class="p-team-icon">${(t.team_name || 'T').charAt(0).toUpperCase()}</div>
           <div style="flex:1;min-width:0;">
@@ -152,11 +152,13 @@ const PortalTeams = {
             <span class="p-team-lbl">Coach</span>
             <span class="p-team-val">${t.coach_name || '—'}${t.coach_mobile ? ` · ${t.coach_mobile}` : ''}</span>
           </div>
-          <div class="p-team-row">
-            <span class="p-team-lbl">School${isMulti ? 's' : ''}</span>
-            <span class="p-team-val" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <div class="p-team-row" style="${isMulti ? 'flex-direction:column; align-items:flex-start; gap:0.5rem;' : ''}">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span class="p-team-lbl">School${isMulti ? 's' : ''}</span>
+              ${isMulti ? `<span style="font-size:0.6rem;padding:0.2rem 0.6rem;border-radius:999px;background:rgba(30,158,191,0.12);color:var(--p-blue, #1E9EBF);border:1px solid rgba(30,158,191,0.25);font-weight:800;text-transform:uppercase;letter-spacing:0.04em;">Multi-school</span>` : ''}
+            </div>
+            <span class="p-team-val" style="${isMulti ? 'text-align:left; line-height:1.4;' : ''}">
               ${schoolStr}
-              ${isMulti ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(30,158,191,0.18);color:#1E9EBF;font-weight:600;">Multi-school</span>` : ''}
             </span>
           </div>
           <div class="p-team-row">
@@ -167,32 +169,35 @@ const PortalTeams = {
 
         <!-- Members -->
         ${members.length > 0 ? `
-        <div style="border-top:1px solid rgba(255,255,255,0.06); margin-top:12px; padding-top:12px;">
-          <div style="font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;">Team Members</div>
-          <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="padding: 1rem 1rem 0.5rem 1rem;">
+          <div style="font-size:0.68rem; color:var(--p-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Team Members</div>
+          <div style="display:flex; flex-direction:column; gap:0.6rem;">
             ${members.map(m => `
-              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,${m.gender==='Female'?'#ec4899,#f43f5e':'#6366f1,#8b5cf6'});display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:0.8rem;padding:0.75rem;background:var(--p-card-2);border:1px solid var(--p-border);border-radius:14px;box-shadow:var(--p-shadow-sm);">
+                <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,${m.gender==='Female'?'#ec4899,#f43f5e':'#6366f1,#8b5cf6'});display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;font-weight:800;flex-shrink:0;box-shadow:0 4px 10px rgba(0,0,0,0.12);">
                   ${(m.full_name||'?').charAt(0)}
                 </div>
                 <div style="flex:1;min-width:0;">
-                  <div style="font-size:13px;font-weight:600;color:#e2e8f0;">${m.full_name}</div>
-                  <div style="font-size:11px;color:#64748b;">${[m.grade_level, m.gender].filter(Boolean).join(' · ')}${m.student_school ? ` · <span style="color:#1E9EBF;">${m.student_school}</span>` : ''}</div>
+                  <div style="font-size:0.85rem;font-weight:700;color:var(--p-txt);line-height:1.2;margin-bottom:0.2rem;">${m.full_name}</div>
+                  <div style="font-size:0.7rem;color:var(--p-muted);line-height:1.3;">
+                    ${[m.grade_level, m.gender].filter(Boolean).join(' · ')}
+                    ${m.student_school ? `<span style="display:block;color:var(--p-txt-2);font-weight:500;margin-top:0.1rem;">${m.student_school}</span>` : ''}
+                  </div>
                 </div>
               </div>`).join('')}
           </div>
         </div>` : ''}
 
-        <div class="p-team-footer" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+        <div class="p-team-footer" style="padding: 1rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem;">
           ${this._badge(t.registration_status)}
           ${this._badge(t.qualification_status)}
-          ${this._badge(t.payment_status)}
           <button
             onclick="PortalTeams.unlinkTeam(${t.id}, this)"
             data-team-name="${(t.team_name || '').replace(/"/g, '&quot;')}"
-            style="margin-left:auto;background:rgba(230,57,70,0.1);border:1px solid rgba(230,57,70,0.3);color:#e63946;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:background 0.2s;flex-shrink:0;"
-            onmouseover="this.style.background='rgba(230,57,70,0.25)'" onmouseout="this.style.background='rgba(230,57,70,0.1)'">
-            🔗 Unlink
+            style="margin-left:auto;background:rgba(230,57,70,0.08);border:1px solid rgba(230,57,70,0.25);color:var(--p-red, #e63946);border-radius:10px;padding:0.45rem 1rem;font-size:0.75rem;font-weight:700;cursor:pointer;transition:all 0.2s;flex-shrink:0;box-shadow:0 2px 8px rgba(230,57,70,0.05);"
+            onmouseover="this.style.background='rgba(230,57,70,0.15)'; this.style.transform='translateY(-1px)';" 
+            onmouseout="this.style.background='rgba(230,57,70,0.08)'; this.style.transform='translateY(0)';">
+            <span style="opacity:0.8;margin-right:2px;">🔗</span> Unlink
           </button>
         </div>
       </div>`;

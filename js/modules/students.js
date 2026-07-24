@@ -160,7 +160,7 @@ const Students = {
       <form id="student-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
           <label class="form-label">Full Name *</label>
-          <input class="form-input" name="fullName" value="${s?.fullName||''}" required>
+          <input class="form-input" name="fullName" value="${Utils.esc(s?.fullName||'')}" required>
         </div>
         <div><label class="form-label">Birthday</label>
           <input class="form-input" type="date" name="birthday" value="${birthdayValue}">
@@ -182,16 +182,16 @@ const Students = {
           </select>
         </div>
         <div><label class="form-label">Parent / Guardian Name</label>
-          <input class="form-input" name="parentName" value="${s?.parentName||''}">
+          <input class="form-input" name="parentName" value="${Utils.esc(s?.parentName||'')}">
         </div>
         <div><label class="form-label">Parent Contact</label>
-          <input class="form-input" name="parentContact" value="${s?.parentContact||''}">
+          <input class="form-input" name="parentContact" value="${Utils.esc(s?.parentContact||'')}">
         </div>
         <div><label class="form-label">Parent Email</label>
-          <input class="form-input" type="email" name="parentEmail" value="${s?.parentEmail||''}">
+          <input class="form-input" type="email" name="parentEmail" value="${Utils.esc(s?.parentEmail||'')}">
         </div>
         <div><label class="form-label">Personal Email (Student)</label>
-          <input class="form-input" type="email" name="personalEmail" value="${s?.personalEmail||''}" placeholder="student@email.com">
+          <input class="form-input" type="email" name="personalEmail" value="${Utils.esc(s?.personalEmail||'')}" placeholder="student@email.com">
         </div>
         <div><label class="form-label">Shirt Size</label>
           <select class="form-input" name="shirtSize">

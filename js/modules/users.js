@@ -102,16 +102,16 @@ const Users = {
     Modal.show(id ? 'Edit User' : 'Add User', `
       <form id="user-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2"><label class="form-label">Full Name *</label>
-          <input class="form-input" name="name" value="${u?.name||''}" required>
+          <input class="form-input" name="name" value="${Utils.esc(u?.name||'')}" required>
         </div>
         <div><label class="form-label">Username *</label>
-          <input class="form-input" name="username" value="${u?.username||''}" required>
+          <input class="form-input" name="username" value="${Utils.esc(u?.username||'')}" required>
         </div>
         <div><label class="form-label">Password ${id?'(leave blank to keep)':' *'}</label>
           <input class="form-input" type="password" name="password" placeholder="${id?'••••••••':'Enter password'}">
         </div>
         <div><label class="form-label">Email</label>
-          <input class="form-input" type="email" name="email" value="${u?.email||''}">
+          <input class="form-input" type="email" name="email" value="${Utils.esc(u?.email||'')}">
         </div>
         <div><label class="form-label">Role</label>
           <select class="form-input" name="role">

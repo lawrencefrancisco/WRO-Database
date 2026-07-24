@@ -935,7 +935,6 @@ const Communications = {
         <div class="flex flex-wrap gap-1 p-1 rounded-xl" style="background:var(--bg-surface); border:1px solid var(--border-subtle);">
           ${[['announcements','Announcements','<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'],
              ['history','Notification History','<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'],
-             ['tracker','Team Status Tracker','<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/>'],
              ['directemail','Direct Email','<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'],
           ].map(([id, label, paths]) => `
             <button id="comm-tab-${id}" onclick="Communications._switchTab('${id}')"
@@ -957,7 +956,7 @@ const Communications = {
 
   async _switchTab(tab) {
     this._tab = tab;
-    ['announcements','history','tracker','directemail'].forEach(id => {
+    ['announcements','history','directemail'].forEach(id => {
       const btn = document.getElementById(`comm-tab-${id}`);
       if (!btn) return;
       if (id === tab) {
@@ -979,7 +978,6 @@ const Communications = {
     if (!el) return;
     if (this._tab === 'announcements')   await this._renderAnnouncements(el);
     else if (this._tab === 'history')    await this._renderHistory(el);
-    else if (this._tab === 'tracker')    await this._renderTracker(el);
     else if (this._tab === 'directemail') await this._renderDirectEmail(el);
   },
 
@@ -1082,52 +1080,6 @@ const Communications = {
                 ${!n.is_read ? `<button onclick="Communications.markRead('${n.id}')" class="text-[10px] px-2 py-1 rounded shrink-0 transition" style="background:var(--bg-surface);color:var(--txt-muted);">Read</button>` : ''}
               </div>`).join('')}
           </div>`}
-      </div>`;
-  },
-
-  async _renderTracker(el) {
-    const all       = (await DB.getAll('communications')).filter(c => !c.isDeleted);
-    const _teamsMap = await DB.getLookup('teams');
-
-    el.innerHTML = `
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-bold" style="color:var(--txt-primary);">Team Communication Status</h3>
-        <button onclick="Communications.exportCSV()" class="px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition" style="background:var(--bg-surface);color:var(--txt-muted);border:1px solid var(--border-subtle);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export CSV
-        </button>
-      </div>
-      <div class="glass rounded-2xl overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead><tr>
-              <th>Team</th>
-              <th class="text-center">Reg. Confirmed</th>
-              <th class="text-center">Payment Confirmed</th>
-              <th class="text-center">Certificate Sent</th>
-              <th class="text-center">Announcement</th>
-              <th class="text-center">Feedback</th>
-              ${AUTH.can('communications.write') ? '<th>Actions</th>' : ''}
-            </tr></thead>
-            <tbody>
-              ${all.length === 0 ? `<tr><td colspan="7"><div class="empty-state" style="color:var(--txt-muted);">No communication records. Records are auto-created when teams are qualified.</div></td></tr>` :
-                all.map(c => {
-                  const team = _teamsMap[c.teamId];
-                  const chk = `<span style="color:#2dc653;"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg></span>`;
-                  const xmk = `<span style="color:#e63946;"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></span>`;
-                  return `<tr class="table-row">
-                    <td class="font-semibold text-sm" style="color:var(--txt-primary);">${team?.teamName || c.teamId}</td>
-                    <td class="text-center">${c.registrationConfirmation ? chk : xmk}</td>
-                    <td class="text-center">${c.paymentConfirmation ? chk : xmk}</td>
-                    <td class="text-center">${c.certificateSent ? chk : `<span style="color:#e8c027;"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg></span>`}</td>
-                    <td class="text-center">${c.announcementReceived ? chk : xmk}</td>
-                    <td class="text-center">${c.feedbackSubmitted ? chk : `<span style="color:var(--txt-muted);">—</span>`}</td>
-                    ${AUTH.can('communications.write') ? `<td><button onclick="Communications.toggleCert('${c.id}',${!c.certificateSent})" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(131,56,236,0.15);color:#8338ec;">Toggle Cert</button></td>` : ''}
-                  </tr>`;
-                }).join('')}
-            </tbody>
-          </table>
-        </div>
       </div>`;
   },
 
@@ -1326,21 +1278,6 @@ const Communications = {
     await DB._request('PUT', '/notifications/mark-all-read');
     Toast.success('All notifications marked as read.');
     await this._renderTab();
-  },
-
-  async toggleCert(id, value) {
-    await DB.update('communications', id, { certificateSent: value });
-    Toast.success('Certificate status updated.');
-    await this._renderTab();
-  },
-
-  async exportCSV() {
-    const all = (await DB.getAll('communications')).filter(c => !c.isDeleted);
-    Utils.downloadCSV('WRO_Communications.csv',
-      ['ID','Team ID','Reg Confirmation','Payment Confirmation','Certificate Sent','Feedback'],
-      all.map(c => [c.id, c.teamId, c.registrationConfirmation, c.paymentConfirmation, c.certificateSent, c.feedbackSubmitted])
-    );
-    Toast.success('Communications exported!');
   },
 
   // ============================================================

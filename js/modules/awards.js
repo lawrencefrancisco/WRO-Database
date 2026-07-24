@@ -75,13 +75,35 @@ const Awards = {
   },
 
   async _renderTopSchools() {
+    // School ranking depends on awards per school. Since awards no longer store school_id directly,
+    // we must trace team -> members -> school to count awards per school.
+    const allAwards = (await DB.getAll('awards')).filter(a => !a.isDeleted);
+    const _teamsMap = await DB.getLookup('teams');
+    const _studentsMap = await DB.getLookup('students');
     const _schoolsMap = await DB.getLookup('schools');
-    const all = (await DB.getAll('awards')).filter(a => !a.isDeleted);
-    const bySchool = Utils.groupBy(all, 'schoolId');
-    const sorted   = Object.entries(bySchool).sort((a,b) => b[1].length - a[1].length).slice(0,6);
+
+    const schoolCounts = {};
+    allAwards.forEach(a => {
+      const team = _teamsMap[a.teamId];
+      let sIds = new Set();
+      if (team && team.members && team.members.length > 0) {
+        team.members.forEach(mid => {
+          const sid = _studentsMap[mid]?.schoolId;
+          if (sid) sIds.add(sid);
+        });
+      }
+      if (sIds.size === 0 && team && team.schoolId) sIds.add(team.schoolId);
+
+      sIds.forEach(sid => {
+        schoolCounts[sid] = (schoolCounts[sid] || 0) + 1;
+      });
+    });
+
+    const sorted = Object.entries(schoolCounts).sort((a,b) => b[1] - a[1]).slice(0,6);
     const rankColors = ['#F6C945','#F6C945','#cd7f32','#5a6a8a','#5a6a8a','#5a6a8a'];
     const rankLabels = ['1st','2nd','3rd','4th','5th','6th'];
-    document.getElementById('top-schools').innerHTML = sorted.map(([sid, awards], idx) => {
+    
+    document.getElementById('top-schools').innerHTML = sorted.map(([sid, count], idx) => {
       const school = _schoolsMap[sid];
       const color  = rankColors[idx];
       return `
@@ -89,7 +111,7 @@ const Awards = {
           <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold" style="background:rgba(22,32,56,0.9);color:${color};border:1px solid ${color}40">${rankLabels[idx]}</div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-semibold text-white truncate">${school?.schoolName || 'Unknown'}</div>
-            <div class="text-xs text-slate-400">${awards.length} award${awards.length!==1?'s':''}</div>
+            <div class="text-xs text-slate-400">${count} award${count!==1?'s':''}</div>
           </div>
         </div>`;
     }).join('') || '<p class="text-slate-500 text-sm col-span-3">No data yet</p>';
@@ -108,6 +130,8 @@ const Awards = {
   async _loadTable() {
     const _teamsMap = await DB.getLookup('teams');
     const _schoolsMap = await DB.getLookup('schools');
+    const _competitionsMap = await DB.getLookup('competitions');
+    const _studentsMap = await DB.getLookup('students');
     const rows  = await this._getData();
     const start = (this._page - 1) * this._perPage;
     const page  = rows.slice(start, start + this._perPage);
@@ -119,7 +143,18 @@ const Awards = {
     }
     tbody.innerHTML = page.map(a => {
       const team   = _teamsMap[a.teamId];
-      const school = _schoolsMap[a.schoolId];
+      
+      let sNames = [];
+      if (team && team.members && team.members.length > 0) {
+        const sIds = new Set(team.members.map(mid => _studentsMap[mid]?.schoolId).filter(Boolean));
+        sNames = Array.from(sIds).map(sid => _schoolsMap[sid]?.schoolName).filter(Boolean);
+      }
+      if (sNames.length === 0 && team && team.schoolId) sNames = [_schoolsMap[team.schoolId]?.schoolName];
+      const schoolDisplay = sNames.length > 0 ? sNames.join(', ') : '—';
+      
+      const comp = _competitionsMap[a.competitionId];
+      const compDisplay = comp ? comp.name : (a.event || '—');
+
       const awardIcon = a.award==='Champion'
         ? `<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#F6C945' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`
         : a.award?.includes('Runner')
@@ -131,7 +166,7 @@ const Awards = {
             <div class="font-semibold text-white text-sm">${team?.teamName || '—'}</div>
             <div class="text-xs text-slate-500">${a.category}</div>
           </td>
-          <td class="text-sm text-slate-300">${Utils.truncate(school?.schoolName,25)||'—'}</td>
+          <td class="text-sm text-slate-300">${Utils.truncate(schoolDisplay,25)}</td>
           <td class="text-xs text-slate-400">${a.category}</td>
           <td>
             <div class="flex items-center gap-2">
@@ -140,7 +175,7 @@ const Awards = {
             </div>
           </td>
           <td><span class="badge badge-purple">${a.year}</span></td>
-          <td class="text-xs text-slate-400">${Utils.truncate(a.event,30)}</td>
+          <td class="text-xs text-slate-400">${Utils.truncate(compDisplay,30)}</td>
           <td>${a.hasCertificate ? `<span class="badge badge-green"><svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline;vertical-align:middle'><polyline points='20 6 9 17 4 12'/></svg> Issued</span>` : '<span class="badge badge-gray">Pending</span>'}</td>
           <td>
             <div class="flex gap-2">
@@ -166,7 +201,7 @@ const Awards = {
     const end = new Date().getFullYear() + 1;
     const years = [];
     for (let y = 2022; y <= end; y++) years.push(y);
-    return years.map(y => `<option ${selected == y ? 'selected' : ''}>${y}</option>`).join('');
+    return years.map(y => `<option value="${y}" ${selected == y ? 'selected' : ''}>${y}</option>`).join('');
   },
 
   async openForm(id = null) {
@@ -174,90 +209,147 @@ const Awards = {
     const teams  = (await DB.getAll('teams')).filter(t => !t.isDeleted);
     const schools= (await DB.getAll('schools')).filter(s => !s.isDeleted);
     const coaches= (await DB.getAll('coaches')).filter(c => !c.isDeleted);
+    const students= (await DB.getAll('students')).filter(s => !s.isDeleted);
+    const competitions = (await DB.getAll('competitions')).filter(c => !c.isDeleted);
 
-    // Build team→school map for auto-detection
-    const teamSchoolMap = {};
-    teams.forEach(t => { if (t.schoolId) teamSchoolMap[t.id] = t.schoolId; });
+    // Pre-calculate schools and coaches per team for the UI map
+    const _sMap = {}; schools.forEach(s => _sMap[s.id] = s.schoolName);
+    const _cMap = {}; coaches.forEach(c => _cMap[c.id] = c.fullName);
+    const _stMap = {}; students.forEach(s => _stMap[s.id] = s);
+
+    const teamMetaMap = {};
+    teams.forEach(t => {
+      // Get all unique schools from team members, fallback to team.schoolId
+      let sNames = [];
+      if (t.members && t.members.length > 0) {
+        const sIds = new Set(t.members.map(mid => _stMap[mid]?.schoolId).filter(Boolean));
+        sNames = Array.from(sIds).map(sid => _sMap[sid]).filter(Boolean);
+      }
+      if (sNames.length === 0 && t.schoolId) sNames = [_sMap[t.schoolId]];
+
+      // Get all coach names
+      const cNames = (t.coaches || []).map(cid => _cMap[cid]).filter(Boolean);
+
+      teamMetaMap[t.id] = {
+        schools: sNames.length > 0 ? sNames : ['No School assigned'],
+        coaches: cNames.length > 0 ? cNames : ['No Coach assigned'],
+        category: t.category || '',
+        season: t.season || ''
+      };
+    });
+    window._awardsTeamMetaMap = teamMetaMap;
 
     Modal.show(id ? 'Edit Award' : 'Add Award', `
-      <form id="award-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label class="form-label">Team</label>
-          <select class="form-input" name="teamId" id="award-team-select"
-                  onchange="Awards._onTeamChange()">
-            <option value="">Select Team</option>
-            ${teams.map(t=>`<option value="${t.id}" ${a?.teamId===t.id?'selected':''}>${t.teamName}</option>`).join('')}
+      <form id="award-form" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="event.preventDefault();">
+
+        <!-- Team selector – spans full width -->
+        <div class="md:col-span-2"><label class="form-label">Team <span class="text-red-400">*</span></label>
+          <select class="form-input" name="teamId" id="award-team-select" onchange="Awards._onTeamChange()">
+            <option value="">— Select Team —</option>
+            ${teams.map(t=>`<option value="${t.id}" ${a?.teamId===t.id?'selected':''}>${Utils.esc(t.teamName)} (${t.season||''})</option>`).join('')}
           </select>
         </div>
-        <div><label class="form-label">School
+
+        <!-- Auto-detected school badges -->
+        <div><label class="form-label">School(s)
           <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from team)</span>
         </label>
-          <select class="form-input" name="schoolId" id="award-school-select">
-            <option value="">— auto-detected —</option>
-            ${schools.map(s=>`<option value="${s.id}" ${a?.schoolId===s.id?'selected':''}>${s.schoolName}</option>`).join('')}
-          </select>
+          <div id="award-school-display" class="form-input flex flex-wrap gap-1.5 min-h-[42px] items-center" style="background:rgba(255,255,255,0.04);cursor:default;">
+            <span class="text-slate-500 text-sm">Select a team first</span>
+          </div>
         </div>
-        <div><label class="form-label">Coach</label>
-          <select class="form-input" name="coachId">
-            <option value="">Select Coach</option>
-            ${coaches.map(c=>`<option value="${c.id}" ${a?.coachId===c.id?'selected':''}>${c.fullName}</option>`).join('')}
-          </select>
+
+        <!-- Auto-detected coach badges -->
+        <div><label class="form-label">Coach(es)
+          <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from team)</span>
+        </label>
+          <div id="award-coach-display" class="form-input flex flex-wrap gap-1.5 min-h-[42px] items-center" style="background:rgba(255,255,255,0.04);cursor:default;">
+            <span class="text-slate-500 text-sm">Select a team first</span>
+          </div>
         </div>
+
         <div><label class="form-label">Category</label>
           <select class="form-input" name="category">
-            ${Seeder.WRO_CATEGORIES.map(c=>`<option ${a?.category===c?'selected':''}>${c}</option>`).join('')}
+            ${Seeder.WRO_CATEGORIES.map(c=>`<option value="${c}" ${a?.category===c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
-        <div><label class="form-label">Award *</label>
+
+        <div><label class="form-label">Award <span class="text-red-400">*</span></label>
           <select class="form-input" name="award" required>
-            ${Seeder.AWARDS_LIST.map(aw=>`<option ${a?.award===aw?'selected':''}>${aw}</option>`).join('')}
+            ${Seeder.AWARDS_LIST.map(aw=>`<option value="${aw}" ${a?.award===aw?'selected':''}>${aw}</option>`).join('')}
           </select>
         </div>
+
         <div><label class="form-label">Year</label>
           <select class="form-input" name="year">
             ${Awards._yearOptions(a?.year)}
           </select>
         </div>
-        <div class="md:col-span-2"><label class="form-label">Event</label>
-          <input class="form-input" name="event" value="${a?.event||'WRO Philippines National Finals'}">
+
+        <!-- Competition dropdown – spans full width -->
+        <div class="md:col-span-2"><label class="form-label">Competition</label>
+          <select class="form-input" name="competitionId">
+            <option value="">— Select Competition —</option>
+            ${competitions.map(c => `<option value="${c.id}" ${a?.competitionId===c.id?'selected':''}>${c.name} (${c.season||''})</option>`).join('')}
+          </select>
         </div>
+
         <div><label class="form-label">Trophy</label>
           <select class="form-input" name="hasTrophy">
             <option value="true" ${a?.hasTrophy?'selected':''}>Yes</option>
             <option value="false" ${!a?.hasTrophy?'selected':''}>No</option>
           </select>
         </div>
+
         <div><label class="form-label">Medal</label>
           <select class="form-input" name="hasMedal">
             <option value="true" ${a?.hasMedal?'selected':''}>Yes</option>
             <option value="false" ${!a?.hasMedal?'selected':''}>No</option>
           </select>
         </div>
+
         <div><label class="form-label">Certificate</label>
           <select class="form-input" name="hasCertificate">
             <option value="true" ${a?.hasCertificate?'selected':''}>Yes</option>
             <option value="false" ${!a?.hasCertificate?'selected':''}>No</option>
           </select>
         </div>
+
         <div><label class="form-label">Status</label>
           <select class="form-input" name="status">
             ${['confirmed','pending'].map(s=>`<option ${a?.status===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
+
       </form>`,
       `<button onclick="Modal.close()" class="px-5 py-2 rounded-xl bg-slate-700 text-white text-sm font-semibold">Cancel</button>
        <button onclick="Awards._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Award</button>`,
       'max-w-3xl'
     );
-    Awards._teamSchoolMap = teamSchoolMap;
+    // Trigger team change on load if editing
+    setTimeout(() => { if(a?.teamId) Awards._onTeamChange(a.teamId); }, 50);
   },
 
-  // Auto-fill school when team changes
-  _onTeamChange() {
-    const teamSel   = document.getElementById('award-team-select');
-    const schoolSel = document.getElementById('award-school-select');
-    if (!teamSel || !schoolSel) return;
-    const schoolId = Awards._teamSchoolMap?.[teamSel.value];
-    if (schoolId) schoolSel.value = schoolId;
+  _onTeamChange(overrideId = null) {
+    const sMap = window._awardsTeamMetaMap || {};
+    const teamId = overrideId || document.getElementById('award-team-select')?.value;
+    const meta = sMap[teamId];
+
+    const schoolDisp = document.getElementById('award-school-display');
+    const coachDisp = document.getElementById('award-coach-display');
+
+    if (!teamId || !meta) {
+      if (schoolDisp) schoolDisp.innerHTML = '<span class="text-slate-500 text-sm">Select a team first</span>';
+      if (coachDisp) coachDisp.innerHTML = '<span class="text-slate-500 text-sm">Select a team first</span>';
+      return;
+    }
+
+    if (schoolDisp) {
+      schoolDisp.innerHTML = meta.schools.map(s => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(30,158,191,0.15);color:#1E9EBF;">${s}</span>`).join('');
+    }
+    if (coachDisp) {
+      coachDisp.innerHTML = meta.coaches.map(c => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${c}</span>`).join('');
+    }
   },
 
   async _save(id) {
@@ -279,13 +371,25 @@ const Awards = {
   async exportCSV() {
     const _teamsMap = await DB.getLookup('teams');
     const _schoolsMap = await DB.getLookup('schools');
+    const _studentsMap = await DB.getLookup('students');
+    const _competitionsMap = await DB.getLookup('competitions');
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Awards.csv',
       ['ID','Team','School','Category','Award','Year','Event','Trophy','Medal','Certificate'],
       rows.map(a => {
-        const t = _teamsMap[a.teamId];
-        const s = _schoolsMap[a.schoolId];
-        return [a.id,t?.teamName||'',s?.schoolName||'',a.category,a.award,a.year,a.event,a.hasTrophy,a.hasMedal,a.hasCertificate];
+        const team = _teamsMap[a.teamId];
+        let sNames = [];
+        if (team && team.members && team.members.length > 0) {
+          const sIds = new Set(team.members.map(mid => _studentsMap[mid]?.schoolId).filter(Boolean));
+          sNames = Array.from(sIds).map(sid => _schoolsMap[sid]?.schoolName).filter(Boolean);
+        }
+        if (sNames.length === 0 && team && team.schoolId) sNames = [_schoolsMap[team.schoolId]?.schoolName];
+        const schoolDisplay = sNames.length > 0 ? sNames.join(', ') : '';
+        
+        const comp = _competitionsMap[a.competitionId];
+        const compDisplay = comp ? comp.name : (a.event || '');
+
+        return [a.id,team?.teamName||'',schoolDisplay,a.category,a.award,a.year,compDisplay,a.hasTrophy,a.hasMedal,a.hasCertificate];
       })
     );
     Toast.success('Awards exported!');
