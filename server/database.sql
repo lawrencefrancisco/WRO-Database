@@ -130,6 +130,7 @@ CREATE TABLE students (
   parent_name             VARCHAR(200)  DEFAULT NULL,
   parent_contact          VARCHAR(20)   DEFAULT NULL,
   parent_email            VARCHAR(200)  DEFAULT NULL,
+  personal_email          VARCHAR(200)  DEFAULT NULL,
   medical_conditions      VARCHAR(300)  DEFAULT 'None',
   allergies               VARCHAR(300)  DEFAULT 'None',
   shirt_size              ENUM('XS','S','M','L','XL') DEFAULT 'M',

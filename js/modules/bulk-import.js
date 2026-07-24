@@ -25,9 +25,9 @@ const BulkImport = {
     students: {
       label:    'Students',
       endpoint: '/api/import/students',
-      headers:  ['Full Name', 'School Name', 'Birthday', 'Age', 'Gender', 'Grade Level', 'Parent Name', 'Parent Contact', 'Parent Email', 'Shirt Size'],
+      headers:  ['Full Name', 'School Name', 'Birthday', 'Age', 'Gender', 'Grade Level', 'Personal Email', 'Parent Name', 'Parent Contact', 'Parent Email', 'Shirt Size'],
       required: ['Full Name', 'School Name'],
-      sample:   [['Juan Dela Cruz', 'Laguna School of Technology', '2010-03-15', '14', 'Male', 'Grade 9', 'Pedro Dela Cruz', '09201234567', 'pedro@email.com', 'S']],
+      sample:   [['Juan Dela Cruz', 'Laguna School of Technology', '2010-03-15', '14', 'Male', 'Grade 9', 'juan@email.com', 'Pedro Dela Cruz', '09201234567', 'pedro@email.com', 'S']],
     },
     teams: {
       label:    'Teams',

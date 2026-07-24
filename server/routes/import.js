@@ -211,22 +211,23 @@ router.post('/students', upload.single('file'), async (req, res) => {
         await pool.execute(
           `INSERT INTO students
              (student_code, full_name, birthday, age, gender, grade_level, school_id,
-              parent_name, parent_contact, parent_email, shirt_size,
+              parent_name, parent_contact, parent_email, personal_email, shirt_size,
               consent_signed, status, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
           [
             code, name,
-            opt(r['Birthday']       || r['birthday']),
-            opt(r['Age']            || r['age'])            || null,
-            opt(r['Gender']         || r['gender']),
-            opt(r['Grade Level']    || r['grade_level']),
+            opt(r['Birthday']        || r['birthday']),
+            opt(r['Age']             || r['age'])             || null,
+            opt(r['Gender']          || r['gender']),
+            opt(r['Grade Level']     || r['grade_level']),
             schoolId,
-            opt(r['Parent Name']    || r['parent_name']),
-            opt(r['Parent Contact'] || r['parent_contact']),
-            opt(r['Parent Email']   || r['parent_email']),
-            opt(r['Shirt Size']     || r['shirt_size']),
+            opt(r['Parent Name']     || r['parent_name']),
+            opt(r['Parent Contact']  || r['parent_contact']),
+            opt(r['Parent Email']    || r['parent_email']),
+            opt(r['Personal Email']  || r['personal_email']),
+            opt(r['Shirt Size']      || r['shirt_size']),
             0, // consent_signed defaults to 0
-            str(r['Status']         || r['status']) || 'active',
+            str(r['Status']          || r['status']) || 'active',
           ]
         );
         inserted++;

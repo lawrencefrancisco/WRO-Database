@@ -188,6 +188,7 @@ async function autoInitDatabase(pool) {
         parent_name             VARCHAR(200)  DEFAULT NULL,
         parent_contact          VARCHAR(20)   DEFAULT NULL,
         parent_email            VARCHAR(200)  DEFAULT NULL,
+        personal_email          VARCHAR(200)  DEFAULT NULL,
         medical_conditions      VARCHAR(300)  DEFAULT 'None',
         allergies               VARCHAR(300)  DEFAULT 'None',
         shirt_size              ENUM('XS','S','M','L','XL') DEFAULT 'M',
@@ -594,6 +595,13 @@ async function autoInitDatabase(pool) {
       await conn.execute('ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) DEFAULT NULL AFTER is_verified');
       await conn.execute('ALTER TABLE users ADD COLUMN otp_expires_at DATETIME DEFAULT NULL AFTER otp_code');
       console.log('🛠️  Added otp_code and otp_expires_at to users.');
+    }
+
+    // students.personal_email
+    const hasPersonalEmail = await columnExists(conn, 'students', 'personal_email');
+    if (!hasPersonalEmail) {
+      await conn.execute('ALTER TABLE students ADD COLUMN personal_email VARCHAR(200) DEFAULT NULL AFTER parent_email');
+      console.log('🛠️  Added personal_email to students.');
     }
 
     // Clean up old unverified ghost accounts left by the old registration flow
