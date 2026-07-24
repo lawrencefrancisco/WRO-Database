@@ -166,7 +166,7 @@ const Awards = {
     const end = new Date().getFullYear() + 1;
     const years = [];
     for (let y = 2022; y <= end; y++) years.push(y);
-    return years.map(y => `<option ${selected == y ? 'selected' : ''}>${y}</option>`).join('');
+    return years.map(y => `<option value="${y}" ${selected == y ? 'selected' : ''}>${y}</option>`).join('');
   },
 
   async openForm(id = null) {
@@ -180,7 +180,7 @@ const Awards = {
     teams.forEach(t => { if (t.schoolId) teamSchoolMap[t.id] = t.schoolId; });
 
     Modal.show(id ? 'Edit Award' : 'Add Award', `
-      <form id="award-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form id="award-form" class="grid grid-cols-1 md:grid-cols-2 gap-4" onsubmit="event.preventDefault();">
         <div><label class="form-label">Team</label>
           <select class="form-input" name="teamId" id="award-team-select"
                   onchange="Awards._onTeamChange()">
@@ -204,12 +204,12 @@ const Awards = {
         </div>
         <div><label class="form-label">Category</label>
           <select class="form-input" name="category">
-            ${Seeder.WRO_CATEGORIES.map(c=>`<option ${a?.category===c?'selected':''}>${c}</option>`).join('')}
+            ${Seeder.WRO_CATEGORIES.map(c=>`<option value="${c}" ${a?.category===c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
         <div><label class="form-label">Award *</label>
           <select class="form-input" name="award" required>
-            ${Seeder.AWARDS_LIST.map(aw=>`<option ${a?.award===aw?'selected':''}>${aw}</option>`).join('')}
+            ${Seeder.AWARDS_LIST.map(aw=>`<option value="${aw}" ${a?.award===aw?'selected':''}>${aw}</option>`).join('')}
           </select>
         </div>
         <div><label class="form-label">Year</label>

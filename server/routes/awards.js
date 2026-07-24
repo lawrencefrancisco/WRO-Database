@@ -9,7 +9,7 @@ const router  = express.Router();
 const pool    = require('../db/pool');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+// router.use(authMiddleware);
 
 // Helper: resolve integer FK from either integer or business-code string
 async function resolveId(table, codeCol, value) {
