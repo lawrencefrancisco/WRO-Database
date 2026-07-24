@@ -144,6 +144,7 @@ const Teams = {
     const coaches = (await DB.getAll('coaches')).filter(c => !c.isDeleted);
     const students= (await DB.getAll('students')).filter(s => !s.isDeleted);
     const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
+    const competitions = (await DB.getAll('competitions')).filter(c => !c.isDeleted);
     const selectedMembers = t?.members || [];
 
     // Build lookup maps for auto-detection
@@ -185,6 +186,12 @@ const Teams = {
         <div><label class="form-label">Age Group</label>
           <select class="form-input" name="ageGroup">
             ${['Elementary','Junior','Senior','Open'].map(a=>`<option ${t?.ageGroup===a?'selected':''}>${a}</option>`).join('')}
+          </select>
+        </div>
+        <div><label class="form-label">Competition</label>
+          <select class="form-input" name="competitionId">
+            <option value="">— Select Competition —</option>
+            ${competitions.map(c=>`<option value="${c.id}" ${t?.competitionId===c.id?'selected':''}>${c.name}</option>`).join('')}
           </select>
         </div>
 

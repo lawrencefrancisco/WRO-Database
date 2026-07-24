@@ -32,9 +32,9 @@ const BulkImport = {
     teams: {
       label:    'Teams',
       endpoint: '/api/import/teams',
-      headers:  ['Team Name', 'School Name', 'Coach Email', 'Category', 'Season', 'Age Group', 'Members (comma-separated full names)'],
+      headers:  ['Team Name', 'School Name', 'Coach Email', 'Competition', 'Category', 'Season', 'Age Group', 'Members (comma-separated full names)'],
       required: ['Team Name'],
-      sample:   [['Team Alpha', 'Laguna School of Technology', 'msantos@school.ph', 'WRO Regular Category', '2024', 'Junior', 'Juan Dela Cruz, Maria Lim']],
+      sample:   [['Team Alpha', 'Laguna School of Technology', 'msantos@school.ph', 'WRO 2026', 'WRO Regular Category', '2024', 'Junior', 'Juan Dela Cruz, Maria Lim']],
     },
   },
 

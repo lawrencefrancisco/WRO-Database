@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Module 5 – Competition Management (Redesigned)
 // Seasons are first-class DB records; statistics are computed
 // live from the teams / team_members tables — never stored.
@@ -879,12 +879,12 @@ const Competitions = {
     const { teams, schools, coaches, judges, students, events } = data;
 
     const tabs = [
-      { key: 'events',   label: 'Events',   count: events.length,   color: '#a890f0' },
-      { key: 'teams',    label: 'Teams',    count: teams.length,    color: '#F6C945' },
-      { key: 'schools',  label: 'Schools',  count: schools.length,  color: '#4f9cf9' },
-      { key: 'coaches',  label: 'Coaches',  count: coaches.length,  color: '#2dc653' },
-      { key: 'judges',   label: 'Judges',   count: judges.length,   color: '#a890f0' },
-      { key: 'students', label: 'Students', count: students.length, color: '#e91e8c' },
+      { key: 'events',   label: 'Events',   count: events.length,   color: '#a890f0', icon: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>' },
+      { key: 'teams',    label: 'Teams',    count: teams.length,    color: '#F6C945', icon: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/>' },
+      { key: 'schools',  label: 'Schools',  count: schools.length,  color: '#4f9cf9', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+      { key: 'coaches',  label: 'Coaches',  count: coaches.length,  color: '#2dc653', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+      { key: 'judges',   label: 'Judges',   count: judges.length,   color: '#a890f0', icon: '<circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/>' },
+      { key: 'students', label: 'Students', count: students.length, color: '#e91e8c', icon: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 6 3 6 3s6-1 6-3v-5"/>' },
     ];
 
     const _badge = (txt, color = '#F6C945') =>
@@ -899,24 +899,33 @@ const Competitions = {
       return _badge(v || '—', m[v] || '#F6C945');
     };
 
+    const _avatar = (name, color = '#F6C945') =>
+      `<div style="width:36px;height:36px;border-radius:10px;background:${color}22;border:1px solid ${color}44;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:${color};flex-shrink:0;">${(name||'?')[0].toUpperCase()}</div>`;
+
     const _row = (label, val) => val
-      ? `<div class="flex gap-2 text-sm"><span class="text-slate-500 w-28 flex-shrink-0">${label}</span><span class="text-slate-200 break-words">${val}</span></div>`
+      ? `<div style="display:flex;gap:8px;font-size:12px;"><span style="color:#64748b;width:110px;flex-shrink:0;">${label}</span><span style="color:#cbd5e1;word-break:break-word;">${val}</span></div>`
       : '';
 
     const _empty = msg =>
-      `<div class="text-center py-10 text-slate-500 text-sm italic">${msg || 'No records yet.'}</div>`;
+      `<div style="text-align:center;padding:3rem 1rem;color:#475569;font-size:13px;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3;">📭</div>
+        ${msg || 'No records yet.'}
+      </div>`;
 
     // ── Events Tab ────────────────────────────────────────────
     const eventsHTML = events.length === 0 ? _empty('No competition events in this season yet.') :
-      `<div class="space-y-3">
+      `<div style="display:flex;flex-direction:column;gap:10px;">
         ${events.map(e => `
-          <div class="glass-light rounded-xl p-4">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <div class="font-bold text-white text-sm">${e.name}</div>
-                <div class="text-xs text-slate-500 mt-0.5">${e.venue || '—'} · ${Utils.formatDate(e.date)}</div>
+          <div style="background:rgba(168,144,240,0.06);border:1px solid rgba(168,144,240,0.18);border-radius:14px;padding:14px 16px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                ${_avatar(e.name, '#a890f0')}
+                <div>
+                  <div style="font-weight:700;color:#f1f5f9;font-size:13px;">${e.name}</div>
+                  <div style="font-size:11px;color:#64748b;margin-top:2px;">${e.venue || '—'} · ${Utils.formatDate(e.date)}</div>
+                </div>
               </div>
-              <div class="flex flex-wrap gap-1.5">
+              <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
                 ${_statusBadge(e.status)}
                 ${(e.categories || []).map(c => _badge(c, '#F6C945')).join('')}
               </div>
@@ -926,18 +935,21 @@ const Competitions = {
 
     // ── Teams Tab ─────────────────────────────────────────────
     const teamsHTML = teams.length === 0 ? _empty('No teams registered for this season.') :
-      `<div class="space-y-3">
+      `<div style="display:flex;flex-direction:column;gap:10px;">
         ${teams.map(t => `
-          <div class="glass-light rounded-xl p-4 space-y-2">
-            <div class="flex items-start justify-between gap-2 flex-wrap">
-              <div>
-                <div class="font-bold text-white text-sm">${t.team_name}</div>
-                <div class="text-xs text-slate-400 mt-0.5">${(() => {
-                  const memberSchools = [...new Set((t.members || []).map(m => m.student_school).filter(Boolean))];
-                  return memberSchools.length > 0 ? memberSchools.join(', ') : (t.school_name || '—');
-                })()}</div>
+          <div style="background:rgba(246,201,69,0.04);border:1px solid rgba(246,201,69,0.14);border-radius:14px;padding:14px 16px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                ${_avatar(t.team_name, '#F6C945')}
+                <div>
+                  <div style="font-weight:700;color:#f1f5f9;font-size:13px;">${t.team_name}</div>
+                  <div style="font-size:11px;color:#64748b;margin-top:2px;">${(() => {
+                    const memberSchools = [...new Set((t.members || []).map(m => m.student_school).filter(Boolean))];
+                    return memberSchools.length > 0 ? memberSchools.join(', ') : (t.school_name || '—');
+                  })()}</div>
+                </div>
               </div>
-              <div class="flex flex-wrap gap-1.5">
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
                 ${_badge(t.category || '—', '#F6C945')}
                 ${_badge(t.age_group || '—', '#4f9cf9')}
                 ${_statusBadge(t.registration_status)}
@@ -945,91 +957,109 @@ const Competitions = {
                 ${_statusBadge(t.payment_status)}
               </div>
             </div>
-            ${t.coach_name ? `<div class="text-xs text-slate-400">Coach: <span class="text-slate-300">${t.coach_name}</span>${t.coach_mobile ? ` · ${t.coach_mobile}` : ''}</div>` : ''}
+            ${t.coach_name ? `<div style="font-size:11px;color:#64748b;margin-bottom:8px;">Coach: <span style="color:#94a3b8;">${t.coach_name}${t.coach_mobile ? ` · ${t.coach_mobile}` : ''}</span></div>` : ''}
             ${(t.members || []).length > 0 ? `
-              <div class="border-t border-slate-700/40 pt-2">
-                <div class="text-xs text-slate-500 uppercase font-semibold tracking-wider mb-1.5">Members</div>
-                <div class="flex flex-wrap gap-2">
+              <div style="border-top:1px solid rgba(100,116,139,0.18);padding-top:10px;">
+                <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;">Members</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
                   ${t.members.map(m => `
-                    <div class="flex items-center gap-1.5 text-xs bg-slate-800/60 rounded-lg px-2.5 py-1">
-                      <div class="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 flex-shrink-0" style="font-size:8px">${(m.full_name||'?')[0]}</div>
-                      <span class="text-slate-200">${m.full_name}</span>
-                      ${m.grade_level ? `<span class="text-slate-500">· ${m.grade_level}</span>` : ''}
-                      ${m.student_school ? `<span class="text-slate-400">· ${m.student_school}</span>` : ''}
+                    <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:20px;padding:4px 10px 4px 5px;">
+                      <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,${m.gender==='Female'?'#ec4899,#f43f5e':'#6366f1,#8b5cf6'});display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;">${(m.full_name||'?')[0]}</div>
+                      <span style="font-size:11px;color:#cbd5e1;font-weight:500;">${m.full_name}</span>
+                      ${m.grade_level ? `<span style="font-size:10px;color:#475569;">· ${m.grade_level}</span>` : ''}
                     </div>`).join('')}
                 </div>
-              </div>` : '<div class="text-xs text-slate-600 italic">No members assigned</div>'}
+              </div>` : `<div style="font-size:11px;color:#334155;font-style:italic;">No members assigned</div>`}
           </div>`).join('')}
       </div>`;
 
     // ── Schools Tab ────────────────────────────────────────────
     const schoolsHTML = schools.length === 0 ? _empty('No schools participating in this season.') :
-      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
         ${schools.map(s => `
-          <div class="glass-light rounded-xl p-4 space-y-1.5">
-            <div class="font-bold text-white text-sm">${s.school_name}</div>
-            ${_row('Type', s.school_type)}
-            ${_row('City', s.city)}
-            ${_row('Region', s.region)}
-            ${_row('Address', s.address)}
-            ${_row('Contact', s.contact_number)}
-            ${_row('Email', s.email)}
-            ${_row('School Head', s.school_head)}
-            ${_row('Coordinator', s.robotics_coordinator)}
+          <div style="background:rgba(79,156,249,0.04);border:1px solid rgba(79,156,249,0.14);border-radius:14px;padding:14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              ${_avatar(s.school_name, '#4f9cf9')}
+              <div style="font-weight:700;color:#f1f5f9;font-size:13px;line-height:1.3;">${s.school_name}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              ${_row('Type', s.school_type)}
+              ${_row('City', s.city)}
+              ${_row('Region', s.region)}
+              ${_row('Contact', s.contact_number)}
+              ${_row('Email', s.email)}
+              ${_row('School Head', s.school_head)}
+              ${_row('Coordinator', s.robotics_coordinator)}
+            </div>
           </div>`).join('')}
       </div>`;
 
     // ── Coaches Tab ────────────────────────────────────────────
     const coachesHTML = coaches.length === 0 ? _empty('No coaches assigned for this season.') :
-      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
         ${coaches.map(c => `
-          <div class="glass-light rounded-xl p-4 space-y-1.5">
-            <div class="flex items-center justify-between">
-              <div class="font-bold text-white text-sm">${c.full_name}</div>
-              ${_badge(c.position || 'Coach', '#2dc653')}
+          <div style="background:rgba(45,198,83,0.04);border:1px solid rgba(45,198,83,0.14);border-radius:14px;padding:14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              ${_avatar(c.full_name, '#2dc653')}
+              <div>
+                <div style="font-weight:700;color:#f1f5f9;font-size:13px;">${c.full_name}</div>
+                ${_badge(c.position || 'Coach', '#2dc653')}
+              </div>
             </div>
-            ${_row('School', c.school_name)}
-            ${_row('Mobile', c.mobile)}
-            ${_row('Email', c.email)}
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              ${_row('School', c.school_name)}
+              ${_row('Mobile', c.mobile)}
+              ${_row('Email', c.email)}
+            </div>
           </div>`).join('')}
       </div>`;
 
     // ── Judges Tab ─────────────────────────────────────────────
     const judgesHTML = judges.length === 0 ? _empty('No judges assigned for this season.') :
-      `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
         ${judges.map(j => `
-          <div class="glass-light rounded-xl p-4 space-y-1.5">
-            <div class="flex items-center justify-between">
-              <div class="font-bold text-white text-sm">${j.full_name}</div>
+          <div style="background:rgba(168,144,240,0.04);border:1px solid rgba(168,144,240,0.14);border-radius:14px;padding:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                ${_avatar(j.full_name, '#a890f0')}
+                <div style="font-weight:700;color:#f1f5f9;font-size:13px;">${j.full_name}</div>
+              </div>
               ${_statusBadge(j.status)}
             </div>
-            ${_row('Category', j.judging_category ? j.judging_category.split(',').map(c => _badge(c.trim(), '#a890f0')).join(' ') : '—')}
-            ${_row('Gender', j.gender)}
-            ${_row('Contact', j.contact_number)}
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              ${j.judging_category ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${j.judging_category.split(',').map(c => _badge(c.trim(), '#a890f0')).join('')}</div>` : ''}
+              ${_row('Gender', j.gender)}
+              ${_row('Contact', j.contact_number)}
+            </div>
           </div>`).join('')}
       </div>`;
 
     // ── Students Tab ───────────────────────────────────────────
     const studentsHTML = students.length === 0 ? _empty('No students enrolled for this season.') : `
-      <div class="overflow-x-auto rounded-xl">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(100,116,139,0.15);">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
-            <tr style="background:rgba(22,32,56,0.95)">
+            <tr style="background:rgba(15,23,42,0.8);">
               ${['Name','Team','School','Grade','Age','Gender','Consent'].map(h =>
-                `<th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.05em;white-space:nowrap">${h}</th>`
+                `<th style="padding:11px 14px;text-align:left;color:#475569;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em;white-space:nowrap;">${h}</th>`
               ).join('')}
             </tr>
           </thead>
           <tbody>
             ${students.map((s, i) => `
-              <tr style="border-top:1px solid rgba(100,116,139,0.12);background:${i%2===0?'rgba(15,23,42,0.25)':'transparent'}">
-                <td style="padding:9px 12px;color:#e2e8f0;font-weight:500;white-space:nowrap">${s.full_name}</td>
-                <td style="padding:9px 12px;color:#94a3b8">${s.team_name || '—'}</td>
-                <td style="padding:9px 12px;color:#94a3b8">${s.school_name || '—'}</td>
-                <td style="padding:9px 12px;color:#94a3b8">${s.grade_level || '—'}</td>
-                <td style="padding:9px 12px;color:#94a3b8">${s.age || '—'}</td>
-                <td style="padding:9px 12px;color:#94a3b8">${s.gender || '—'}</td>
-                <td style="padding:9px 12px">${s.consent_signed ? _badge('Signed','#2dc653') : _badge('Pending','#e63946')}</td>
+              <tr style="border-top:1px solid rgba(100,116,139,0.08);background:${i%2===0?'rgba(15,23,42,0.3)':'transparent'};transition:background 0.15s;" onmouseover="this.style.background='rgba(246,201,69,0.04)'" onmouseout="this.style.background='${i%2===0?'rgba(15,23,42,0.3)':'transparent'}'">
+                <td style="padding:10px 14px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,${s.gender==='Female'?'#ec4899,#f43f5e':'#6366f1,#8b5cf6'});display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;flex-shrink:0;">${(s.full_name||'?')[0]}</div>
+                    <span style="color:#e2e8f0;font-weight:600;white-space:nowrap;">${s.full_name}</span>
+                  </div>
+                </td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.team_name || '—'}</td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.school_name || '—'}</td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.grade_level || '—'}</td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.age || '—'}</td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.gender || '—'}</td>
+                <td style="padding:10px 14px;">${s.consent_signed ? _badge('Signed','#2dc653') : _badge('Pending','#e63946')}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -1039,35 +1069,39 @@ const Competitions = {
                           coaches: coachesHTML, judges: judgesHTML, students: studentsHTML };
 
     const modalBody = `
-      <div class="space-y-4">
+      <div style="display:flex;flex-direction:column;gap:16px;">
 
-        <!-- Summary counts -->
-        <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <!-- Summary stat cards -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
           ${tabs.map(t => `
-            <div class="glass-light rounded-xl p-3 text-center cursor-pointer hover:ring-1 transition"
-              style="--ring-color:${t.color}" onclick="Competitions._switchSeasonTab('${t.key}')">
-              <div class="text-xl font-extrabold" style="color:${t.color}">${t.count}</div>
-              <div class="text-xs text-slate-500 mt-0.5">${t.label}</div>
+            <div onclick="Competitions._switchSeasonTab('${t.key}')"
+              style="background:${t.color}0d;border:1px solid ${t.color}28;border-radius:14px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;"
+              onmouseover="this.style.background='${t.color}22';this.style.borderColor='${t.color}55';"
+              onmouseout="this.style.background='${t.color}0d';this.style.borderColor='${t.color}28';">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${t.color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 6px;" aria-hidden="true">${t.icon}</svg>
+              <div style="font-size:22px;font-weight:900;color:${t.color};line-height:1;">${t.count}</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px;font-weight:600;">${t.label}</div>
             </div>`).join('')}
         </div>
 
         <!-- Tab bar -->
-        <div class="flex gap-1 border-b border-slate-700/50 overflow-x-auto" id="season-tab-bar">
+        <div style="display:flex;gap:4px;border-bottom:1px solid rgba(100,116,139,0.2);overflow-x:auto;padding-bottom:0;" id="season-tab-bar">
           ${tabs.map((t, i) => `
             <button id="season-tab-${t.key}"
               onclick="Competitions._switchSeasonTab('${t.key}')"
-              style="padding:8px 14px;border-radius:8px 8px 0 0;font-size:12px;font-weight:600;
-                     border:none;cursor:pointer;transition:all .2s;white-space:nowrap;
-                     background:${i===0?`${t.color}22`:'transparent'};
-                     color:${i===0?t.color:'#64748b'};
+              style="padding:8px 14px;border-radius:10px 10px 0 0;font-size:12px;font-weight:700;
+                     border:none;cursor:pointer;transition:all .2s;white-space:nowrap;outline:none;
+                     background:${i===0?`${t.color}18`:'transparent'};
+                     color:${i===0?t.color:'#475569'};
                      border-bottom:${i===0?`2px solid ${t.color}`:'2px solid transparent'}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px;" aria-hidden="true">${t.icon}</svg>
               ${t.label}
-              <span style="margin-left:5px;font-size:10px;background:rgba(100,116,139,0.2);border-radius:10px;padding:1px 6px">${t.count}</span>
+              <span style="margin-left:5px;font-size:10px;background:rgba(100,116,139,0.15);border-radius:10px;padding:1px 6px;">${t.count}</span>
             </button>`).join('')}
         </div>
 
         <!-- Tab content -->
-        <div id="season-tab-content" class="max-h-[420px] overflow-y-auto pr-1 space-y-3">
+        <div id="season-tab-content" style="max-height:440px;overflow-y:auto;padding-right:4px;">
           ${eventsHTML}
         </div>
       </div>`;
