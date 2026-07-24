@@ -84,9 +84,9 @@ router.get('/recipients', requireRole('SUPER_ADMIN', 'EVENT_ADMIN'), async (req,
          WHERE c.status = 'active' AND c.is_deleted = 0 AND c.email IS NOT NULL AND c.email != ''`
       ),
       pool.execute(
-        `SELECT st.id, st.full_name AS name, st.parent_email AS email, COALESCE(s.school_name, '—') AS school_name 
+        `SELECT st.id, st.full_name AS name, st.personal_email AS email, COALESCE(s.school_name, '—') AS school_name 
          FROM students st LEFT JOIN schools s ON s.id = st.school_id
-         WHERE st.status = 'active' AND st.is_deleted = 0 AND st.parent_email IS NOT NULL AND st.parent_email != ''`
+         WHERE st.status = 'active' AND st.is_deleted = 0 AND st.personal_email IS NOT NULL AND st.personal_email != ''`
       ),
       pool.execute(
         `SELECT id, full_name AS name, email, '—' AS school_name 
@@ -266,7 +266,7 @@ router.post('/send', requireRole('SUPER_ADMIN', 'EVENT_ADMIN'), async (req, res)
     if (studentIds.length > 0) {
       queries.push(
         pool.execute(
-          `SELECT id, full_name AS name, parent_email AS email FROM students WHERE id IN (${studentIds.map(() => '?').join(',')}) AND status='active' AND is_deleted=0 AND parent_email IS NOT NULL AND parent_email != ''`,
+          `SELECT id, full_name AS name, personal_email AS email FROM students WHERE id IN (${studentIds.map(() => '?').join(',')}) AND status='active' AND is_deleted=0 AND personal_email IS NOT NULL AND personal_email != ''`,
           studentIds
         ).then(([r]) => recipients.push(...r.map(row => ({...row, id: 'student_' + row.id}))))
       );
