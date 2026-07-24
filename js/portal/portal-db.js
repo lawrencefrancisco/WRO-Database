@@ -5,7 +5,7 @@
 // ============================================================
 
 const PORTAL_DB = {
-  _BASE: 'http://localhost:3000/api',
+  _BASE: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api',
 
   _headers() {
     return {
@@ -43,10 +43,23 @@ const PORTAL_DB = {
     return data;
   },
 
+  async delete(path, body = {}) {
+    const res  = await fetch(`${this._BASE}${path}`, {
+      method:  'DELETE',
+      headers: this._headers(),
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  },
+
   // Convenience portal-scoped getters
   me()            { return this.get('/portal/me'); },
   dashboard()     { return this.get('/portal/dashboard'); },
   teams()         { return this.get('/portal/teams'); },
+  linkTeam(token)    { return this.post('/portal/link-team', { qr_token: token }); },
+  unlinkTeam(teamId) { return this.delete('/portal/link-team', { team_id: teamId }); },
   payments()      { return this.get('/portal/payments'); },
   announcements() { return this.get('/portal/announcements'); },
   notifications() { return this.get('/portal/notifications'); },

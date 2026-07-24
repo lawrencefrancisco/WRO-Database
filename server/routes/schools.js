@@ -2,7 +2,6 @@
 // WRO Philippines DBMS – Schools Routes
 // id column is now INT AUTO_INCREMENT (surrogate key).
 // school_code holds the human-readable business code (SCH_xxx).
-// deped_id is a separate UNIQUE column for the DepEd identifier.
 // ============================================================
 
 const express = require('express');
@@ -43,11 +42,11 @@ router.post('/', async (req, res) => {
     const schoolCode = d.schoolCode || d.school_code || `SCH_${Date.now()}`;
 
     const [result] = await pool.execute(
-      `INSERT INTO schools (school_code, school_name, school_type, school_level, deped_id, region,
+      `INSERT INTO schools (school_code, school_name, school_type, school_level, region,
        province, city, address, contact_number, email, school_head, robotics_coordinator, website,
        years_joined, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
-      [schoolCode, d.schoolName, d.schoolType, d.schoolLevel, d.depedId || null,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+      [schoolCode, d.schoolName, d.schoolType, d.schoolLevel,
        d.region, d.province, d.city, d.address, d.contactNumber, d.email,
        d.schoolHead, d.roboticsCoordinator, d.website || null,
        d.yearsJoined || null, d.status || 'active']
@@ -66,12 +65,12 @@ router.put('/:id', async (req, res) => {
   try {
     const d = req.body;
     await pool.execute(
-      `UPDATE schools SET school_name=?, school_type=?, school_level=?, deped_id=?,
+      `UPDATE schools SET school_name=?, school_type=?, school_level=?,
        region=?, province=?, city=?, address=?, contact_number=?, email=?, school_head=?,
        robotics_coordinator=?, website=?, years_joined=?, status=?, updated_at=NOW()
        WHERE id = ?`,
       [d.schoolName, d.schoolType, d.schoolLevel,
-       d.depedId || null, d.region, d.province, d.city, d.address, d.contactNumber,
+       d.region, d.province, d.city, d.address, d.contactNumber,
        d.email, d.schoolHead, d.roboticsCoordinator, d.website || null,
        d.yearsJoined || null, d.status, req.params.id]
     );

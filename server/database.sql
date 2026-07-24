@@ -68,7 +68,6 @@ CREATE TABLE schools (
   school_name             VARCHAR(300)  NOT NULL,
   school_type             ENUM('Private','Public','Sectarian') DEFAULT 'Private',
   school_level            VARCHAR(100)  DEFAULT NULL,
-  deped_id                VARCHAR(50)   DEFAULT NULL,            -- external DepEd ID (may be NULL)
   region                  VARCHAR(200)  DEFAULT NULL,
   province                VARCHAR(200)  DEFAULT NULL,
   city                    VARCHAR(200)  DEFAULT NULL,
@@ -86,7 +85,6 @@ CREATE TABLE schools (
   updated_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_school_code (school_code),
-  UNIQUE KEY uq_deped_id    (deped_id),
   KEY idx_region      (region(100)),
   KEY idx_status      (status),
   KEY idx_school_name (school_name(100))
@@ -106,9 +104,6 @@ CREATE TABLE coaches (
   position            VARCHAR(200)  DEFAULT NULL,
   shirt_size          ENUM('XS','S','M','L','XL','XXL') DEFAULT 'M',
   emergency_contact   VARCHAR(300)  DEFAULT NULL,
-  certifications      VARCHAR(300)  DEFAULT NULL,
-  years_coaching      INT           DEFAULT 0,
-  previous_awards     VARCHAR(300)  DEFAULT NULL,
   status              ENUM('active','inactive') NOT NULL DEFAULT 'active',
   is_deleted          TINYINT(1)    NOT NULL DEFAULT 0,
   deleted_at          DATETIME      DEFAULT NULL,

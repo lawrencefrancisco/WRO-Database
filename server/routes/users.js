@@ -113,7 +113,7 @@ router.put('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
 // DELETE /api/users/:id
 router.delete('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
   try {
-    await pool.execute('UPDATE users SET is_deleted=1, deleted_at=NOW() WHERE id = ?', [req.params.id]);
+    await pool.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

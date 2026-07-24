@@ -731,8 +731,6 @@ const Competitions = {
             ${_row('School', c.school_name)}
             ${_row('Mobile', c.mobile)}
             ${_row('Email', c.email)}
-            ${c.years_coaching ? _row('Experience', `${c.years_coaching} year${c.years_coaching !== 1 ? 's' : ''}`) : ''}
-            ${_row('Certifications', c.certifications)}
           </div>`).join('')}
       </div>`;
 
@@ -745,7 +743,7 @@ const Competitions = {
               <div class="font-bold text-white text-sm">${j.full_name}</div>
               ${_statusBadge(j.status)}
             </div>
-            ${_row('Category', j.judging_category)}
+            ${_row('Category', j.judging_category ? j.judging_category.split(',').map(c => _badge(c.trim(), '#a890f0')).join(' ') : '—')}
             ${_row('Gender', j.gender)}
             ${_row('Contact', j.contact_number)}
           </div>`).join('')}
@@ -934,7 +932,10 @@ const Competitions = {
             <div class="flex items-start justify-between gap-2 flex-wrap">
               <div>
                 <div class="font-bold text-white text-sm">${t.team_name}</div>
-                <div class="text-xs text-slate-500 mt-0.5">${t.school_name || '—'}</div>
+                <div class="text-xs text-slate-400 mt-0.5">${(() => {
+                  const memberSchools = [...new Set((t.members || []).map(m => m.student_school).filter(Boolean))];
+                  return memberSchools.length > 0 ? memberSchools.join(', ') : (t.school_name || '—');
+                })()}</div>
               </div>
               <div class="flex flex-wrap gap-1.5">
                 ${_badge(t.category || '—', '#F6C945')}
@@ -954,6 +955,7 @@ const Competitions = {
                       <div class="w-4 h-4 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 flex-shrink-0" style="font-size:8px">${(m.full_name||'?')[0]}</div>
                       <span class="text-slate-200">${m.full_name}</span>
                       ${m.grade_level ? `<span class="text-slate-500">· ${m.grade_level}</span>` : ''}
+                      ${m.student_school ? `<span class="text-slate-400">· ${m.student_school}</span>` : ''}
                     </div>`).join('')}
                 </div>
               </div>` : '<div class="text-xs text-slate-600 italic">No members assigned</div>'}
@@ -989,8 +991,6 @@ const Competitions = {
             ${_row('School', c.school_name)}
             ${_row('Mobile', c.mobile)}
             ${_row('Email', c.email)}
-            ${c.years_coaching ? _row('Experience', `${c.years_coaching} yr${c.years_coaching !== 1 ? 's' : ''}`) : ''}
-            ${_row('Certifications', c.certifications)}
           </div>`).join('')}
       </div>`;
 
@@ -1003,7 +1003,7 @@ const Competitions = {
               <div class="font-bold text-white text-sm">${j.full_name}</div>
               ${_statusBadge(j.status)}
             </div>
-            ${_row('Category', j.judging_category)}
+            ${_row('Category', j.judging_category ? j.judging_category.split(',').map(c => _badge(c.trim(), '#a890f0')).join(' ') : '—')}
             ${_row('Gender', j.gender)}
             ${_row('Contact', j.contact_number)}
           </div>`).join('')}
@@ -1182,8 +1182,6 @@ const Competitions = {
       'Position':       c.position        || '',
       'Mobile':         c.mobile          || '',
       'Email':          c.email           || '',
-      'Years Coaching': c.years_coaching  ?? '',
-      'Certifications': c.certifications  || '',
     })));
 
     // ── Sheet 5: Judges ───────────────────────────────────

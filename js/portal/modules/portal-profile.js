@@ -31,11 +31,7 @@ const PortalProfile = {
               </div>
               <div class="p-info-list">
                 <div class="p-info-row">
-                  <span class="p-info-lbl">Username</span>
-                  <span class="p-info-val">${me.username || '—'}</span>
-                </div>
-                <div class="p-info-row">
-                  <span class="p-info-lbl">Email</span>
+                  <span class="p-info-lbl">Email Address</span>
                   <span class="p-info-val">${me.email || '—'}</span>
                 </div>
                 <div class="p-info-row">

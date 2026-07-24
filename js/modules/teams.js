@@ -316,18 +316,74 @@ const Teams = {
 
   async openQR(id) {
     const t = await DB.getById('teams', id);
-    Modal.show(`Team QR – ${t?.teamName}`, `
+    Modal.show(`QR Code – ${t?.teamName}`, `
       <div class="flex flex-col items-center gap-4 py-4">
-        <div id="qr-container" class="bg-white p-4 rounded-2xl"></div>
+        <div id="qr-container" class="bg-white p-4 rounded-2xl shadow-lg"></div>
         <div class="text-center">
           <div class="text-lg font-bold text-white">${t?.teamName}</div>
           <div class="text-sm text-slate-400">${t?.season} · ${t?.category}</div>
-          <div class="text-xs text-slate-500 mt-1">${t?.id}</div>
+          <div class="text-xs text-slate-500 mt-1 font-mono" id="qr-token-display">Generating…</div>
         </div>
-        <button onclick="Teams._printQR()" class="btn-primary px-6 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 6 2 18 2 18 9'/><path d='M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2'/><rect x='6' y='14' width='12' height='8'/></svg> Print QR</button>
+        <div class="text-xs text-slate-500 text-center max-w-xs">Share this QR with coaches or team members. They scan it in the User Portal to link their account to this team.</div>
+        <div class="flex gap-3">
+          <button onclick="Teams._downloadQR('${t?.teamName}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
+            <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/></svg>
+            Download PNG
+          </button>
+          <button onclick="Teams._printQR()" class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold flex items-center gap-2">
+            <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 6 2 18 2 18 9'/><path d='M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2'/><rect x='6' y='14' width='12' height='8'/></svg>
+            Print
+          </button>
+        </div>
       </div>`, '', 'max-w-sm'
     );
-    setTimeout(() => Utils.generateQR('qr-container', `WRO-PH|${t?.id}|${t?.teamName}|${t?.season}`, 200), 100);
+
+    // Generate / fetch the token, then render QR
+    setTimeout(async () => {
+      try {
+        const session = AUTH.currentUser();
+        const tokenVal = session?._token || '';
+
+        const res  = await fetch(`/api/teams/${id}/generate-qr`, {
+          method:  'POST',
+          headers: { 'Authorization': `Bearer ${tokenVal}`, 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (!data.success) { Toast.error('Failed to generate QR token.'); return; }
+
+        const token = data.qr_token;
+        const qrUrl = `${window.location.origin}${window.location.pathname.replace('index.html','').replace(/\/$/, '')}/portal?team=${token}`;
+
+        const tokenEl = document.getElementById('qr-token-display');
+        if (tokenEl) tokenEl.textContent = token.slice(0, 16) + '…';
+
+        // Use qrcode.js (loaded via CDN in index.html) to render
+        if (typeof QRCode !== 'undefined') {
+          document.getElementById('qr-container').innerHTML = '';
+          new QRCode(document.getElementById('qr-container'), {
+            text:          qrUrl,
+            width:         200,
+            height:        200,
+            colorDark:     '#000000',
+            colorLight:    '#ffffff',
+            correctLevel:  QRCode.CorrectLevel.H,
+          });
+        } else {
+          Utils.generateQR('qr-container', qrUrl, 200);
+        }
+      } catch (e) {
+        Toast.error('Error generating QR: ' + e.message);
+      }
+    }, 100);
+  },
+
+  _downloadQR(teamName) {
+    const canvas = document.querySelector('#qr-container canvas');
+    if (!canvas) { Toast.error('QR not ready yet.'); return; }
+    const link    = document.createElement('a');
+    link.download = `QR_${(teamName || 'team').replace(/\s+/g, '_')}.png`;
+    link.href     = canvas.toDataURL('image/png');
+    link.click();
   },
 
   _printQR() {

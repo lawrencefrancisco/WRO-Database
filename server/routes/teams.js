@@ -222,4 +222,20 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/teams/:id/generate-qr  — generate (or regenerate) a secure QR token
+router.post('/:id/generate-qr', async (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const token  = crypto.randomBytes(32).toString('hex');
+    const [result] = await pool.execute(
+      'UPDATE teams SET qr_token = ? WHERE id = ? AND is_deleted = 0',
+      [token, req.params.id]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ success: false, error: 'Team not found.' });
+    res.json({ success: true, qr_token: token });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

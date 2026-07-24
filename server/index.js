@@ -24,8 +24,20 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const path = require('path');
 
+// Clean URL Redirect Middleware
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html') && req.path !== '/index.html') {
+    const cleanPath = req.path.slice(0, -5);
+    return res.redirect(301, cleanPath === '' ? '/' : cleanPath);
+  }
+  if (req.path === '/index.html') {
+    return res.redirect(301, '/');
+  }
+  next();
+});
+
 // Tell Express to serve your static frontend files directly from the root directory
-app.use(express.static(path.join(__dirname, '../')));
+app.use(express.static(path.join(__dirname, '../'), { extensions: ['html'] }));
 
 // Serve your login page on the root URL path
 app.get('/', (req, res) => {
@@ -40,6 +52,7 @@ app.get('/announcements/:id', (req, res) => {
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth',           require('./routes/auth'));
 app.use('/api/chat', chatRoute);
+app.use('/api/settings',       require('./routes/settings'));
 app.use('/api/schools',        require('./routes/schools'));
 app.use('/api/coaches',        require('./routes/coaches'));
 app.use('/api/students',       require('./routes/students'));

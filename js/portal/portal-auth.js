@@ -7,7 +7,7 @@
 const PORTAL_AUTH = {
 
   _SESSION_KEY: 'wro_ph_portal_session',
-  _API_BASE:    'http://localhost:3000/api',
+  _API_BASE: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api',
 
   /** Login via API – only accepts STANDARD_USER role */
   async login(username, password) {
@@ -67,7 +67,7 @@ const PORTAL_AUTH = {
 
   logout() {
     sessionStorage.removeItem(this._SESSION_KEY);
-    window.location.href = this._baseUrl() + 'portal-login.html';
+    window.location.href = this._baseUrl() + 'portal-login';
   },
 
   currentUser() {
@@ -81,10 +81,10 @@ const PORTAL_AUTH = {
 
   token() { return this.currentUser()?._token || null; },
 
-  /** Guard – redirect to portal-login.html if not authenticated */
+  /** Guard – redirect to portal-login if not authenticated */
   guard() {
     if (!this.isLoggedIn()) {
-      window.location.href = this._baseUrl() + 'portal-login.html';
+      window.location.href = this._baseUrl() + 'portal-login';
       return false;
     }
     return true;

@@ -180,10 +180,6 @@ const Schools = {
           </select>
         </div>
         <div>
-          <label class="form-label">DepEd School ID</label>
-          <input class="form-input" name="depedId" value="${school?.depedId||''}">
-        </div>
-        <div>
           <label class="form-label">Region</label>
           <select class="form-input" name="region">
             <option value="">Select Region</option>
@@ -287,7 +283,6 @@ const Schools = {
         <div><span class="text-slate-500">Level:</span> <span class="text-slate-200">${s.schoolLevel}</span></div>
         <div><span class="text-slate-500">Region:</span> <span class="text-slate-200">${s.region}</span></div>
         <div><span class="text-slate-500">City:</span> <span class="text-slate-200">${s.city}</span></div>
-        <div><span class="text-slate-500">DepEd ID:</span> <span class="text-slate-200">${s.depedId}</span></div>
         <div><span class="text-slate-500">First Joined:</span> <span class="text-slate-200">${s.yearsJoined}</span></div>
         <div><span class="text-slate-500">Coordinator:</span> <span class="text-slate-200">${s.roboticsCoordinator}</span></div>
         <div><span class="text-slate-500">Status:</span> ${Utils.statusBadge(s.status)}</div>
@@ -318,8 +313,8 @@ const Schools = {
   async exportCSV() {
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Schools.csv',
-      ['ID','School Name','Type','Level','Region','Province','City','DepEd ID','Email','Contact','Coordinator','Status'],
-      rows.map(s => [s.id,s.schoolName,s.schoolType,s.schoolLevel,s.region,s.province,s.city,s.depedId,s.email,s.contactNumber,s.roboticsCoordinator,s.status])
+      ['ID','School Name','Type','Level','Region','Province','City','Email','Contact','Coordinator','Status'],
+      rows.map(s => [s.id,s.schoolName,s.schoolType,s.schoolLevel,s.region,s.province,s.city,s.email,s.contactNumber,s.roboticsCoordinator,s.status])
     );
     Toast.success('School list exported!');
   },

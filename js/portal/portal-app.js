@@ -32,7 +32,7 @@ const PortalRouter = {
       if (name === 'announcement_detail' && opts.id) {
         history.pushState({ name, opts }, '', `${base}announcements/${opts.id}`);
       } else {
-        history.pushState({ name, opts }, '', `${base}portal.html`);
+        history.pushState({ name, opts }, '', `${base}portal`);
       }
     }
 
@@ -112,13 +112,26 @@ const PortalApp = {
   },
 
   _routeFromURL(isPopState = false) {
-    const base  = this._getBasePath(); // e.g. "/WRO-old/" or "/"
+    const base  = this._getBasePath();
     const path  = window.location.pathname;
-    // Strip base prefix before matching. e.g. "/WRO-old/announcements/1" → "/announcements/1"
     const local = path.startsWith(base) ? path.slice(base.length - 1) : path;
     const match = local.match(/^\/announcements\/(\d+)$/);
+
+    // Check for ?team=<token> param (user scanned a QR code link)
+    const teamToken = new URLSearchParams(window.location.search).get('team');
+
     if (match) {
       PortalRouter.navigate('announcement_detail', { id: match[1], popState: isPopState });
+    } else if (teamToken) {
+      // Navigate to Teams page and auto-open link modal after render
+      PortalRouter.navigate('teams', { popState: isPopState });
+      setTimeout(() => {
+        if (typeof PortalTeams !== 'undefined') {
+          PortalTeams._processQRText(teamToken).then(() => {
+            PortalTeams.openLinkModal();
+          });
+        }
+      }, 800);
     } else {
       PortalRouter.navigate('dashboard', { popState: isPopState });
     }

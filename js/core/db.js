@@ -4,7 +4,7 @@
 // All methods remain async so existing module code needs no changes.
 // ============================================================
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3000/api' : window.location.origin + '/api';
 
 // Map table names used by modules → API path segments
 const TABLE_ROUTES = {
@@ -63,6 +63,14 @@ const DB = {
       }
       return null;
     }
+  },
+
+  async get(path) {
+    return this._request('GET', path);
+  },
+
+  async post(path, body) {
+    return this._request('POST', path, body);
   },
 
   _route(table) {
@@ -243,7 +251,6 @@ const DB = {
       school_name:            'schoolName',
       school_type:            'schoolType',
       school_level:           'schoolLevel',
-      deped_id:               'depedId',
       school_head:            'schoolHead',
       robotics_coordinator:   'roboticsCoordinator',
       years_joined:           'yearsJoined',
@@ -251,8 +258,6 @@ const DB = {
       full_name:              'fullName',
       school_id:              'schoolId',
       coach_id:               'coachId',
-      years_coaching:         'yearsCoaching',
-      previous_awards:        'previousAwards',
       emergency_contact:      'emergencyContact',
       shirt_size:             'shirtSize',
       grade_level:            'gradeLevel',
