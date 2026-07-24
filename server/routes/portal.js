@@ -122,6 +122,28 @@ router.post('/link-team', async (req, res) => {
   }
 });
 
+// ── DELETE /api/portal/link-team ──────────────────────────────
+// Unlink the authenticated user from a specific team
+router.delete('/link-team', async (req, res) => {
+  try {
+    const { team_id } = req.body;
+    if (!team_id) return res.status(400).json({ success: false, error: 'team_id is required.' });
+
+    const [result] = await pool.execute(
+      'DELETE FROM user_team_links WHERE user_id = ? AND team_id = ?',
+      [uid(req), team_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'Link not found.' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ── GET /api/portal/teams ─────────────────────────────────────
 // Returns all teams the user is linked to (with full details)
 router.get('/teams', async (req, res) => {

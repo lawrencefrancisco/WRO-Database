@@ -183,10 +183,17 @@ const PortalTeams = {
           </div>
         </div>` : ''}
 
-        <div class="p-team-footer">
+        <div class="p-team-footer" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
           ${this._badge(t.registration_status)}
           ${this._badge(t.qualification_status)}
           ${this._badge(t.payment_status)}
+          <button
+            onclick="PortalTeams.unlinkTeam(${t.id}, this)"
+            data-team-name="${(t.team_name || '').replace(/"/g, '&quot;')}"
+            style="margin-left:auto;background:rgba(230,57,70,0.1);border:1px solid rgba(230,57,70,0.3);color:#e63946;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:background 0.2s;flex-shrink:0;"
+            onmouseover="this.style.background='rgba(230,57,70,0.25)'" onmouseout="this.style.background='rgba(230,57,70,0.1)'">
+            🔗 Unlink
+          </button>
         </div>
       </div>`;
   },
@@ -203,6 +210,35 @@ const PortalTeams = {
     const modal = document.getElementById('qr-link-modal');
     if (modal) modal.style.display = 'none';
     this._stopScanner();
+  },
+
+  async unlinkTeam(teamId, btnEl) {
+    const teamName = btnEl?.dataset?.teamName || 'this team';
+
+    const confirmed = await PortalConfirm.show({
+      title:       `Unlink "${teamName}"?`,
+      message:     `This will remove the team from your account.<br>You can re-link any time using the QR code.`,
+      confirmText: 'Yes, Unlink',
+      cancelText:  'Keep It',
+      type:        'danger',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      btnEl.textContent = 'Removing…';
+      btnEl.disabled    = true;
+      await PORTAL_DB.unlinkTeam(teamId);
+      await this.render();
+    } catch (err) {
+      btnEl.textContent = '🔗 Unlink';
+      btnEl.disabled    = false;
+      await PortalConfirm.alert({
+        title:   'Failed to Unlink',
+        message: err.message,
+        type:    'danger',
+      });
+    }
   },
 
   switchTab(tab) {
