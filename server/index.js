@@ -14,6 +14,9 @@ const chatRoute = require('./routes/chat');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy to prevent express-rate-limit X-Forwarded-For validation errors
+app.set('trust proxy', 1);
+
 
 
 // ── Security Middleware ───────────────────────────────────────
@@ -83,7 +86,7 @@ app.use('/api/seasons',        require('./routes/seasons'));
 app.use('/api/judging',        require('./routes/judging'));
 app.use('/api/awards',         require('./routes/awards'));
 app.use('/api/payments',       require('./routes/payments'));
-app.use('/api/communications', require('./routes/communications'));
+
 app.use('/api/announcements',  require('./routes/announcements'));
 app.use('/api/notifications',  require('./routes/notifications'));
 app.use('/api/portal',         require('./routes/portal'));

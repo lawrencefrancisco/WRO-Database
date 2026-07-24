@@ -322,29 +322,6 @@ CREATE TABLE payments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- ── Communications ────────────────────────────────────────────
-CREATE TABLE communications (
-  id                          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-  comm_code                   VARCHAR(60)   NOT NULL,               -- e.g. COM_0001
-  team_id                     INT UNSIGNED  DEFAULT NULL,           -- FK → teams.id
-  registration_confirmation   TINYINT(1)    DEFAULT 0,
-  payment_confirmation        TINYINT(1)    DEFAULT 0,
-  certificate_sent            TINYINT(1)    DEFAULT 0,
-  email_history               JSON          DEFAULT NULL,
-  sms_history                 JSON          DEFAULT NULL,
-  announcement_received       TINYINT(1)    DEFAULT 0,
-  feedback_submitted          TINYINT(1)    DEFAULT 0,
-  status                      ENUM('active','inactive') DEFAULT 'active',
-  is_deleted                  TINYINT(1)    DEFAULT 0,
-  deleted_at                  DATETIME      DEFAULT NULL,
-  created_at                  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at                  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_comm_code (comm_code),
-  KEY idx_team (team_id),
-  CONSTRAINT fk_comms_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 
 -- ── International Delegation ──────────────────────────────────
 CREATE TABLE delegation (
