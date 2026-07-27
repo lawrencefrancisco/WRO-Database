@@ -49,16 +49,33 @@ router.post('/', adminOnly, async (req, res) => {
       schoolId = sr[0]?.id || null;
     }
 
-    // ── Duplicate check: same full name + same school ────────────
+    // ── Smart Duplicate Check: Global full name check ────────────
     if (!d.fullName) return res.status(400).json({ success: false, error: 'Full Name is required.' });
-    const [dup] = await pool.execute(
+    
+    // 1. Exact match in the exact same school
+    const [exactDup] = await pool.execute(
       'SELECT id FROM students WHERE full_name = ? AND school_id <=> ? AND is_deleted = 0 LIMIT 1',
       [d.fullName.trim(), schoolId]
     );
-    if (dup.length > 0) {
+    if (exactDup.length > 0) {
       return res.status(409).json({ success: false, error: `A student named "${d.fullName}" already exists in this school.` });
     }
 
+    // 2. Global match in ANY school (Transfer scenario vs Name Collision)
+    const [globalDup] = await pool.execute(
+      `SELECT s.id, sch.school_name 
+       FROM students s 
+       LEFT JOIN schools sch ON s.school_id = sch.id 
+       WHERE s.full_name = ? AND s.is_deleted = 0 LIMIT 1`,
+      [d.fullName.trim()]
+    );
+    if (globalDup.length > 0) {
+      const oldSchool = globalDup[0].school_name || 'another school';
+      return res.status(409).json({ 
+        success: false, 
+        error: `A student named "${d.fullName}" already exists at ${oldSchool}. If this student transferred, please edit their existing profile instead of creating a new one. If this is a different person, please add a middle initial (e.g., 'Juan M. Cruz') to distinguish them.` 
+      });
+    }
     const [result] = await pool.execute(
       `INSERT INTO students (student_code, full_name, birthday, age, gender, grade_level, school_id,
        parent_name, parent_contact, parent_email, personal_email, shirt_size,
@@ -87,14 +104,31 @@ router.put('/:id', adminOnly, async (req, res) => {
       schoolId = sr[0]?.id || null;
     }
 
-    // ── Duplicate check: new name+school must not clash with another active student ──
+    // ── Smart Duplicate Check: New name+school must not clash globally ──
     if (d.fullName) {
-      const [dup] = await pool.execute(
+      // 1. Exact match in the exact same school
+      const [exactDup] = await pool.execute(
         'SELECT id FROM students WHERE full_name = ? AND school_id <=> ? AND is_deleted = 0 AND id != ? LIMIT 1',
         [d.fullName.trim(), schoolId, req.params.id]
       );
-      if (dup.length > 0) {
+      if (exactDup.length > 0) {
         return res.status(409).json({ success: false, error: `Another student named "${d.fullName}" already exists in this school.` });
+      }
+
+      // 2. Global match in ANY school
+      const [globalDup] = await pool.execute(
+        `SELECT s.id, sch.school_name 
+         FROM students s 
+         LEFT JOIN schools sch ON s.school_id = sch.id 
+         WHERE s.full_name = ? AND s.is_deleted = 0 AND s.id != ? LIMIT 1`,
+        [d.fullName.trim(), req.params.id]
+      );
+      if (globalDup.length > 0) {
+        const oldSchool = globalDup[0].school_name || 'another school';
+        return res.status(409).json({ 
+          success: false, 
+          error: `Another student named "${d.fullName}" already exists at ${oldSchool}. Please add a middle initial (e.g., 'Juan M. Cruz') to distinguish this student.` 
+        });
       }
     }
 

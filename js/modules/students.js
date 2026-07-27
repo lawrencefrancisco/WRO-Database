@@ -224,8 +224,14 @@ const Students = {
     if (!data.fullName.trim()) { Toast.error('Full name is required.'); return; }
     data.consentSigned = data.consentSigned === 'true';
     data.age = data.birthday ? Utils.calcAge(data.birthday) : null;
-    if (id) { await DB.update('students', id, data); Toast.success('Student updated!'); }
-    else    { await DB.insert('students', data);     Toast.success('Student added!'); }
+    
+    let res;
+    if (id) { res = await DB.update('students', id, data); }
+    else    { res = await DB.insert('students', data); }
+    
+    if (!res) return; // Halt on error (DB request handles the error Toast)
+    
+    Toast.success(id ? 'Student updated!' : 'Student added!');
     Modal.close(); await this._renderStats(); await this._loadTable();
   },
 

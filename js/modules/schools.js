@@ -247,11 +247,11 @@ const Schools = {
       let result;
       if (id) {
         result = await DB.update('schools', id, data);
-        if (!result) { Toast.error('Failed to update school. Check server logs.'); return; }
+        if (!result) return;
         Toast.success('School updated successfully!');
       } else {
         result = await DB.insert('schools', data);
-        if (!result) { Toast.error('Failed to add school. Check server logs.'); return; }
+        if (!result) return;
         Toast.success('School added successfully!');
       }
       Modal.close();

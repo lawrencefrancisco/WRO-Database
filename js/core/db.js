@@ -52,6 +52,9 @@ const DB = {
 
       if (!res.ok) {
         console.error(`[DB] ${method} ${path} →`, res.status, data);
+        if (typeof Toast !== 'undefined') {
+          Toast.error(data.error || 'An error occurred while processing the request.');
+        }
         return null;
       }
       return data;

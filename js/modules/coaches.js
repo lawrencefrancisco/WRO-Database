@@ -207,8 +207,14 @@ const Coaches = {
     const form = document.getElementById('coach-form');
     const data = Object.fromEntries(new FormData(form));
     if (!data.fullName.trim()) { Toast.error('Full name is required.'); return; }
-    if (id) { await DB.update('coaches', id, data); Toast.success('Coach updated!'); }
-    else    { await DB.insert('coaches', data);     Toast.success('Coach added!'); }
+    
+    let res;
+    if (id) { res = await DB.update('coaches', id, data); }
+    else    { res = await DB.insert('coaches', data); }
+    
+    if (!res) return;
+    
+    Toast.success(id ? 'Coach updated!' : 'Coach added!');
     Modal.close(); await this._renderStats(); await this._loadTable();
   },
 
