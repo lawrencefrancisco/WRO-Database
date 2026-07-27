@@ -178,18 +178,18 @@ router.post('/', adminOnly, async (req, res) => {
       }
     }
 
-    // ── Duplicate check: team name must be unique ─────────────
+    // ── Duplicate check: team name must be unique WITHIN THE SAME COMPETITION ─
     if (!d.teamName) {
       await conn.rollback();
       return res.status(400).json({ success: false, error: 'Team Name is required.' });
     }
     const [dupTeam] = await conn.execute(
-      'SELECT id FROM teams WHERE team_name = ? AND is_deleted = 0 LIMIT 1',
-      [d.teamName.trim()]
+      'SELECT id FROM teams WHERE team_name = ? AND competition_id = ? AND is_deleted = 0 LIMIT 1',
+      [d.teamName.trim(), competitionId]
     );
     if (dupTeam.length > 0) {
       await conn.rollback();
-      return res.status(409).json({ success: false, error: `A team named "${d.teamName}" already exists.` });
+      return res.status(409).json({ success: false, error: `A team named "${d.teamName}" already exists in this competition.` });
     }
 
     const [result] = await conn.execute(
@@ -264,18 +264,17 @@ router.put('/:id', adminOnly, async (req, res) => {
     const [existingTeam] = await conn.execute('SELECT payment_status FROM teams WHERE id = ? LIMIT 1', [teamId]);
     const currentPaymentStatus = existingTeam[0]?.payment_status || 'unpaid';
 
-    // ── Duplicate check: new team name must not clash with another active team ──
+    // ── Duplicate check: new team name must not clash with another active team in the same competition ──
     if (d.teamName) {
       const [dupTeam] = await conn.execute(
-        'SELECT id FROM teams WHERE team_name = ? AND is_deleted = 0 AND id != ? LIMIT 1',
-        [d.teamName.trim(), teamId]
+        'SELECT id FROM teams WHERE team_name = ? AND competition_id = ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.teamName.trim(), competitionId, teamId]
       );
       if (dupTeam.length > 0) {
         await conn.rollback();
-        return res.status(409).json({ success: false, error: `Another team named "${d.teamName}" already exists.` });
+        return res.status(409).json({ success: false, error: `Another team named "${d.teamName}" already exists in this competition.` });
       }
     }
-
 
     await conn.execute(
       `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?,

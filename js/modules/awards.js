@@ -381,8 +381,13 @@ const Awards = {
     data.hasMedal       = data.hasMedal       === 'true';
     data.hasCertificate = data.hasCertificate === 'true';
     data.year           = parseInt(data.year);
-    if (id) { await DB.update('awards', id, data); Toast.success('Award updated!'); }
-    else    { await DB.insert('awards', data);     Toast.success('Award added!'); }
+    let res;
+    if (id) { res = await DB.update('awards', id, data); }
+    else    { res = await DB.insert('awards', data); }
+    
+    if (!res) return; // Halt on error
+    
+    Toast.success(id ? 'Award updated!' : 'Award added!');
     Modal.close(); await this._renderHOF(); await this._renderTopSchools(); await this._loadTable();
   },
 

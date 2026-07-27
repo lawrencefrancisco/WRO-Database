@@ -137,18 +137,21 @@ const Users = {
     data.isActive = data.isActive === 'true';
     if (!id && !data.password) { Toast.error('Password is required for new users.'); return; }
     if (!data.name || !data.username) { Toast.error('Name and username are required.'); return; }
+    let res;
     if (id) {
       const changes = {
         name: data.name, username: data.username, email: data.email,
         role: data.role, isActive: data.isActive,
       };
       if (data.password) changes.password = data.password;
-      await DB.update('users', id, changes);
-      Toast.success('User updated!');
+      res = await DB.update('users', id, changes);
     } else {
-      await DB.insert('users', data);
-      Toast.success('User added!');
+      res = await DB.insert('users', data);
     }
+    
+    if (!res) return;
+    
+    Toast.success(id ? 'User updated!' : 'User added!');
     Modal.close(); await this.render();
   },
 
