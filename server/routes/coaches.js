@@ -42,6 +42,16 @@ router.post('/', adminOnly, async (req, res) => {
     const d = req.body;
     const coachCode = d.coachCode || d.coach_code || `COA_${Date.now()}`;
 
+    // ── Duplicate check: email must be unique ────────────
+    if (!d.email) return res.status(400).json({ success: false, error: 'Email is required.' });
+    const [dup] = await pool.execute(
+      'SELECT id FROM coaches WHERE email = ? AND is_deleted = 0 LIMIT 1',
+      [d.email.trim().toLowerCase()]
+    );
+    if (dup.length > 0) {
+      return res.status(409).json({ success: false, error: `A coach with the email "${d.email}" already exists.` });
+    }
+
     let schoolId = d.schoolId || null;
     if (!schoolId && d.schoolCode) {
       const [sr] = await pool.execute('SELECT id FROM schools WHERE school_code = ? LIMIT 1', [d.schoolCode]);
@@ -67,6 +77,17 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
+
+    // ── Duplicate check: new email must not be taken by another active coach ──
+    if (d.email) {
+      const [dup] = await pool.execute(
+        'SELECT id FROM coaches WHERE email = ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.email.trim().toLowerCase(), req.params.id]
+      );
+      if (dup.length > 0) {
+        return res.status(409).json({ success: false, error: `Another coach with the email "${d.email}" already exists.` });
+      }
+    }
 
     let schoolId = d.schoolId || null;
     if (!schoolId && d.schoolCode) {

@@ -75,17 +75,29 @@ const Awards = {
   },
 
   async _renderTopSchools() {
-    // School ranking depends on awards per school. Since awards no longer store school_id directly,
-    // we must trace team -> members -> school to count awards per school.
-    const allAwards = (await DB.getAll('awards')).filter(a => !a.isDeleted);
-    const _teamsMap = await DB.getLookup('teams');
+    // School ranking: prefer snapshot_team data for historical accuracy.
+    // If the team has a frozen snapshot, use schools from it; otherwise fall back to live joins.
+    const allAwards    = (await DB.getAll('awards')).filter(a => !a.isDeleted);
+    const _teamsMap    = await DB.getLookup('teams');
     const _studentsMap = await DB.getLookup('students');
-    const _schoolsMap = await DB.getLookup('schools');
+    const _schoolsMap  = await DB.getLookup('schools');
 
-    const schoolCounts = {};
+    const schoolCounts   = {};
+    const schoolNames    = {};  // sid -> best-known name
+
     allAwards.forEach(a => {
+      // 1. Prefer snapshot data – fully historical
+      if (a.snapshotTeam && a.snapshotTeam.schools && a.snapshotTeam.schools.length > 0) {
+        a.snapshotTeam.schools.forEach(sc => {
+          schoolCounts[sc.id] = (schoolCounts[sc.id] || 0) + 1;
+          schoolNames[sc.id]  = sc.schoolName; // frozen name
+        });
+        return;
+      }
+
+      // 2. Fallback: live join via team -> members -> student -> school
       const team = _teamsMap[a.teamId];
-      let sIds = new Set();
+      const sIds = new Set();
       if (team && team.members && team.members.length > 0) {
         team.members.forEach(mid => {
           const sid = _studentsMap[mid]?.schoolId;
@@ -96,6 +108,7 @@ const Awards = {
 
       sIds.forEach(sid => {
         schoolCounts[sid] = (schoolCounts[sid] || 0) + 1;
+        if (!schoolNames[sid]) schoolNames[sid] = _schoolsMap[sid]?.schoolName || null;
       });
     });
 
@@ -104,13 +117,13 @@ const Awards = {
     const rankLabels = ['1st','2nd','3rd','4th','5th','6th'];
     
     document.getElementById('top-schools').innerHTML = sorted.map(([sid, count], idx) => {
-      const school = _schoolsMap[sid];
-      const color  = rankColors[idx];
+      const name  = schoolNames[sid] || _schoolsMap[sid]?.schoolName || 'Unknown';
+      const color = rankColors[idx];
       return `
         <div class="glass-light rounded-xl p-4 flex items-center gap-3">
           <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold" style="background:rgba(22,32,56,0.9);color:${color};border:1px solid ${color}40">${rankLabels[idx]}</div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold text-white truncate">${school?.schoolName || 'Unknown'}</div>
+            <div class="text-sm font-semibold text-white truncate">${name}</div>
             <div class="text-xs text-slate-400">${count} award${count!==1?'s':''}</div>
           </div>
         </div>`;
@@ -142,15 +155,24 @@ const Awards = {
       return;
     }
     tbody.innerHTML = page.map(a => {
-      const team   = _teamsMap[a.teamId];
-      
-      let sNames = [];
-      if (team && team.members && team.members.length > 0) {
-        const sIds = new Set(team.members.map(mid => _studentsMap[mid]?.schoolId).filter(Boolean));
-        sNames = Array.from(sIds).map(sid => _schoolsMap[sid]?.schoolName).filter(Boolean);
+      // Prefer frozen snapshot for historical accuracy; fall back to live joins
+      let teamName, schoolDisplay;
+
+      if (a.snapshotTeam) {
+        teamName      = a.snapshotTeam.teamName || '—';
+        const schools = a.snapshotTeam.schools  || [];
+        schoolDisplay = schools.map(s => s.schoolName).filter(Boolean).join(', ') || '—';
+      } else {
+        const team   = _teamsMap[a.teamId];
+        teamName     = team?.teamName || '—';
+        let sNames   = [];
+        if (team && team.members && team.members.length > 0) {
+          const sIds = new Set(team.members.map(mid => _studentsMap[mid]?.schoolId).filter(Boolean));
+          sNames     = Array.from(sIds).map(sid => _schoolsMap[sid]?.schoolName).filter(Boolean);
+        }
+        if (sNames.length === 0 && team && team.schoolId) sNames = [_schoolsMap[team.schoolId]?.schoolName];
+        schoolDisplay = sNames.filter(Boolean).join(', ') || '—';
       }
-      if (sNames.length === 0 && team && team.schoolId) sNames = [_schoolsMap[team.schoolId]?.schoolName];
-      const schoolDisplay = sNames.length > 0 ? sNames.join(', ') : '—';
       
       const comp = _competitionsMap[a.competitionId];
       const compDisplay = comp ? comp.name : (a.event || '—');
@@ -163,7 +185,7 @@ const Awards = {
       return `
         <tr class="table-row">
           <td>
-            <div class="font-semibold text-white text-sm">${team?.teamName || '—'}</div>
+            <div class="font-semibold text-white text-sm">${teamName}</div>
             <div class="text-xs text-slate-500">${a.category}</div>
           </td>
           <td class="text-sm text-slate-300">${Utils.truncate(schoolDisplay,25)}</td>

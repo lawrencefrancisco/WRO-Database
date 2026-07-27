@@ -39,6 +39,66 @@ async function resolveId(conn, table, codeCol, value) {
   return rows[0]?.id || null;
 }
 
+/**
+ * freezeTeamSnapshot – captures a point-in-time snapshot of all member, coach,
+ * and school profiles linked to a team and writes it into the three JSON columns.
+ * Call this whenever a team's registration_status transitions to 'confirmed'.
+ * Safe to call multiple times – will always reflect the state at the moment of call.
+ *
+ * @param {object} conn  - active mysql2 connection (can be a pool or transaction conn)
+ * @param {number} teamId
+ */
+async function freezeTeamSnapshot(conn, teamId) {
+  try {
+    // 1. Students – include their current school name for full historical context
+    const [students] = await conn.execute(`
+      SELECT s.id, s.full_name AS fullName, s.grade_level AS gradeLevel,
+             s.gender, s.shirt_size AS shirtSize,
+             sc.school_name AS schoolName, sc.region
+      FROM   team_members tm
+      JOIN   students s  ON s.id = tm.student_id AND s.is_deleted = 0
+      LEFT JOIN schools sc ON sc.id = s.school_id
+      WHERE  tm.team_id = ?
+    `, [teamId]);
+
+    // 2. Coaches – include their current school affiliation
+    const [coaches] = await conn.execute(`
+      SELECT c.id, c.full_name AS fullName, c.email, c.mobile,
+             c.position, sc.school_name AS schoolName
+      FROM   team_coaches tc
+      JOIN   coaches c  ON c.id = tc.coach_id AND c.is_deleted = 0
+      LEFT JOIN schools sc ON sc.id = c.school_id
+      WHERE  tc.team_id = ?
+    `, [teamId]);
+
+    // 3. School linked directly to the team record
+    const [[team]] = await conn.execute(
+      'SELECT school_id FROM teams WHERE id = ? LIMIT 1', [teamId]
+    );
+    let school = null;
+    if (team?.school_id) {
+      const [[sc]] = await conn.execute(
+        `SELECT id, school_name AS schoolName, region, city, school_type AS schoolType
+         FROM   schools WHERE id = ? LIMIT 1`,
+        [team.school_id]
+      );
+      school = sc || null;
+    }
+
+    await conn.execute(
+      `UPDATE teams
+         SET snapshot_students = ?,
+             snapshot_coaches  = ?,
+             snapshot_school   = ?
+       WHERE id = ?`,
+      [JSON.stringify(students), JSON.stringify(coaches), JSON.stringify(school), teamId]
+    );
+  } catch (e) {
+    // Non-fatal: log and continue so the main save never fails because of a snapshot error
+    console.error(`[snapshot] freezeTeamSnapshot failed for team ${teamId}:`, e.message);
+  }
+}
+
 // GET /api/teams
 router.get('/', async (req, res) => {
   try {
@@ -118,6 +178,20 @@ router.post('/', adminOnly, async (req, res) => {
       }
     }
 
+    // ── Duplicate check: team name must be unique ─────────────
+    if (!d.teamName) {
+      await conn.rollback();
+      return res.status(400).json({ success: false, error: 'Team Name is required.' });
+    }
+    const [dupTeam] = await conn.execute(
+      'SELECT id FROM teams WHERE team_name = ? AND is_deleted = 0 LIMIT 1',
+      [d.teamName.trim()]
+    );
+    if (dupTeam.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({ success: false, error: `A team named "${d.teamName}" already exists.` });
+    }
+
     const [result] = await conn.execute(
       `INSERT INTO teams (team_code, season, competition_id, team_name, category, age_group,
        school_id, registration_status,
@@ -145,6 +219,13 @@ router.post('/', adminOnly, async (req, res) => {
     }
 
     await conn.commit();
+
+    // Freeze historical snapshot if the team is already confirmed
+    const regStatus = d.registrationStatus || 'registered';
+    if (regStatus === 'confirmed') {
+      await freezeTeamSnapshot(pool, newId); // use pool (outside transaction) so it reads committed data
+    }
+
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [newId]);
     rows[0].members = await getMembers(newId);
     rows[0].coaches = await getCoaches(newId);
@@ -183,6 +264,19 @@ router.put('/:id', adminOnly, async (req, res) => {
     const [existingTeam] = await conn.execute('SELECT payment_status FROM teams WHERE id = ? LIMIT 1', [teamId]);
     const currentPaymentStatus = existingTeam[0]?.payment_status || 'unpaid';
 
+    // ── Duplicate check: new team name must not clash with another active team ──
+    if (d.teamName) {
+      const [dupTeam] = await conn.execute(
+        'SELECT id FROM teams WHERE team_name = ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.teamName.trim(), teamId]
+      );
+      if (dupTeam.length > 0) {
+        await conn.rollback();
+        return res.status(409).json({ success: false, error: `Another team named "${d.teamName}" already exists.` });
+      }
+    }
+
+
     await conn.execute(
       `UPDATE teams SET season=?, competition_id=?, team_name=?, category=?,
        age_group=?, school_id=?,
@@ -209,11 +303,17 @@ router.put('/:id', adminOnly, async (req, res) => {
     }
 
     await conn.commit();
+
+    // Freeze historical snapshot whenever the team reaches 'confirmed' status.
+    // This is also re-triggered if admin manually re-confirms to keep the snapshot
+    // in sync with any roster changes made before the final confirmation.
+    if (d.registrationStatus === 'confirmed') {
+      await freezeTeamSnapshot(pool, teamId); // use pool (outside transaction) so it reads committed data
+    }
+
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [teamId]);
     rows[0].members = await getMembers(teamId);
     rows[0].coaches = await getCoaches(teamId);
-
-
 
     if (schoolId) {
       await pool.execute(

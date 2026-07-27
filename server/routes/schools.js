@@ -36,12 +36,20 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/schools
-// Accepts school_code from body (or auto-generates one).
-// id is assigned by MySQL AUTO_INCREMENT.
 router.post('/', adminOnly, async (req, res) => {
   try {
     const d = req.body;
     const schoolCode = d.schoolCode || d.school_code || `SCH_${Date.now()}`;
+
+    // ── Duplicate check: school name must be unique ──────────
+    if (!d.schoolName) return res.status(400).json({ success: false, error: 'School Name is required.' });
+    const [dup] = await pool.execute(
+      'SELECT id FROM schools WHERE school_name = ? AND is_deleted = 0 LIMIT 1',
+      [d.schoolName.trim()]
+    );
+    if (dup.length > 0) {
+      return res.status(409).json({ success: false, error: `A school named "${d.schoolName}" already exists.` });
+    }
 
     const [result] = await pool.execute(
       `INSERT INTO schools (school_code, school_name, school_type, school_level, region,
@@ -66,6 +74,18 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   try {
     const d = req.body;
+
+    // ── Duplicate check: new name must not clash with another active school ──
+    if (d.schoolName) {
+      const [dup] = await pool.execute(
+        'SELECT id FROM schools WHERE school_name = ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.schoolName.trim(), req.params.id]
+      );
+      if (dup.length > 0) {
+        return res.status(409).json({ success: false, error: `Another school named "${d.schoolName}" already exists.` });
+      }
+    }
+
     await pool.execute(
       `UPDATE schools SET school_name=?, school_type=?, school_level=?,
        region=?, province=?, city=?, address=?, contact_number=?, email=?, school_head=?,

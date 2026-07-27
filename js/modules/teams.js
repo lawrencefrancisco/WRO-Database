@@ -101,7 +101,9 @@ const Teams = {
     tbody.innerHTML = page.map(t => {
       const school = _schoolsMap[t.schoolId];
       const coachNames = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean);
-      const coachText  = coachNames.length > 0 ? coachNames.join(', ') : '—';
+      // Prefer frozen snapshot coach names for display in the table list
+      const snapshotCoachNames = (t.snapshotCoaches || []).map(c => c.fullName).filter(Boolean);
+      const coachText = (snapshotCoachNames.length > 0 ? snapshotCoachNames : coachNames).join(', ') || '—';
       return `
         <tr class="table-row cursor-pointer" onclick="Teams.viewDetail('${t.id}')">
           <td>
@@ -110,7 +112,11 @@ const Teams = {
           </td>
           <td><span class="badge badge-purple">${t.season}</span></td>
           <td class="text-xs text-slate-300">${t.category}</td>
-          <td class="text-sm text-slate-300">${Utils.truncate(school?.schoolName,25)||'—'}</td>
+          <td class="text-sm text-slate-300">${Utils.truncate(
+            t.snapshotSchool?.schoolName ||
+            _schoolsMap[t.schoolId]?.schoolName ||
+            '—'
+          , 25)}</td>
           <td class="text-sm text-slate-300">${Utils.truncate(coachText,25)}</td>
           <td>${Utils.statusBadge(t.paymentStatus)}</td>
           <td>${Utils.statusBadge(t.qualificationStatus)}</td>
@@ -446,44 +452,72 @@ const Teams = {
   async viewDetail(id) {
     const t       = await DB.getById('teams', id);
     if (!t) return;
-    const school  = await DB.getById('schools', t.schoolId);
-    const coaches = await Promise.all((t.coaches || []).map(cid => DB.getById('coaches', cid)));
-    const coachNames = coaches.map(c => c?.fullName).filter(Boolean);
-    const coachText = coachNames.length > 0 ? coachNames.join(', ') : '—';
 
-    // Load both students and schools in one pass
-    const _allStudents  = await DB.getAll('students');
-    const _allSchools   = await DB.getAll('schools');
-    const _sMap  = {};  _allStudents.forEach(s => { _sMap[s.id]  = s; });
-    const _scMap = {};  _allSchools.forEach(s  => { _scMap[s.id] = s; });
+    // ── Prefer frozen snapshot data (historical accuracy) ───────────
+    // If snapshot_students / snapshot_coaches / snapshot_school exist,
+    // display those instead of live-joined data. This preserves the
+    // exact profiles as they were at the time of season confirmation.
+    const hasSnapshot = Array.isArray(t.snapshotStudents) && t.snapshotStudents.length > 0;
 
-    const members = (t.members || []).map(mid => _sMap[mid]).filter(Boolean);
+    let members, coachText, schoolDisplay, memberSchools;
 
-    // Derive unique school names from member records for the header
-    const memberSchools = [...new Map(
-      members
-        .filter(m => m.schoolId || m.school_id)
-        .map(m => {
-          const sid = m.schoolId || m.school_id;
-          return [sid, _scMap[sid]?.schoolName || sid];
-        })
-    ).values()];
+    if (hasSnapshot) {
+      // Use frozen data — completely avoids live joins
+      members       = t.snapshotStudents;  // [{fullName, gradeLevel, gender, shirtSize, schoolName, region}]
+      const snapCoaches = t.snapshotCoaches || [];
+      coachText     = snapCoaches.map(c => c.fullName).join(', ') || '—';
 
-    // Fallback to team.school_id if no member school data available
-    const schoolDisplay = memberSchools.length
-      ? memberSchools.join(', ')
-      : (_scMap[t.schoolId]?.schoolName || '—');
+      // Unique schools from frozen member list
+      const snapSchoolNames = [...new Set(members.map(m => m.schoolName).filter(Boolean))];
+      if (snapSchoolNames.length === 0 && t.snapshotSchool) {
+        snapSchoolNames.push(t.snapshotSchool.schoolName);
+      }
+      memberSchools  = snapSchoolNames;
+      schoolDisplay  = snapSchoolNames.join(', ') || t.snapshotSchool?.schoolName || '—';
+    } else {
+      // Fallback: live join (current season teams or pre-snapshot data)
+      const school  = await DB.getById('schools', t.schoolId);
+      const coaches = await Promise.all((t.coaches || []).map(cid => DB.getById('coaches', cid)));
+      const coachNames = coaches.map(c => c?.fullName).filter(Boolean);
+      coachText = coachNames.length > 0 ? coachNames.join(', ') : '—';
+
+      const _allStudents = await DB.getAll('students');
+      const _allSchools  = await DB.getAll('schools');
+      const _sMap  = {};  _allStudents.forEach(s => { _sMap[s.id]  = s; });
+      const _scMap = {};  _allSchools.forEach(s  => { _scMap[s.id] = s; });
+
+      members = (t.members || []).map(mid => _sMap[mid]).filter(Boolean);
+
+      const memberSchoolMap = new Map(
+        members
+          .filter(m => m.schoolId || m.school_id)
+          .map(m => {
+            const sid = m.schoolId || m.school_id;
+            return [sid, _scMap[sid]?.schoolName || sid];
+          })
+      );
+      memberSchools  = [...memberSchoolMap.values()];
+      schoolDisplay  = memberSchools.length
+        ? memberSchools.join(', ')
+        : (_scMap[t.schoolId]?.schoolName || '—');
+    }
 
     const pay = await DB.query('payments', p => p.teamId === id)[0];
 
     Modal.show(t.teamName, `
+      ${ hasSnapshot ? `
+      <div class="mb-3 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
+           style="background:rgba(16,185,129,0.12);color:#10B981;border:1px solid rgba(16,185,129,0.2)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Historical record — roster frozen at season confirmation
+      </div>` : '' }
       <div class="grid grid-cols-2 gap-3 text-sm mb-4">
         <div><span class="text-slate-500">Season:</span> <span class="text-slate-200">${t.season}</span></div>
         <div><span class="text-slate-500">Category:</span> <span class="text-slate-200">${t.category}</span></div>
-        <div class="${memberSchools.length > 1 ? 'col-span-2' : ''}">
-          <span class="text-slate-500">School${memberSchools.length > 1 ? 's' : ''}:</span>
+        <div class="${ memberSchools.length > 1 ? 'col-span-2' : '' }">
+          <span class="text-slate-500">School${ memberSchools.length > 1 ? 's' : '' }:</span>
           <span class="text-slate-200">${schoolDisplay}</span>
-          ${memberSchools.length > 1 ? '<span class="ml-2 px-1.5 py-0.5 rounded text-xs font-semibold" style="background:rgba(30,158,191,0.18);color:#1E9EBF;">Multi-school</span>' : ''}
+          ${ memberSchools.length > 1 ? '<span class="ml-2 px-1.5 py-0.5 rounded text-xs font-semibold" style="background:rgba(30,158,191,0.18);color:#1E9EBF;">Multi-school</span>' : '' }
         </div>
         <div><span class="text-slate-500">Coach(es):</span> <span class="text-slate-200">${coachText}</span></div>
 
@@ -496,19 +530,23 @@ const Teams = {
         <div class="text-xs text-slate-500 uppercase font-semibold mb-2">Team Members</div>
         <div class="space-y-2">
           ${members.map(m => {
-            const sid        = m.schoolId || m.school_id;
-            const schoolName = _scMap[sid]?.schoolName || null;
-            const gColor     = m.gender === 'Female'
+            // Works for both live student objects and frozen snapshot objects
+            const schoolName = m.schoolName || null;  // snapshot has schoolName directly
+            const gradeLevel = m.gradeLevel || m.grade_level || '';
+            const gender     = m.gender || '';
+            const gColor     = gender === 'Female'
               ? 'from-pink-500 to-rose-600'
               : 'from-indigo-500 to-purple-600';
+            const initial    = (m.fullName || m.full_name || '?').charAt(0);
+            const name       = m.fullName || m.full_name || 'Unknown';
             return `
             <div class="flex items-center gap-3 p-2 glass-light rounded-lg">
               <div class="w-8 h-8 rounded-full bg-gradient-to-br ${gColor} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                ${m.fullName.charAt(0)}
+                ${initial}
               </div>
               <div class="flex-1 min-w-0">
-                <div class="text-sm text-white font-medium">${m.fullName}</div>
-                <div class="text-xs text-slate-500">${m.gradeLevel} · ${m.gender}</div>
+                <div class="text-sm text-white font-medium">${name}</div>
+                <div class="text-xs text-slate-500">${gradeLevel} · ${gender}</div>
                 ${schoolName ? `<div class="text-xs mt-0.5" style="color:#1E9EBF;">
                   <svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='display:inline;vertical-align:middle;margin-right:3px'><path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/><polyline points='9 22 9 12 15 12 15 22'/></svg>${schoolName}
                 </div>` : ''}

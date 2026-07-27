@@ -49,6 +49,16 @@ router.post('/', adminOnly, async (req, res) => {
       schoolId = sr[0]?.id || null;
     }
 
+    // ── Duplicate check: same full name + same school ────────────
+    if (!d.fullName) return res.status(400).json({ success: false, error: 'Full Name is required.' });
+    const [dup] = await pool.execute(
+      'SELECT id FROM students WHERE full_name = ? AND school_id <=> ? AND is_deleted = 0 LIMIT 1',
+      [d.fullName.trim(), schoolId]
+    );
+    if (dup.length > 0) {
+      return res.status(409).json({ success: false, error: `A student named "${d.fullName}" already exists in this school.` });
+    }
+
     const [result] = await pool.execute(
       `INSERT INTO students (student_code, full_name, birthday, age, gender, grade_level, school_id,
        parent_name, parent_contact, parent_email, personal_email, shirt_size,
@@ -75,6 +85,17 @@ router.put('/:id', adminOnly, async (req, res) => {
     if (!schoolId && d.schoolCode) {
       const [sr] = await pool.execute('SELECT id FROM schools WHERE school_code = ? LIMIT 1', [d.schoolCode]);
       schoolId = sr[0]?.id || null;
+    }
+
+    // ── Duplicate check: new name+school must not clash with another active student ──
+    if (d.fullName) {
+      const [dup] = await pool.execute(
+        'SELECT id FROM students WHERE full_name = ? AND school_id <=> ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.fullName.trim(), schoolId, req.params.id]
+      );
+      if (dup.length > 0) {
+        return res.status(409).json({ success: false, error: `Another student named "${d.fullName}" already exists in this school.` });
+      }
     }
 
     await pool.execute(

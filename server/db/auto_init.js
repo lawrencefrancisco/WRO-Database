@@ -248,6 +248,9 @@ async function autoInitDatabase(pool) {
         qualification_status    ENUM('pending','qualified','disqualified') DEFAULT 'pending',
         status                  ENUM('active','inactive') NOT NULL DEFAULT 'active',
         qr_token                VARCHAR(64)   DEFAULT NULL,
+        snapshot_students       JSON          DEFAULT NULL COMMENT 'Frozen member profiles at season confirmation',
+        snapshot_coaches        JSON          DEFAULT NULL COMMENT 'Frozen coach profiles at season confirmation',
+        snapshot_school         JSON          DEFAULT NULL COMMENT 'Frozen school profile at season confirmation',
         is_deleted              TINYINT(1)    NOT NULL DEFAULT 0,
         deleted_at              DATETIME      DEFAULT NULL,
         created_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -359,6 +362,7 @@ async function autoInitDatabase(pool) {
         has_medal       TINYINT(1)    DEFAULT 0,
         has_certificate TINYINT(1)    DEFAULT 1,
         status          ENUM('confirmed','pending','revoked') DEFAULT 'confirmed',
+        snapshot_team   JSON          DEFAULT NULL COMMENT 'Frozen team/school/coach data at award creation',
         is_deleted      TINYINT(1)    NOT NULL DEFAULT 0,
         deleted_at      DATETIME      DEFAULT NULL,
         created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -622,6 +626,51 @@ async function autoInitDatabase(pool) {
       }
     } catch (e) {
       // Column may not exist yet on first run; safe to ignore
+    }
+
+    // ── Historical Snapshot columns (data integrity feature) ─────────
+    // These are added idempotently so existing DBs are upgraded safely.
+    const snapshotCols = [
+      { table: 'teams',  col: 'snapshot_students', def: 'JSON DEFAULT NULL COMMENT "Frozen member profiles at season confirmation"' },
+      { table: 'teams',  col: 'snapshot_coaches',  def: 'JSON DEFAULT NULL COMMENT "Frozen coach profiles at season confirmation"' },
+      { table: 'teams',  col: 'snapshot_school',   def: 'JSON DEFAULT NULL COMMENT "Frozen school profile at season confirmation"' },
+      { table: 'awards', col: 'snapshot_team',     def: 'JSON DEFAULT NULL COMMENT "Frozen team/school data at award creation"' },
+    ];
+    for (const { table, col, def } of snapshotCols) {
+      if (!(await columnExists(conn, table, col))) {
+        await conn.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${def}`);
+        console.log(`🛠️  Added ${col} to ${table} (historical snapshot support).`);
+      }
+    }
+
+    // ── Auto-backfill snapshots for any unsnapshotted teams/awards ───
+    // This runs every startup but is a no-op once all records have snapshots.
+    try {
+      const [teamsToSnap] = await conn.execute(
+        `SELECT id FROM teams WHERE is_deleted = 0 AND snapshot_students IS NULL LIMIT 200`
+      );
+      if (teamsToSnap.length > 0) {
+        console.log(`🛠️  Backfilling snapshots for ${teamsToSnap.length} team(s)...`);
+        const { freezeTeamSnapshotInline } = require('./snapshot_helpers');
+        for (const t of teamsToSnap) {
+          await freezeTeamSnapshotInline(conn, t.id);
+        }
+        console.log('✅ Team snapshots backfilled.');
+      }
+
+      const [awardsToSnap] = await conn.execute(
+        `SELECT id, team_id FROM awards WHERE is_deleted = 0 AND snapshot_team IS NULL LIMIT 200`
+      );
+      if (awardsToSnap.length > 0) {
+        console.log(`🛠️  Backfilling snapshots for ${awardsToSnap.length} award(s)...`);
+        const { freezeAwardSnapshotInline } = require('./snapshot_helpers');
+        for (const a of awardsToSnap) {
+          await freezeAwardSnapshotInline(conn, a.id, a.team_id);
+        }
+        console.log('✅ Award snapshots backfilled.');
+      }
+    } catch (e) {
+      console.warn('⚠️ Snapshot backfill skipped (non-fatal):', e.message);
     }
 
     // ── Seed default accounts if empty ───────────────────────

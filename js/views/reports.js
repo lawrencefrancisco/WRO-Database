@@ -109,16 +109,30 @@ const Reports = {
     const _coachesMap = await DB.getLookup('coaches');
     if (format === 'csv') {
       Utils.downloadCSV('WRO_Teams.csv',
-        ['ID','Team Name','Season','Category','School','Coach','Registration','Payment','Qualification'],
+        ['ID','Team Name','Season','Category','School','Coach(es)','Registration','Payment','Qualification'],
         rows.map(t => {
-          const sc=_schoolsMap[t.schoolId], co=_coachesMap[t.coachId];
-          return [t.id,t.teamName,t.season,t.category,sc?.schoolName||'',co?.fullName||'',t.registrationStatus,t.paymentStatus,t.qualificationStatus];
+          // Prefer frozen snapshot for historical accuracy
+          const schoolName = t.snapshotSchool?.schoolName
+            || _schoolsMap[t.schoolId]?.schoolName || '';
+          const snapCoaches = (t.snapshotCoaches || []).map(c => c.fullName).filter(Boolean);
+          const liveCoaches = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean);
+          const coaches = (snapCoaches.length > 0 ? snapCoaches : liveCoaches).join('; ');
+          return [t.id, t.teamName, t.season, t.category, schoolName, coaches,
+                  t.registrationStatus, t.paymentStatus, t.qualificationStatus];
         })
       );
     } else {
       this._printReport('WRO Philippines Team List', rows,
-        ['Team Name','Season','Category','School','Payment','Qualification'],
-        (t) => { const sc=_schoolsMap[t.schoolId]; return [t.teamName,t.season,t.category,sc?.schoolName||'',t.paymentStatus,t.qualificationStatus]; }
+        ['Team Name','Season','Category','School','Coach(es)','Payment','Qualification'],
+        (t) => {
+          const schoolName = t.snapshotSchool?.schoolName
+            || _schoolsMap[t.schoolId]?.schoolName || '';
+          const snapCoaches = (t.snapshotCoaches || []).map(c => c.fullName).filter(Boolean);
+          const liveCoaches = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean);
+          const coaches = (snapCoaches.length > 0 ? snapCoaches : liveCoaches).join(', ');
+          return [t.teamName, t.season, t.category, schoolName, coaches,
+                  t.paymentStatus, t.qualificationStatus];
+        }
       );
     }
     Toast.success(`Team list exported as ${format.toUpperCase()}!`);
@@ -146,20 +160,30 @@ const Reports = {
 
   async generateAwardList(format) {
     const rows = (await DB.getAll('awards')).filter(a => !a.isDeleted);
-    const _teamsMap = await DB.getLookup('teams');
+    const _teamsMap   = await DB.getLookup('teams');
     const _schoolsMap = await DB.getLookup('schools');
     if (format === 'csv') {
       Utils.downloadCSV('WRO_Awards.csv',
-        ['ID','Team','School','Category','Award','Year','Event','Trophy','Medal','Certificate'],
+        ['ID','Team','School(s)','Category','Award','Year','Event','Trophy','Medal','Certificate'],
         rows.map(a => {
-          const t=_teamsMap[a.teamId], s=_schoolsMap[a.schoolId];
-          return [a.id,t?.teamName||'',s?.schoolName||'',a.category,a.award,a.year,a.event,a.hasTrophy,a.hasMedal,a.hasCertificate];
+          // Prefer frozen snapshot – reflects names at the time of the award
+          const teamName    = a.snapshotTeam?.teamName || _teamsMap[a.teamId]?.teamName   || '';
+          const schoolNames = a.snapshotTeam?.schools?.map(s => s.schoolName).join('; ')
+            || _schoolsMap[a.schoolId]?.schoolName || '';
+          return [a.id, teamName, schoolNames, a.category, a.award, a.year,
+                  a.event, a.hasTrophy, a.hasMedal, a.hasCertificate];
         })
       );
     } else {
       this._printReport('WRO Philippines Award Winners', rows,
-        ['Team','School','Category','Award','Year','Certificate'],
-        (a) => { const t=_teamsMap[a.teamId], s=_schoolsMap[a.schoolId]; return [t?.teamName||'',s?.schoolName||'',a.category,a.award,a.year,a.hasCertificate?'Issued':'Pending']; }
+        ['Team','School(s)','Category','Award','Year','Certificate'],
+        (a) => {
+          const teamName    = a.snapshotTeam?.teamName || _teamsMap[a.teamId]?.teamName   || '';
+          const schoolNames = a.snapshotTeam?.schools?.map(s => s.schoolName).join(', ')
+            || _schoolsMap[a.schoolId]?.schoolName || '';
+          return [teamName, schoolNames, a.category, a.award, a.year,
+                  a.hasCertificate ? 'Issued' : 'Pending'];
+        }
       );
     }
     Toast.success(`Awards list exported as ${format.toUpperCase()}!`);

@@ -45,12 +45,33 @@ router.post('/', requireRole('SUPER_ADMIN'), async (req, res) => {
   try {
     const d        = req.body;
     const userCode = d.userCode || d.user_code || `USER_${Date.now()}`;
-    const hash     = await bcrypt.hash(d.password, 10);
     // Validate role
     const validRoles = ['SUPER_ADMIN', 'EVENT_ADMIN', 'STANDARD_USER'];
     const role = validRoles.includes(d.role) ? d.role : 'STANDARD_USER';
     const schoolId = d.schoolId || null;
 
+    // ── Duplicate checks: username and email must each be unique ──────
+    if (!d.username) return res.status(400).json({ success: false, error: 'Username is required.' });
+    if (!d.email)    return res.status(400).json({ success: false, error: 'Email is required.' });
+    if (!d.password) return res.status(400).json({ success: false, error: 'Password is required.' });
+
+    const [dupUser] = await pool.execute(
+      'SELECT id FROM users WHERE username = ? AND is_deleted = 0 LIMIT 1',
+      [d.username.trim().toLowerCase()]
+    );
+    if (dupUser.length > 0) {
+      return res.status(409).json({ success: false, error: `The username "${d.username}" is already taken.` });
+    }
+
+    const [dupEmail] = await pool.execute(
+      'SELECT id FROM users WHERE email = ? AND is_deleted = 0 LIMIT 1',
+      [d.email.trim().toLowerCase()]
+    );
+    if (dupEmail.length > 0) {
+      return res.status(409).json({ success: false, error: `The email "${d.email}" is already registered.` });
+    }
+
+    const hash = await bcrypt.hash(d.password, 10);
     const [result] = await pool.execute(
       `INSERT INTO users (user_code, username, password_hash, name, role, email, school_id, is_active,
        created_at, updated_at)
@@ -75,6 +96,27 @@ router.put('/:id', requireRole('SUPER_ADMIN'), async (req, res) => {
     const validRoles = ['SUPER_ADMIN', 'EVENT_ADMIN', 'STANDARD_USER'];
     const role = validRoles.includes(d.role) ? d.role : 'STANDARD_USER';
     const schoolId = d.schoolId || null;
+
+    // ── Duplicate checks: username and email must not be taken by another user ──
+    if (d.username) {
+      const [dupUser] = await pool.execute(
+        'SELECT id FROM users WHERE username = ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.username.trim().toLowerCase(), req.params.id]
+      );
+      if (dupUser.length > 0) {
+        return res.status(409).json({ success: false, error: `The username "${d.username}" is already taken by another account.` });
+      }
+    }
+    if (d.email) {
+      const [dupEmail] = await pool.execute(
+        'SELECT id FROM users WHERE email = ? AND is_deleted = 0 AND id != ? LIMIT 1',
+        [d.email.trim().toLowerCase(), req.params.id]
+      );
+      if (dupEmail.length > 0) {
+        return res.status(409).json({ success: false, error: `The email "${d.email}" is already registered to another account.` });
+      }
+    }
+
     if (d.password) {
       const hash = await bcrypt.hash(d.password, 10);
       await pool.execute(

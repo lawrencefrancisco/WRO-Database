@@ -21,6 +21,70 @@ async function resolveId(table, codeCol, value) {
   return rows[0]?.id || null;
 }
 
+/**
+ * freezeAwardSnapshot – saves a frozen copy of the team name, school(s), and coach(es)
+ * into the awards.snapshot_team JSON column at the moment an award record is created/updated.
+ * This preserves historical accuracy even if the team's profile is later edited.
+ *
+ * @param {number} awardId
+ * @param {number|null} teamId
+ */
+async function freezeAwardSnapshot(awardId, teamId) {
+  try {
+    if (!teamId) return;
+
+    const [[team]] = await pool.execute(
+      'SELECT id, team_name AS teamName, season, category FROM teams WHERE id = ? LIMIT 1',
+      [teamId]
+    );
+    if (!team) return;
+
+    // Schools – derived from member students (most accurate)
+    const [memberSchools] = await pool.execute(`
+      SELECT DISTINCT sc.id, sc.school_name AS schoolName, sc.region
+      FROM   team_members tm
+      JOIN   students s  ON s.id = tm.student_id AND s.is_deleted = 0
+      JOIN   schools  sc ON sc.id = s.school_id
+      WHERE  tm.team_id = ?
+    `, [teamId]);
+    // Fallback: school linked directly to the team
+    if (memberSchools.length === 0) {
+      const [[t]] = await pool.execute('SELECT school_id FROM teams WHERE id = ?', [teamId]);
+      if (t?.school_id) {
+        const [[sc]] = await pool.execute(
+          'SELECT id, school_name AS schoolName, region FROM schools WHERE id = ? LIMIT 1',
+          [t.school_id]
+        );
+        if (sc) memberSchools.push(sc);
+      }
+    }
+
+    // Coaches
+    const [coaches] = await pool.execute(`
+      SELECT c.id, c.full_name AS fullName, c.email, sc.school_name AS schoolName
+      FROM   team_coaches tc
+      JOIN   coaches c  ON c.id = tc.coach_id AND c.is_deleted = 0
+      LEFT JOIN schools sc ON sc.id = c.school_id
+      WHERE  tc.team_id = ?
+    `, [teamId]);
+
+    const snapshot = {
+      teamName: team.teamName,
+      season:   team.season,
+      category: team.category,
+      schools:  memberSchools,
+      coaches,
+    };
+
+    await pool.execute(
+      'UPDATE awards SET snapshot_team = ? WHERE id = ?',
+      [JSON.stringify(snapshot), awardId]
+    );
+  } catch (e) {
+    console.error(`[snapshot] freezeAwardSnapshot failed for award ${awardId}:`, e.message);
+  }
+}
+
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM awards WHERE is_deleted = 0 ORDER BY year DESC, award');
@@ -58,6 +122,8 @@ router.post('/', adminOnly, async (req, res) => {
        d.status || 'confirmed']
     );
     const [rows] = await pool.execute('SELECT * FROM awards WHERE id = ?', [result.insertId]);
+    // Freeze the team/school/coach snapshot immediately so historical data is preserved from day 1
+    await freezeAwardSnapshot(result.insertId, teamId);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -82,6 +148,8 @@ router.put('/:id', adminOnly, async (req, res) => {
        d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM awards WHERE id = ?', [req.params.id]);
+    // Re-freeze snapshot in case the team was changed
+    await freezeAwardSnapshot(parseInt(req.params.id, 10), teamId);
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
