@@ -299,6 +299,14 @@ router.get('/season-details', async (req, res) => {
             gender:        m.gender,
             consent_signed: m.consent_signed || 0,
             shirt_size:    m.shirt_size || null,
+            parent_name:   m.parent_name || null,
+            personal_email: m.personal_email || null,
+            parent_contact: m.parent_contact || null,
+            parent_email:  m.parent_email || null,
+            birthday:      m.birthday || null,
+            medical_conditions: m.medical_conditions || null,
+            allergies:     m.allergies || null,
+            previous_participation: m.previous_participation || 0,
             school_name:   m.student_school || null,
             team_name:     t.team_name,
           });
@@ -567,13 +575,23 @@ router.get('/details/:id', async (req, res) => {
         const key = m.full_name;
         if (key && !studentSet.has(key)) {
           studentSet.set(key, {
-            id:           m.student_id || null,
-            full_name:    m.full_name,
-            age:          m.age || null,
-            grade_level:  m.grade_level,
-            gender:       m.gender,
-            school_name:  m.student_school || null,
-            team_name:    t.team_name,
+            id:            m.student_id || null,
+            full_name:     m.full_name,
+            age:           m.age || null,
+            grade_level:   m.grade_level,
+            gender:        m.gender,
+            consent_signed: m.consent_signed || 0,
+            shirt_size:    m.shirt_size || null,
+            parent_name:   m.parent_name || null,
+            personal_email: m.personal_email || null,
+            parent_contact: m.parent_contact || null,
+            parent_email:  m.parent_email || null,
+            birthday:      m.birthday || null,
+            medical_conditions: m.medical_conditions || null,
+            allergies:     m.allergies || null,
+            previous_participation: m.previous_participation || 0,
+            school_name:   m.student_school || null,
+            team_name:     t.team_name,
           });
         }
       });
