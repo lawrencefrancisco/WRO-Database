@@ -331,6 +331,11 @@ const DB = {
       record_id:              'recordId',
       user_id:                'userId',
       user_name:              'userName',
+      // ── Snapshot columns (frozen historical data) ──────────────
+      snapshot_students:      'snapshotStudents',
+      snapshot_coaches:       'snapshotCoaches',
+      snapshot_school:        'snapshotSchool',
+      snapshot_team:          'snapshotTeam',
     };
     const out = {};
     for (const [k, v] of Object.entries(row)) {
@@ -343,6 +348,18 @@ const DB = {
         out[k] = v;
       }
     }
+
+    // ── Parse snapshot JSON strings into real objects/arrays ──────
+    // MySQL returns JSON columns as raw strings; parse them here once
+    // so the frontend always receives proper Arrays/Objects.
+    const JSON_COLS = ['snapshotStudents', 'snapshotCoaches', 'snapshotSchool', 'snapshotTeam'];
+    for (const col of JSON_COLS) {
+      if (typeof out[col] === 'string') {
+        try   { out[col] = JSON.parse(out[col]); }
+        catch { out[col] = null; }
+      }
+    }
+
     return out;
   },
 };

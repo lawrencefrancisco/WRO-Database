@@ -647,7 +647,7 @@ async function autoInitDatabase(pool) {
     // This runs every startup but is a no-op once all records have snapshots.
     try {
       const [teamsToSnap] = await conn.execute(
-        `SELECT id FROM teams WHERE is_deleted = 0 AND snapshot_students IS NULL LIMIT 200`
+        `SELECT id FROM teams WHERE is_deleted = 0 AND snapshot_students IS NULL AND registration_status = 'confirmed' LIMIT 200`
       );
       if (teamsToSnap.length > 0) {
         console.log(`🛠️  Backfilling snapshots for ${teamsToSnap.length} team(s)...`);

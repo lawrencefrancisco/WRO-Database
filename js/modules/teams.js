@@ -563,19 +563,34 @@ const Teams = {
     const _coachesMap = await DB.getLookup('coaches');
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Teams.csv',
-      ['ID','Team Name','Season','Category','Age Group','School','Coach','Registration','Payment','Qualification'],
+      ['ID','Team Name','Season','Category','Age Group','School','Coach','Members','Registration','Payment','Qualification'],
       rows.map(t => {
-        const sc = _schoolsMap[t.schoolId];
-        const coachNames = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean);
+        // Prefer frozen snapshot for confirmed teams — historical accuracy
+        const hasSnapshot = Array.isArray(t.snapshotStudents) && t.snapshotStudents.length > 0;
+
+        let schoolDisplay, coachDisplay, memberDisplay;
+        if (hasSnapshot) {
+          const snapSchools = [...new Set(t.snapshotStudents.map(m => m.schoolName).filter(Boolean))];
+          if (snapSchools.length === 0 && t.snapshotSchool?.schoolName) snapSchools.push(t.snapshotSchool.schoolName);
+          schoolDisplay  = snapSchools.join(', ');
+          coachDisplay   = (t.snapshotCoaches || []).map(c => c.fullName).join(', ');
+          memberDisplay  = t.snapshotStudents.map(s => `${s.fullName} (${s.gradeLevel})`).join('; ');
+        } else {
+          const sc = _schoolsMap[t.schoolId];
+          schoolDisplay  = sc?.schoolName || '';
+          coachDisplay   = (t.coaches || []).map(cid => _coachesMap[cid]?.fullName).filter(Boolean).join(', ');
+          memberDisplay  = '';
+        }
         return [
           t.id, t.teamName, t.season, t.category, t.ageGroup,
-          sc?.schoolName || '', coachNames.join(', '),
+          schoolDisplay, coachDisplay, memberDisplay,
           t.registrationStatus, t.paymentStatus, t.qualificationStatus
         ];
       })
     );
     Toast.success('Team list exported!');
   },
+
 };
 
 window.Teams = Teams;

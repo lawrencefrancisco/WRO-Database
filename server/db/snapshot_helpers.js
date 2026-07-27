@@ -17,7 +17,11 @@
 async function freezeTeamSnapshotInline(conn, teamId) {
   const [students] = await conn.execute(`
     SELECT s.id, s.full_name AS fullName, s.grade_level AS gradeLevel,
-           s.gender, s.shirt_size AS shirtSize,
+           s.gender, s.shirt_size AS shirtSize, s.age, s.consent_signed AS consentSigned,
+           s.birthday, s.parent_name AS parentName, s.parent_contact AS parentContact,
+           s.parent_email AS parentEmail, s.personal_email AS personalEmail,
+           s.medical_conditions AS medicalConditions, s.allergies,
+           s.previous_participation AS previousParticipation,
            sc.school_name AS schoolName, sc.region
     FROM   team_members tm
     JOIN   students s  ON s.id = tm.student_id AND s.is_deleted = 0
@@ -27,7 +31,8 @@ async function freezeTeamSnapshotInline(conn, teamId) {
 
   const [coaches] = await conn.execute(`
     SELECT c.id, c.full_name AS fullName, c.email, c.mobile,
-           c.position, sc.school_name AS schoolName
+           c.position, c.birthday, c.gender, c.shirt_size AS shirtSize,
+           c.emergency_contact AS emergencyContact, sc.school_name AS schoolName
     FROM   team_coaches tc
     JOIN   coaches c  ON c.id = tc.coach_id AND c.is_deleted = 0
     LEFT JOIN schools sc ON sc.id = c.school_id
@@ -38,7 +43,9 @@ async function freezeTeamSnapshotInline(conn, teamId) {
   let school = null;
   if (team?.school_id) {
     const [[sc]] = await conn.execute(
-      `SELECT id, school_name AS schoolName, region, city, school_type AS schoolType
+      `SELECT id, school_name AS schoolName, region, city, school_type AS schoolType,
+              contact_number AS contactNumber, email, school_head AS schoolHead,
+              robotics_coordinator AS roboticsCoordinator, address
        FROM   schools WHERE id = ? LIMIT 1`,
       [team.school_id]
     );

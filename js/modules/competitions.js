@@ -762,6 +762,8 @@ const Competitions = {
               <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Age</th>
               <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Gender</th>
               <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Consent</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Email</th>
+              <th style="padding:10px 12px;text-align:left;color:#64748b;font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.05em">Parent</th>
             </tr>
           </thead>
           <tbody>
@@ -774,6 +776,8 @@ const Competitions = {
                 <td style="padding:9px 12px;color:#94a3b8">${s.age || '—'}</td>
                 <td style="padding:9px 12px;color:#94a3b8">${s.gender || '—'}</td>
                 <td style="padding:9px 12px">${s.consent_signed ? _badge('Signed','#2dc653') : _badge('Pending','#e63946')}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.personal_email || '—'}</td>
+                <td style="padding:9px 12px;color:#94a3b8">${s.parent_name || '—'}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -986,6 +990,7 @@ const Competitions = {
               ${_row('Type', s.school_type)}
               ${_row('City', s.city)}
               ${_row('Region', s.region)}
+              ${_row('Address', s.address)}
               ${_row('Contact', s.contact_number)}
               ${_row('Email', s.email)}
               ${_row('School Head', s.school_head)}
@@ -1008,8 +1013,11 @@ const Competitions = {
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;">
               ${_row('School', c.school_name)}
+              ${_row('Gender', c.gender)}
               ${_row('Mobile', c.mobile)}
               ${_row('Email', c.email)}
+              ${_row('Emergency', c.emergency_contact)}
+              ${_row('Shirt', c.shirt_size)}
             </div>
           </div>`).join('')}
       </div>`;
@@ -1040,7 +1048,7 @@ const Competitions = {
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:rgba(15,23,42,0.8);">
-              ${['Name','Team','School','Grade','Age','Gender','Consent'].map(h =>
+              ${['Name','Team','School','Grade','Age','Gender','Consent','Email','Parent'].map(h =>
                 `<th style="padding:11px 14px;text-align:left;color:#475569;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em;white-space:nowrap;">${h}</th>`
               ).join('')}
             </tr>
@@ -1060,6 +1068,8 @@ const Competitions = {
                 <td style="padding:10px 14px;color:#94a3b8;">${s.age || '—'}</td>
                 <td style="padding:10px 14px;color:#94a3b8;">${s.gender || '—'}</td>
                 <td style="padding:10px 14px;">${s.consent_signed ? _badge('Signed','#2dc653') : _badge('Pending','#e63946')}</td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.personal_email || '—'}</td>
+                <td style="padding:10px 14px;color:#94a3b8;">${s.parent_name || '—'}</td>
               </tr>`).join('')}
           </tbody>
         </table>

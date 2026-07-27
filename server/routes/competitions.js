@@ -73,38 +73,43 @@ router.get('/stats', async (req, res) => {
 // ── GET /api/competitions/season-details?season=WRO+2026 ─────
 // Must be declared before /:id. Returns all teams (with per-team members),
 // unique schools, coaches, judges, and students for a given season name.
+// For CONFIRMED teams: member/coach/school data comes from frozen snapshots.
+// For non-confirmed teams: falls back to live joins.
 router.get('/season-details', async (req, res) => {
   const season = req.query.season;
   if (!season) {
     return res.status(400).json({ success: false, error: 'season query param required.' });
   }
   try {
-    // Teams in this season with coach + school info
+    // 1. Teams in this season — fetch snapshot columns too
     const [teamRows] = await pool.execute(
       `SELECT t.id, t.team_name, t.category, t.age_group,
               t.registration_status, t.qualification_status, t.payment_status, t.status,
-              sc.school_name,
-              GROUP_CONCAT(co.full_name SEPARATOR ', ') AS coach_name,
-              GROUP_CONCAT(co.email SEPARATOR ', ') AS coach_email,
-              GROUP_CONCAT(co.mobile SEPARATOR ', ') AS coach_mobile
+              t.school_id,
+              t.snapshot_students, t.snapshot_coaches, t.snapshot_school,
+              sc.school_name
        FROM   teams t
        LEFT JOIN schools sc ON sc.id = t.school_id
-       LEFT JOIN team_coaches tc ON tc.team_id = t.id
-       LEFT JOIN coaches co ON co.id = tc.coach_id
        WHERE  t.season = ? AND t.is_deleted = 0
-       GROUP BY t.id, t.team_name, t.category, t.age_group, t.registration_status, t.qualification_status, t.payment_status, t.status, sc.school_name
        ORDER  BY t.team_name ASC`,
       [season]
     );
 
-    // Per-team member names
-    const teamIds = teamRows.map(r => r.id);
+    // 2. Per-team member names — prefer snapshots for confirmed teams
     const memberMap = {};
-    if (teamIds.length > 0) {
-      const ph = teamIds.map(() => '?').join(',');
+    const coachMap  = {};
+
+    const liveTeamIds = teamRows
+      .filter(t => t.registration_status !== 'confirmed' || !t.snapshot_students)
+      .map(t => t.id);
+
+    if (liveTeamIds.length > 0) {
+      const ph = liveTeamIds.map(() => '?').join(',');
       const [memberRows] = await pool.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
-                s.gender,
+                s.gender, s.consent_signed, s.shirt_size,
+                s.parent_name, s.personal_email, s.parent_contact, s.parent_email,
+                s.birthday, s.medical_conditions, s.allergies, s.previous_participation,
                 COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
          JOIN   students s   ON s.id  = tm.student_id AND s.is_deleted = 0
@@ -112,43 +117,156 @@ router.get('/season-details', async (req, res) => {
          LEFT JOIN schools sc_s ON sc_s.id = s.school_id
          LEFT JOIN schools sc_t ON sc_t.id = t.school_id
          WHERE  tm.team_id IN (${ph})`,
-        teamIds
+        liveTeamIds
       );
       memberRows.forEach(r => {
         if (!memberMap[r.team_id]) memberMap[r.team_id] = [];
         memberMap[r.team_id].push(r);
       });
+
+      const [liveCoachRows] = await pool.execute(
+        `SELECT tc.team_id,
+                GROUP_CONCAT(co.full_name SEPARATOR ', ') AS coach_name,
+                GROUP_CONCAT(co.email     SEPARATOR ', ') AS coach_email,
+                GROUP_CONCAT(co.mobile    SEPARATOR ', ') AS coach_mobile
+         FROM   team_coaches tc
+         JOIN   coaches co ON co.id = tc.coach_id AND co.is_deleted = 0
+         WHERE  tc.team_id IN (${ph})
+         GROUP  BY tc.team_id`,
+        liveTeamIds
+      );
+      liveCoachRows.forEach(r => { coachMap[r.team_id] = r; });
     }
-    teamRows.forEach(t => { t.members = memberMap[t.id] || []; });
 
-    // Unique schools via student membership
-    const [schoolRows] = await pool.execute(
-      `SELECT DISTINCT sc.id, sc.school_name, sc.city, sc.region, sc.address,
-                       sc.contact_number, sc.email, sc.school_type,
-                       sc.school_head, sc.robotics_coordinator
-       FROM   team_members tm
-       JOIN   teams   t  ON t.id  = tm.team_id  AND t.season = ? AND t.is_deleted = 0
-       JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
-       JOIN   schools sc  ON sc.id = s.school_id
-       ORDER  BY sc.school_name ASC`,
-      [season]
+    // 3. Inflate snapshot data for confirmed teams
+    teamRows.forEach(t => {
+      if (t.registration_status === 'confirmed' && t.snapshot_students) {
+        const snapStudents = typeof t.snapshot_students === 'string'
+          ? JSON.parse(t.snapshot_students) : (t.snapshot_students || []);
+        const snapCoaches  = typeof t.snapshot_coaches === 'string'
+          ? JSON.parse(t.snapshot_coaches)  : (t.snapshot_coaches  || []);
+        const snapSchool   = typeof t.snapshot_school === 'string'
+          ? JSON.parse(t.snapshot_school)   : (t.snapshot_school   || null);
+
+        t.members = snapStudents.map(s => ({
+          student_id:    s.id,
+          full_name:     s.fullName,
+          grade_level:   s.gradeLevel,
+          age:           s.age || null,
+          gender:        s.gender,
+          consent_signed: s.consentSigned || 0,
+          shirt_size:    s.shirtSize || null,
+          parent_name:   s.parentName || null,
+          personal_email: s.personalEmail || null,
+          parent_contact: s.parentContact || null,
+          parent_email:  s.parentEmail || null,
+          birthday:      s.birthday || null,
+          medical_conditions: s.medicalConditions || null,
+          allergies:     s.allergies || null,
+          previous_participation: s.previousParticipation || 0,
+          student_school: s.schoolName || snapSchool?.schoolName || null,
+        }));
+        t.coach_name   = snapCoaches.map(c => c.fullName).join(', ')  || null;
+        t.coach_email  = snapCoaches.map(c => c.email).join(', ')     || null;
+        t.coach_mobile = snapCoaches.map(c => c.mobile).join(', ')    || null;
+        if (snapSchool?.schoolName) t.school_name = snapSchool.schoolName;
+      } else {
+        t.members      = memberMap[t.id] || [];
+        const lc       = coachMap[t.id];
+        t.coach_name   = lc?.coach_name   || null;
+        t.coach_email  = lc?.coach_email  || null;
+        t.coach_mobile = lc?.coach_mobile || null;
+      }
+    });
+
+    // 4. Unique schools
+    const schoolSet = new Map();
+
+    // First pass: extract schools from confirmed team snapshots
+    teamRows.forEach(t => {
+      if (t.registration_status === 'confirmed') {
+        const snapSchool = typeof t.snapshot_school === 'string' ? JSON.parse(t.snapshot_school) : (t.snapshot_school || null);
+        if (snapSchool?.schoolName && !schoolSet.has(snapSchool.schoolName)) {
+          schoolSet.set(snapSchool.schoolName, {
+            school_name: snapSchool.schoolName,
+            city: snapSchool.city,
+            region: snapSchool.region,
+            school_type: snapSchool.schoolType,
+            contact_number: snapSchool.contactNumber,
+            email: snapSchool.email,
+            school_head: snapSchool.schoolHead,
+            robotics_coordinator: snapSchool.roboticsCoordinator,
+            address: snapSchool.address
+          });
+        }
+      }
+    });
+
+    // Second pass: for unconfirmed teams, we still need live school data
+    const [allSchools] = await pool.execute(
+      'SELECT id, school_name, city, region, contact_number, email, school_type, school_head, robotics_coordinator, address FROM schools WHERE is_deleted = 0'
     );
+    const schoolByName = {};
+    allSchools.forEach(s => { schoolByName[s.school_name] = s; });
 
-    // Coaches assigned to teams in this season
-    const [coachRows] = await pool.execute(
-      `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile,
-                       co.position,
-                       sc.school_name AS school_name
-       FROM   coaches co
-       JOIN   team_coaches tc ON tc.coach_id = co.id
-       JOIN   teams   t  ON t.id = tc.team_id AND t.season = ? AND t.is_deleted = 0
-       LEFT JOIN schools sc ON sc.id = co.school_id
-       WHERE  co.is_deleted = 0
-       ORDER  BY co.full_name ASC`,
-      [season]
-    );
+    teamRows.forEach(t => {
+      if (t.registration_status !== 'confirmed') {
+        t.members.forEach(m => {
+          if (m.student_school && !schoolSet.has(m.student_school)) {
+            schoolSet.set(m.student_school, schoolByName[m.student_school] || { school_name: m.student_school });
+          }
+        });
+        if (t.school_name && !schoolSet.has(t.school_name)) {
+          schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
+        }
+      }
+    });
 
-    // Judges for this season
+    const schoolRows = [...schoolSet.values()];
+    schoolRows.sort((a, b) => (a.school_name || '').localeCompare(b.school_name || ''));
+
+    // 5. Coaches — derived from snapshot-aware team data
+    const coachSet = new Map();
+    teamRows.forEach(t => {
+      if (t.registration_status === 'confirmed' && t.snapshot_coaches) {
+        const snapCoaches = typeof t.snapshot_coaches === 'string'
+          ? JSON.parse(t.snapshot_coaches) : (t.snapshot_coaches || []);
+        snapCoaches.forEach(c => {
+          if (c.fullName && !coachSet.has(c.fullName)) {
+            coachSet.set(c.fullName, { 
+              full_name: c.fullName, 
+              email: c.email, 
+              mobile: c.mobile, 
+              school_name: c.schoolName, 
+              position: c.position,
+              gender: c.gender,
+              birthday: c.birthday,
+              emergency_contact: c.emergencyContact,
+              shirt_size: c.shirtSize
+            });
+          }
+        });
+      }
+    });
+    if (liveTeamIds.length > 0) {
+      const ph = liveTeamIds.map(() => '?').join(',');
+      const [liveCoachDetail] = await pool.execute(
+        `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile, co.position, 
+                co.gender, co.birthday, co.emergency_contact, co.shirt_size,
+                sc.school_name
+         FROM   coaches co
+         JOIN   team_coaches tc ON tc.coach_id = co.id
+         LEFT JOIN schools sc ON sc.id = co.school_id
+         WHERE  tc.team_id IN (${ph}) AND co.is_deleted = 0`,
+        liveTeamIds
+      );
+      liveCoachDetail.forEach(c => {
+        if (!coachSet.has(c.full_name)) coachSet.set(c.full_name, c);
+      });
+    }
+    const coachRows = [...coachSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+    // 6. Judges (always live — not part of the team snapshot)
     const [judgeRows] = await pool.execute(
       `SELECT j.id, j.full_name, j.contact_number, j.gender, j.status,
               COALESCE(
@@ -159,28 +277,37 @@ router.get('/season-details', async (req, res) => {
               ) AS judging_category
        FROM   judges j
        WHERE  (j.season = ? OR EXISTS (
-                SELECT 1 FROM judge_assignments ja 
-                WHERE ja.judge_id = j.id AND ja.season = ?
-              )) 
+                 SELECT 1 FROM judge_assignments ja
+                 WHERE ja.judge_id = j.id AND ja.season = ?
+               ))
           AND j.is_deleted = 0
        ORDER  BY j.full_name ASC`,
       [season, season, season]
     );
 
-    // Distinct students
-    const [studentRows] = await pool.execute(
-      `SELECT DISTINCT s.id, s.full_name, s.age, s.grade_level, s.gender,
-                       s.consent_signed, s.shirt_size,
-                       sc.school_name AS school_name, t.team_name
-       FROM   team_members tm
-       JOIN   teams   t  ON t.id  = tm.team_id  AND t.season = ? AND t.is_deleted = 0
-       JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
-       LEFT JOIN schools sc ON sc.id = s.school_id
-       ORDER  BY s.full_name ASC`,
-      [season]
-    );
+    // 7. Distinct students — derived from snapshot-aware team members
+    const studentSet = new Map();
+    teamRows.forEach(t => {
+      (t.members || []).forEach(m => {
+        const key = m.full_name;
+        if (key && !studentSet.has(key)) {
+          studentSet.set(key, {
+            id:            m.student_id || null,
+            full_name:     m.full_name,
+            age:           m.age || null,
+            grade_level:   m.grade_level,
+            gender:        m.gender,
+            consent_signed: m.consent_signed || 0,
+            shirt_size:    m.shirt_size || null,
+            school_name:   m.student_school || null,
+            team_name:     t.team_name,
+          });
+        }
+      });
+    });
+    const studentRows = [...studentSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
-    // Competition events in this season
+    // 8. Competition events in this season
     const [eventRows] = await pool.execute(
       `SELECT id, name, date, venue, status, categories
        FROM   competitions
@@ -203,12 +330,11 @@ router.get('/season-details', async (req, res) => {
   }
 });
 
-
-
 // ── GET /api/competitions/details/:id ────────────────────────
 // Returns all related participants for a competition — teams (with member
-// names), unique schools, coaches, judges, and students — keyed by the
-// competition's own season field so data stays consistent.
+// names), unique schools, coaches, judges, and students.
+// For CONFIRMED teams: member/coach/school data comes from frozen snapshots.
+// For non-confirmed teams: falls back to live joins.
 router.get('/details/:id', async (req, res) => {
   try {
     // 1. Fetch the competition itself
@@ -220,33 +346,38 @@ router.get('/details/:id', async (req, res) => {
     const comp   = compRows[0];
     const season = comp.season;
 
-    // 2. Teams in this season (with member info joined)
+    // 2. Teams in this season — fetch snapshot columns too
     const [teamRows] = await pool.execute(
       `SELECT t.id, t.team_name, t.category, t.age_group,
               t.registration_status, t.qualification_status,
               t.payment_status, t.status,
-              sc.school_name,
-              GROUP_CONCAT(co.full_name SEPARATOR ', ') AS coach_name,
-              GROUP_CONCAT(co.email SEPARATOR ', ') AS coach_email,
-              GROUP_CONCAT(co.mobile SEPARATOR ', ') AS coach_mobile
+              t.school_id,
+              t.snapshot_students, t.snapshot_coaches, t.snapshot_school,
+              sc.school_name
        FROM   teams t
        LEFT JOIN schools sc ON sc.id = t.school_id
-       LEFT JOIN team_coaches tc ON tc.team_id = t.id
-       LEFT JOIN coaches co ON co.id = tc.coach_id
        WHERE  t.season = ? AND t.is_deleted = 0
-       GROUP BY t.id, t.team_name, t.category, t.age_group, t.registration_status, t.qualification_status, t.payment_status, t.status, sc.school_name
        ORDER  BY t.team_name ASC`,
       [season]
     );
 
-    // 3. Member names per team
+    // 3. Member names per team — prefer snapshots for confirmed teams
     const teamIds = teamRows.map(r => r.id);
-    const memberMap = {};
-    if (teamIds.length > 0) {
-      const ph = teamIds.map(() => '?').join(',');
+    const memberMap  = {};  // team_id → array of member objects
+    const coachMap   = {};  // team_id → coach display string
+
+    // Live-join members only for teams that are NOT confirmed (no snapshot or not confirmed)
+    const liveTeamIds = teamRows
+      .filter(t => t.registration_status !== 'confirmed' || !t.snapshot_students)
+      .map(t => t.id);
+
+    if (liveTeamIds.length > 0) {
+      const ph = liveTeamIds.map(() => '?').join(',');
       const [memberRows] = await pool.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
-                s.gender,
+                s.gender, s.consent_signed, s.shirt_size,
+                s.parent_name, s.personal_email, s.parent_contact, s.parent_email,
+                s.birthday, s.medical_conditions, s.allergies, s.previous_participation,
                 COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
          JOIN   students s   ON s.id  = tm.student_id  AND s.is_deleted = 0
@@ -254,43 +385,163 @@ router.get('/details/:id', async (req, res) => {
          LEFT JOIN schools sc_s ON sc_s.id = s.school_id
          LEFT JOIN schools sc_t ON sc_t.id = t.school_id
          WHERE  tm.team_id IN (${ph})`,
-        teamIds
+        liveTeamIds
       );
       memberRows.forEach(r => {
         if (!memberMap[r.team_id]) memberMap[r.team_id] = [];
         memberMap[r.team_id].push(r);
       });
+
+      // Live-join coaches for unconfirmed teams
+      const [liveCoachRows] = await pool.execute(
+        `SELECT tc.team_id,
+                GROUP_CONCAT(co.full_name SEPARATOR ', ') AS coach_name,
+                GROUP_CONCAT(co.email     SEPARATOR ', ') AS coach_email,
+                GROUP_CONCAT(co.mobile    SEPARATOR ', ') AS coach_mobile
+         FROM   team_coaches tc
+         JOIN   coaches co ON co.id = tc.coach_id AND co.is_deleted = 0
+         WHERE  tc.team_id IN (${ph})
+         GROUP  BY tc.team_id`,
+        liveTeamIds
+      );
+      liveCoachRows.forEach(r => { coachMap[r.team_id] = r; });
     }
-    teamRows.forEach(t => { t.members = memberMap[t.id] || []; });
 
-    // 4. Unique schools (from team members)
-    const [schoolRows] = await pool.execute(
-      `SELECT DISTINCT sc.id, sc.school_name, sc.city, sc.region, sc.address,
-                       sc.contact_number, sc.email, sc.school_type, sc.school_head,
-                       sc.robotics_coordinator
-       FROM   team_members tm
-       JOIN   teams   t  ON t.id  = tm.team_id  AND t.season = ? AND t.is_deleted = 0
-       JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
-       JOIN   schools sc  ON sc.id = s.school_id
-       ORDER  BY sc.school_name ASC`,
-      [season]
+    // Inflate snapshot data for confirmed teams
+    teamRows.forEach(t => {
+      if (t.registration_status === 'confirmed' && t.snapshot_students) {
+        // Parse JSON if still a string (shouldn't be after column but just in case)
+        const snapStudents = typeof t.snapshot_students === 'string'
+          ? JSON.parse(t.snapshot_students) : (t.snapshot_students || []);
+        const snapCoaches  = typeof t.snapshot_coaches === 'string'
+          ? JSON.parse(t.snapshot_coaches)  : (t.snapshot_coaches  || []);
+        const snapSchool   = typeof t.snapshot_school === 'string'
+          ? JSON.parse(t.snapshot_school)   : (t.snapshot_school   || null);
+
+        // Map snapshot students to the same shape as live-joined members
+        t.members = snapStudents.map(s => ({
+          student_id:    s.id,
+          full_name:     s.fullName,
+          grade_level:   s.gradeLevel,
+          age:           s.age || null,
+          gender:        s.gender,
+          consent_signed: s.consentSigned || 0,
+          shirt_size:    s.shirtSize || null,
+          parent_name:   s.parentName || null,
+          personal_email: s.personalEmail || null,
+          parent_contact: s.parentContact || null,
+          parent_email:  s.parentEmail || null,
+          birthday:      s.birthday || null,
+          medical_conditions: s.medicalConditions || null,
+          allergies:     s.allergies || null,
+          previous_participation: s.previousParticipation || 0,
+          student_school: s.schoolName || snapSchool?.schoolName || null,
+        }));
+        // Merge snapshot coach info into team row (same shape the frontend expects)
+        t.coach_name   = snapCoaches.map(c => c.fullName).join(', ')  || null;
+        t.coach_email  = snapCoaches.map(c => c.email).join(', ')     || null;
+        t.coach_mobile = snapCoaches.map(c => c.mobile).join(', ')    || null;
+        // Use snapshot school name if available
+        if (snapSchool?.schoolName) t.school_name = snapSchool.schoolName;
+      } else {
+        // Unconfirmed: use live-joined data
+        t.members      = memberMap[t.id] || [];
+        const lc       = coachMap[t.id];
+        t.coach_name   = lc?.coach_name   || null;
+        t.coach_email  = lc?.coach_email  || null;
+        t.coach_mobile = lc?.coach_mobile || null;
+      }
+    });
+
+    // 4. Unique schools — derived from team data (snapshots + live)
+    // 4. Unique schools
+    const schoolSet = new Map();
+
+    // First pass: extract schools from confirmed team snapshots
+    teamRows.forEach(t => {
+      if (t.registration_status === 'confirmed') {
+        const snapSchool = typeof t.snapshot_school === 'string' ? JSON.parse(t.snapshot_school) : (t.snapshot_school || null);
+        if (snapSchool?.schoolName && !schoolSet.has(snapSchool.schoolName)) {
+          schoolSet.set(snapSchool.schoolName, {
+            school_name: snapSchool.schoolName,
+            city: snapSchool.city,
+            region: snapSchool.region,
+            school_type: snapSchool.schoolType,
+            contact_number: snapSchool.contactNumber,
+            email: snapSchool.email,
+            school_head: snapSchool.schoolHead,
+            robotics_coordinator: snapSchool.roboticsCoordinator,
+            address: snapSchool.address
+          });
+        }
+      }
+    });
+
+    // Second pass: for unconfirmed teams, we still need live school data
+    const [allSchools] = await pool.execute(
+      'SELECT id, school_name, city, region, contact_number, email, school_type, school_head, robotics_coordinator, address FROM schools WHERE is_deleted = 0'
     );
+    const schoolByName = {};
+    allSchools.forEach(s => { schoolByName[s.school_name] = s; });
 
-    // 5. Coaches assigned to teams in this season
-    const [coachRows] = await pool.execute(
-      `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile,
-                       co.position,
-                       sc.school_name AS school_name
-       FROM   coaches co
-       JOIN   team_coaches tc ON tc.coach_id = co.id
-       JOIN   teams   t  ON t.id = tc.team_id AND t.season = ? AND t.is_deleted = 0
-       LEFT JOIN schools sc ON sc.id = co.school_id
-       WHERE  co.is_deleted = 0
-       ORDER  BY co.full_name ASC`,
-      [season]
-    );
+    teamRows.forEach(t => {
+      if (t.registration_status !== 'confirmed') {
+        t.members.forEach(m => {
+          if (m.student_school && !schoolSet.has(m.student_school)) {
+            schoolSet.set(m.student_school, schoolByName[m.student_school] || { school_name: m.student_school });
+          }
+        });
+        if (t.school_name && !schoolSet.has(t.school_name)) {
+          schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
+        }
+      }
+    });
 
-    // 6. Judges assigned to this season
+    const schoolRows = [...schoolSet.values()];
+    schoolRows.sort((a, b) => (a.school_name || '').localeCompare(b.school_name || ''));
+
+    // 5. Coaches — derived from team data (snapshots + live)
+    const coachSet = new Map();
+    teamRows.forEach(t => {
+      if (t.registration_status === 'confirmed' && t.snapshot_coaches) {
+        const snapCoaches = typeof t.snapshot_coaches === 'string'
+          ? JSON.parse(t.snapshot_coaches) : (t.snapshot_coaches || []);
+        snapCoaches.forEach(c => {
+          if (c.fullName && !coachSet.has(c.fullName)) {
+            coachSet.set(c.fullName, { 
+              full_name: c.fullName, 
+              email: c.email, 
+              mobile: c.mobile, 
+              school_name: c.schoolName, 
+              position: c.position,
+              gender: c.gender,
+              birthday: c.birthday,
+              emergency_contact: c.emergencyContact,
+              shirt_size: c.shirtSize
+            });
+          }
+        });
+      }
+    });
+    // Live coaches for non-confirmed teams
+    if (liveTeamIds.length > 0) {
+      const ph = liveTeamIds.map(() => '?').join(',');
+      const [liveCoachDetail] = await pool.execute(
+        `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile, co.position,
+                         co.gender, co.birthday, co.emergency_contact, co.shirt_size,
+                         sc.school_name
+         FROM   coaches co
+         JOIN   team_coaches tc ON tc.coach_id = co.id
+         WHERE  tc.team_id IN (${ph}) AND co.is_deleted = 0`,
+        liveTeamIds
+      );
+      liveCoachDetail.forEach(c => {
+        if (!coachSet.has(c.full_name)) coachSet.set(c.full_name, c);
+      });
+    }
+    const coachRows = [...coachSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+    // 6. Judges assigned to this season (always live — judges aren't snapshotted)
     const [judgeRows] = await pool.execute(
       `SELECT j.id, j.full_name, j.contact_number, j.gender, j.status,
               COALESCE(
@@ -301,27 +552,33 @@ router.get('/details/:id', async (req, res) => {
               ) AS judging_category
        FROM   judges j
        WHERE  (j.season = ? OR EXISTS (
-                SELECT 1 FROM judge_assignments ja 
-                WHERE ja.judge_id = j.id AND ja.season = ?
-              )) 
+                 SELECT 1 FROM judge_assignments ja
+                 WHERE ja.judge_id = j.id AND ja.season = ?
+               ))
           AND j.is_deleted = 0
        ORDER  BY j.full_name ASC`,
       [season, season, season]
     );
 
-    // 7. Distinct students participating
-    const [studentRows] = await pool.execute(
-      `SELECT DISTINCT s.id, s.full_name, s.age, s.grade_level, s.gender,
-                       s.consent_signed, s.shirt_size,
-                       sc.school_name AS school_name,
-                       t.team_name
-       FROM   team_members tm
-       JOIN   teams   t  ON t.id  = tm.team_id  AND t.season = ? AND t.is_deleted = 0
-       JOIN   students s  ON s.id  = tm.student_id AND s.is_deleted = 0
-       LEFT JOIN schools sc ON sc.id = s.school_id
-       ORDER  BY s.full_name ASC`,
-      [season]
-    );
+    // 7. Distinct students — derived from team members (snapshot-aware)
+    const studentSet = new Map();
+    teamRows.forEach(t => {
+      (t.members || []).forEach(m => {
+        const key = m.full_name;
+        if (key && !studentSet.has(key)) {
+          studentSet.set(key, {
+            id:           m.student_id || null,
+            full_name:    m.full_name,
+            age:          m.age || null,
+            grade_level:  m.grade_level,
+            gender:       m.gender,
+            school_name:  m.student_school || null,
+            team_name:    t.team_name,
+          });
+        }
+      });
+    });
+    const studentRows = [...studentSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
     res.json({
       competition: comp,
