@@ -188,12 +188,20 @@ CREATE TABLE teams (
   payment_status          ENUM('unpaid','partial','paid') DEFAULT 'unpaid',
   qualification_status    ENUM('pending','qualified','disqualified') DEFAULT 'pending',
   status                  ENUM('active','inactive') NOT NULL DEFAULT 'active',
+  qr_token                VARCHAR(64)   DEFAULT NULL,           -- Secure token for QR-code team linking
+  -- ── Historical snapshot columns ──────────────────────────────────────────
+  -- Frozen when registration_status → 'confirmed'. Never wiped once written.
+  snapshot_students       JSON          DEFAULT NULL COMMENT 'Frozen member profiles at season confirmation',
+  snapshot_coaches        JSON          DEFAULT NULL COMMENT 'Frozen coach profiles at season confirmation',
+  snapshot_school         JSON          DEFAULT NULL COMMENT 'Frozen school profile at season confirmation',
+  -- ─────────────────────────────────────────────────────────────────────────
   is_deleted              TINYINT(1)    NOT NULL DEFAULT 0,
   deleted_at              DATETIME      DEFAULT NULL,
   created_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_team_code (team_code),
+  UNIQUE KEY uq_qr_token  (qr_token),
   KEY idx_competition (competition_id),
   KEY idx_school      (school_id),
   KEY idx_season      (season),

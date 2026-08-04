@@ -153,7 +153,12 @@ router.get('/:id', async (req, res) => {
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     rows[0].members = await getMembers(req.params.id);
     rows[0].coaches = await getCoaches(req.params.id);
-    res.json(rows[0]);
+    res.json({
+      ...rows[0],
+      confirmed_warning: previousRegStatus === 'confirmed' && d.registrationStatus !== 'confirmed'
+        ? 'This team was confirmed. Its historical snapshot has been preserved. Re-set the status to Confirmed to refresh the snapshot with the current roster.'
+        : null,
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -268,8 +273,11 @@ router.put('/:id', adminOnly, async (req, res) => {
     }
 
     // Preserve the existing payment_status — it is managed exclusively by Payment Management
-    const [existingTeam] = await conn.execute('SELECT payment_status FROM teams WHERE id = ? LIMIT 1', [teamId]);
-    const currentPaymentStatus = existingTeam[0]?.payment_status || 'unpaid';
+    const [existingTeam] = await conn.execute(
+      'SELECT payment_status, registration_status FROM teams WHERE id = ? LIMIT 1', [teamId]
+    );
+    const currentPaymentStatus  = existingTeam[0]?.payment_status       || 'unpaid';
+    const previousRegStatus     = existingTeam[0]?.registration_status  || 'registered';
 
     // ── Duplicate check: new team name must not clash with another active team in the same competition ──
     if (d.teamName) {
@@ -310,17 +318,16 @@ router.put('/:id', adminOnly, async (req, res) => {
 
     await conn.commit();
 
-    // Freeze historical snapshot whenever the team reaches 'confirmed' status.
-    // This is also re-triggered if admin manually re-confirms to keep the snapshot
-    // in sync with any roster changes made before the final confirmation.
-    if (d.registrationStatus === 'confirmed') {
-      await freezeTeamSnapshot(pool, teamId); // use pool (outside transaction) so it reads committed data
-    } else {
-      await pool.execute(
-        `UPDATE teams SET snapshot_students = NULL, snapshot_coaches = NULL, snapshot_school = NULL WHERE id = ?`,
-        [teamId]
-      );
+    // ── Historical snapshot logic ─────────────────────────────────────
+    // RULE: A snapshot is NEVER wiped once it has been written.
+    //       It is only (re-)frozen when the status transitions TO 'confirmed'.
+    //       This guarantees that masterlist edits can never corrupt confirmed records.
+    const becomingConfirmed = d.registrationStatus === 'confirmed';
+    if (becomingConfirmed) {
+      // Re-freeze with the current (just-saved) roster
+      await freezeTeamSnapshot(pool, teamId);
     }
+    // If de-confirming: intentionally do NOT touch snapshot_* — preserve historical record.
 
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [teamId]);
     rows[0].members = await getMembers(teamId);
@@ -334,7 +341,12 @@ router.put('/:id', adminOnly, async (req, res) => {
       );
     }
 
-    res.json(rows[0]);
+    res.json({
+      ...rows[0],
+      confirmed_warning: previousRegStatus === 'confirmed' && d.registrationStatus !== 'confirmed'
+        ? 'This team was confirmed. Its historical snapshot has been preserved. Re-set the status to Confirmed to refresh the snapshot with the current roster.'
+        : null,
+    });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ success: false, error: err.message });
@@ -376,3 +388,4 @@ router.post('/:id/generate-qr', adminOnly, async (req, res) => {
 });
 
 module.exports = router;
+

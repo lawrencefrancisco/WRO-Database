@@ -339,6 +339,7 @@ async function autoInitDatabase(pool) {
         judge_id    INT UNSIGNED  NOT NULL,
         season      VARCHAR(50)   NOT NULL,
         category    VARCHAR(200)  NOT NULL,
+        snapshot_data JSON        DEFAULT NULL,
         created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         UNIQUE KEY uq_judge_season_cat (judge_id, season, category(100)),
@@ -631,10 +632,14 @@ async function autoInitDatabase(pool) {
     // ── Historical Snapshot columns (data integrity feature) ─────────
     // These are added idempotently so existing DBs are upgraded safely.
     const snapshotCols = [
-      { table: 'teams',  col: 'snapshot_students', def: 'JSON DEFAULT NULL COMMENT "Frozen member profiles at season confirmation"' },
-      { table: 'teams',  col: 'snapshot_coaches',  def: 'JSON DEFAULT NULL COMMENT "Frozen coach profiles at season confirmation"' },
-      { table: 'teams',  col: 'snapshot_school',   def: 'JSON DEFAULT NULL COMMENT "Frozen school profile at season confirmation"' },
-      { table: 'awards', col: 'snapshot_team',     def: 'JSON DEFAULT NULL COMMENT "Frozen team/school data at award creation"' },
+      { table: 'teams',   col: 'snapshot_students', def: 'JSON DEFAULT NULL COMMENT "Frozen member profiles at season confirmation"' },
+      { table: 'teams',   col: 'snapshot_coaches',  def: 'JSON DEFAULT NULL COMMENT "Frozen coach profiles at season confirmation"' },
+      { table: 'teams',   col: 'snapshot_school',   def: 'JSON DEFAULT NULL COMMENT "Frozen school profile at season confirmation"' },
+      { table: 'awards',  col: 'snapshot_team',     def: 'JSON DEFAULT NULL COMMENT "Frozen team/school data at award creation"' },
+      // Season-level freeze columns (added 2026-07)
+      { table: 'seasons', col: 'status',        def: "ENUM('ongoing','completed') NOT NULL DEFAULT 'ongoing'" },
+      { table: 'seasons', col: 'snapshot_data', def: "JSON DEFAULT NULL COMMENT 'Frozen season data when status=completed'" },
+      { table: 'seasons', col: 'completed_at',  def: 'DATETIME DEFAULT NULL' },
     ];
     for (const { table, col, def } of snapshotCols) {
       if (!(await columnExists(conn, table, col))) {

@@ -56,13 +56,13 @@ const AUTH = {
       }
 
 
-      // Store user + JWT token in sessionStorage
+      // Store user + JWT token in localStorage (persists across refreshes)
       const session = {
         ...data.user,
         _token:    data.token,
         loginTime: new Date().toISOString(),
       };
-      sessionStorage.setItem(this._SESSION_KEY, JSON.stringify(session));
+      localStorage.setItem(this._SESSION_KEY, JSON.stringify(session));
       return { success: true, user: session };
 
     } catch (err) {
@@ -72,15 +72,28 @@ const AUTH = {
 
   /** Logout – clears session and redirects */
   logout() {
-    sessionStorage.removeItem(this._SESSION_KEY);
+    localStorage.removeItem(this._SESSION_KEY);
     window.location.href = 'admin';
   },
 
-  /** Get current logged-in user (reads from sessionStorage) */
+  /** Get current logged-in user (reads from localStorage) */
   currentUser() {
     try {
-      const raw = sessionStorage.getItem(this._SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
+      const raw = localStorage.getItem(this._SESSION_KEY);
+      if (!raw) return null;
+      const session = JSON.parse(raw);
+      // Auto-clear obviously expired tokens (JWT exp field)
+      if (session._token) {
+        try {
+          const parts   = session._token.split('.');
+          const payload = JSON.parse(atob(parts[1]));
+          if (payload.exp && Date.now() / 1000 > payload.exp) {
+            localStorage.removeItem(this._SESSION_KEY);
+            return null;
+          }
+        } catch { /* malformed token — let the server reject it */ }
+      }
+      return session;
     } catch { return null; }
   },
 

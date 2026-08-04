@@ -104,11 +104,13 @@ const Teams = {
       // Prefer frozen snapshot coach names for display in the table list
       const snapshotCoachNames = (t.snapshotCoaches || []).map(c => c.fullName).filter(Boolean);
       const coachText = (snapshotCoachNames.length > 0 ? snapshotCoachNames : coachNames).join(', ') || '—';
+      // Determine if this team has a frozen snapshot
+      const isFrozen = t.registrationStatus === 'confirmed' && Array.isArray(t.snapshotStudents) && t.snapshotStudents.length > 0;
       return `
         <tr class="table-row cursor-pointer" onclick="Teams.viewDetail('${t.id}')">
           <td>
             <div class="font-semibold text-white text-sm">${t.teamName}</div>
-            <div class="text-xs text-slate-500">${t.id}</div>
+            <div class="text-xs text-slate-500">${t.id}${ isFrozen ? ' <span title="Historical record frozen" style="color:#10B981;font-size:10px;">🔒 Frozen</span>' : '' }</div>
           </td>
           <td><span class="badge badge-purple">${t.season}</span></td>
           <td class="text-xs text-slate-300">${t.category}</td>
@@ -152,10 +154,14 @@ const Teams = {
     const students= (await DB.getAll('students')).filter(s => !s.isDeleted);
     const dbSeasons = (await DB.getAll('seasons')).sort((a,b) => (b.year||0) - (a.year||0));
     const competitions = (await DB.getAll('competitions')).filter(c => !c.isDeleted);
+    const isConfirmed = t?.registrationStatus === 'confirmed';
+    const hasSnapshot = isConfirmed && Array.isArray(t?.snapshotStudents) && t.snapshotStudents.length > 0;
+    // For confirmed teams, the edit form locks roster fields but allows status/qualification changes
+    const rosterLocked = isConfirmed;
+
     const selectedMembers = t?.members || [];
     const selectedCoaches = t?.coaches || [];
 
-    // Build lookup maps for auto-detection
     const schoolMap = {};  // id → schoolName
     schools.forEach(s => { schoolMap[s.id] = s.schoolName; });
     const studentSchoolMap = {}; // studentId → { schoolId, schoolName }
@@ -176,6 +182,14 @@ const Teams = {
     )];
 
     Modal.show(id ? 'Edit Team' : 'New Team', `
+      ${ rosterLocked ? `
+      <div class="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        <div>
+          <div class="text-sm font-semibold" style="color:#10B981;">🔒 Confirmed — Historical Record Frozen</div>
+          <div class="text-xs mt-0.5" style="color:#6ee7b7;">Roster, school, and coach fields are locked to protect the historical snapshot. You may update the season, category, status, and qualification fields. To change the roster, first move the status back to <strong>registered</strong>, make edits, then re-confirm.</div>
+        </div>
+      </div>` : '' }
       <form id="team-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><label class="form-label">Team Name *</label>
           <input class="form-input" name="teamName" value="${Utils.esc(t?.teamName||'')}" required>
@@ -222,6 +236,11 @@ const Teams = {
 
         <!-- Coaches List -->
         <div class="md:col-span-2"><label class="form-label">Coaches</label>
+          ${ rosterLocked ? `
+          <div class="form-input text-sm" style="background:rgba(0,0,0,0.06);cursor:default;opacity:0.75;">
+            ${ (t.snapshotCoaches || []).map(c => c.fullName).join(', ') || '—' }
+            <span class="ml-2 text-xs" style="color:#10B981;">🔒 frozen</span>
+          </div>` : `
           <!-- Search bar -->
           <div class="relative mb-2">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -237,11 +256,21 @@ const Teams = {
                 <span class="text-sm text-slate-200 flex-1">${c.fullName}</span>
                 <span class="text-xs text-slate-500">${c.role||''}</span>
               </label>`).join('')}
-          </div>
+          </div>` }
         </div>
 
         <!-- Team Members with per-student school badges -->
         <div class="md:col-span-2"><label class="form-label">Team Members (select 2–3)</label>
+          ${ rosterLocked ? `
+          <div class="glass-light rounded-xl p-3 space-y-1">
+            ${ (t.snapshotStudents || []).map(m => `
+              <div class="flex items-center gap-3 p-2">
+                <span class="text-sm text-slate-200 flex-1">${m.fullName}</span>
+                <span class="text-xs text-slate-500">${m.gradeLevel||''}</span>
+                <span class="px-2 py-0.5 rounded-full text-xs" style="background:rgba(30,158,191,0.15);color:#1E9EBF;">${m.schoolName||''}</span>
+              </div>`).join('') }
+            <div class="text-xs text-center mt-1" style="color:#10B981;">🔒 Roster frozen at confirmation</div>
+          </div>` : `
           <!-- Search bar -->
           <div class="relative mb-2">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -270,7 +299,7 @@ const Teams = {
                 </span>
               </label>`;
             }).join('')}
-          </div>
+          </div>` }
         </div>
 
 
@@ -351,7 +380,7 @@ const Teams = {
     const form = document.getElementById('team-form');
     const data = Object.fromEntries(new FormData(form));
 
-    // Gather selected member IDs
+    // Gather selected member IDs (only relevant for non-locked teams)
     const memberCheckboxes = document.querySelectorAll('#team-form input[name="members"]:checked');
     data.members = Array.from(memberCheckboxes).map(cb => cb.value);
 
@@ -362,9 +391,23 @@ const Teams = {
     // Payment status is managed exclusively in Payment Management — never send it from here
     delete data.paymentStatus;
     delete data.payment_status;
-    if (!data.teamName.trim()) { Toast.error('Team name is required.'); return; }
-    if (id) { await DB.update('teams', id, data); Toast.success('Team updated!'); }
-    else    { await DB.insert('teams', data);     Toast.success('Team created!'); }
+    if (!data.teamName?.trim()) { Toast.error('Team name is required.'); return; }
+
+    let result;
+    if (id) {
+      result = await DB.update('teams', id, data);
+      if (result) {
+        // Server tells us if the team was previously confirmed and we de-confirmed it
+        if (result.confirmed_warning) {
+          Toast.info('⚠️ ' + result.confirmed_warning);
+        } else {
+          Toast.success('Team updated!');
+        }
+      }
+    } else {
+      result = await DB.insert('teams', data);
+      if (result) Toast.success('Team created!');
+    }
     Modal.close(); await this._renderStats(); await this._loadTable();
   },
 

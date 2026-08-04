@@ -78,12 +78,13 @@ const Judging = {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Judge</th>
-                  <th>Gender</th>
-                  <th>Contact Number</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
+            <th>Judge</th>
+            <th>Season / Category</th>
+            <th>Gender</th>
+            <th>Contact Number</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
               </thead>
               <tbody id="judges-tbody"></tbody>
             </table>
@@ -171,6 +172,7 @@ const Judging = {
     });
   },
 
+  
   // ── Table Render ───────────────────────────────────────────
   async _loadTable() {
     const rows = await this._getData();
@@ -187,7 +189,7 @@ const Judging = {
 
     if (page.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="5">
+        <tr><td colspan="6">
           <div class="empty-state">
             <div style="opacity:0.3;display:flex;justify-content:center">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F6C945" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
@@ -199,15 +201,33 @@ const Judging = {
           </div>
         </td></tr>`;
     } else {
+      // Load assignments for page rows in parallel to show season/category
+      const assignmentMap = {};
+      await Promise.all(page.map(async r => {
+        try {
+          const res = await DB._request('GET', `/judging/${r.id}/assignments`);
+          if (res && !res.error) assignmentMap[r.id] = res;
+        } catch { /* ignore */ }
+      }));
+
       tbody.innerHTML = page.map(j => {
         const name = j.fullName || j.full_name || '—';
         const contact = j.contactNumber || j.contact_number || '—';
-        const category = j.judgingCategory || j.judging_category || '—';
-        const season = j.season || '—';
         const initial = name.charAt(0).toUpperCase();
         const statusBadge = (j.status === 'active')
           ? `<span class="badge" style="background:rgba(45,198,83,0.15);color:#2dc653;">Active</span>`
           : `<span class="badge" style="background:rgba(90,106,138,0.2);color:#5a6a8a;">Inactive</span>`;
+
+        // Prefer assignments table data, fall back to judge row columns
+        const asgn = assignmentMap[j.id];
+        const seasons    = asgn?.seasons?.length    ? asgn.seasons    : (j.season           ? [j.season]           : []);
+        const categories = asgn?.categories?.length ? asgn.categories : (j.judgingCategory || j.judging_category ? [j.judgingCategory || j.judging_category] : []);
+
+        const seasonChips    = seasons.map(s    => `<span class="text-xs px-2 py-0.5 rounded-full font-medium" style="background:rgba(246,201,69,0.15);color:#F6C945;">${s}</span>`).join('');
+        const categoryChips  = categories.map(c => `<span class="text-xs px-2 py-0.5 rounded-full font-medium" style="background:rgba(30,158,191,0.15);color:#1E9EBF;white-space:nowrap;">${c}</span>`).join('');
+        const assignmentCell = (seasonChips || categoryChips)
+          ? `<div class="flex flex-col gap-1"><div class="flex flex-wrap gap-1">${seasonChips}</div><div class="flex flex-wrap gap-1">${categoryChips}</div></div>`
+          : '<span class="text-slate-600 text-xs">—</span>';
 
         return `
           <tr class="table-row cursor-pointer transition-colors" onclick="Judging.viewJudge('${j.id}')" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
@@ -223,6 +243,7 @@ const Judging = {
                 </div>
               </div>
             </td>
+            <td>${assignmentCell}</td>
             <td>${genderBadge(j.gender)}</td>
             <td class="text-sm text-slate-300">${contact}</td>
             <td>${statusBadge}</td>
@@ -547,8 +568,9 @@ const Judging = {
         judgeId = created?.id || created?.insertId || null;
       }
 
-      // Sync assignments table (seasons × categories) — same as the Assignments modal
-      if (judgeId && (selectedSeasons.length > 0 || selectedCategories.length > 0)) {
+      // Always sync assignments table (seasons × categories).
+      // Even if both are empty, we call the endpoint to clear the table.
+      if (judgeId) {
         try {
           await DB._request('PUT', `/judging/${judgeId}/assignments`, {
             seasons:    selectedSeasons,

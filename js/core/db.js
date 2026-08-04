@@ -52,6 +52,14 @@ const DB = {
 
       if (!res.ok) {
         console.error(`[DB] ${method} ${path} →`, res.status, data);
+        // Token expired or revoked mid-session — clear storage and redirect to login
+        if (res.status === 401) {
+          if (typeof AUTH !== 'undefined') {
+            localStorage.removeItem(AUTH._SESSION_KEY);
+          }
+          window.location.href = 'admin';
+          return null;
+        }
         if (typeof Toast !== 'undefined') {
           Toast.error(data.error || 'An error occurred while processing the request.');
         }

@@ -21,6 +21,28 @@ router.get('/stats', async (req, res) => {
     return res.status(400).json({ success: false, error: 'season query param required.' });
   }
   try {
+    // If season is completed, compute stats from frozen snapshot
+    const [[seasonRow]] = await pool.execute(
+      "SELECT status, snapshot_data FROM seasons WHERE name = ? LIMIT 1",
+      [season]
+    );
+    if (seasonRow?.status === 'completed' && seasonRow?.snapshot_data) {
+      const snap = typeof seasonRow.snapshot_data === 'string'
+        ? JSON.parse(seasonRow.snapshot_data)
+        : seasonRow.snapshot_data;
+      const cats = [...new Set(
+        (snap.teams || []).map(t => t.category).filter(Boolean)
+      )].sort();
+      return res.json({
+        season,
+        teams:    (snap.teams    || []).length,
+        schools:  (snap.schools  || []).length,
+        coaches:  (snap.coaches  || []).length,
+        students: (snap.students || []).length,
+        categories: cats,
+      });
+    }
+
     const [[teamRow]] = await pool.execute(
       `SELECT COUNT(*) AS teams, COUNT(DISTINCT tc.coach_id) AS coaches
        FROM teams t
@@ -81,7 +103,30 @@ router.get('/season-details', async (req, res) => {
     return res.status(400).json({ success: false, error: 'season query param required.' });
   }
   try {
-    // 1. Teams in this season — fetch snapshot columns too
+    // Check if the season is completed — if so, serve frozen snapshot
+    const [[seasonRow]] = await pool.execute(
+      "SELECT status, snapshot_data FROM seasons WHERE name = ? LIMIT 1",
+      [season]
+    );
+    if (seasonRow?.status === 'completed' && seasonRow?.snapshot_data) {
+      const snap = typeof seasonRow.snapshot_data === 'string'
+        ? JSON.parse(seasonRow.snapshot_data)
+        : seasonRow.snapshot_data;
+      return res.json({
+        season,
+        _frozen: true,
+        _frozen_at: snap.frozen_at || null,
+        teams:    snap.teams    || [],
+        schools:  snap.schools  || [],
+        coaches:  snap.coaches  || [],
+        judges:   snap.judges   || [],
+        students: snap.students || [],
+        events:   snap.events   || [],
+        awards:   snap.awards   || [],
+        payments: snap.payments || [],
+      });
+    }
+
     const [teamRows] = await pool.execute(
       `SELECT t.id, t.team_name, t.category, t.age_group,
               t.registration_status, t.qualification_status, t.payment_status, t.status,
@@ -95,13 +140,12 @@ router.get('/season-details', async (req, res) => {
       [season]
     );
 
-    // 2. Per-team member names — prefer snapshots for confirmed teams
+    // 2. Per-team member names — ALWAYS use live joins for ongoing seasons.
+    // Per-team snapshots are only used when building the season-level freeze.
     const memberMap = {};
     const coachMap  = {};
 
-    const liveTeamIds = teamRows
-      .filter(t => t.registration_status !== 'confirmed' || !t.snapshot_students)
-      .map(t => t.id);
+    const liveTeamIds = teamRows.map(t => t.id);
 
     if (liveTeamIds.length > 0) {
       const ph = liveTeamIds.map(() => '?').join(',');
@@ -138,45 +182,13 @@ router.get('/season-details', async (req, res) => {
       liveCoachRows.forEach(r => { coachMap[r.team_id] = r; });
     }
 
-    // 3. Inflate snapshot data for confirmed teams
+    // 3. Inflate live data for all teams
     teamRows.forEach(t => {
-      if (t.registration_status === 'confirmed' && t.snapshot_students) {
-        const snapStudents = typeof t.snapshot_students === 'string'
-          ? JSON.parse(t.snapshot_students) : (t.snapshot_students || []);
-        const snapCoaches  = typeof t.snapshot_coaches === 'string'
-          ? JSON.parse(t.snapshot_coaches)  : (t.snapshot_coaches  || []);
-        const snapSchool   = typeof t.snapshot_school === 'string'
-          ? JSON.parse(t.snapshot_school)   : (t.snapshot_school   || null);
-
-        t.members = snapStudents.map(s => ({
-          student_id:    s.id,
-          full_name:     s.fullName,
-          grade_level:   s.gradeLevel,
-          age:           s.age || null,
-          gender:        s.gender,
-          consent_signed: s.consentSigned || 0,
-          shirt_size:    s.shirtSize || null,
-          parent_name:   s.parentName || null,
-          personal_email: s.personalEmail || null,
-          parent_contact: s.parentContact || null,
-          parent_email:  s.parentEmail || null,
-          birthday:      s.birthday || null,
-          medical_conditions: s.medicalConditions || null,
-          allergies:     s.allergies || null,
-          previous_participation: s.previousParticipation || 0,
-          student_school: s.schoolName || snapSchool?.schoolName || null,
-        }));
-        t.coach_name   = snapCoaches.map(c => c.fullName).join(', ')  || null;
-        t.coach_email  = snapCoaches.map(c => c.email).join(', ')     || null;
-        t.coach_mobile = snapCoaches.map(c => c.mobile).join(', ')    || null;
-        if (snapSchool?.schoolName) t.school_name = snapSchool.schoolName;
-      } else {
-        t.members      = memberMap[t.id] || [];
-        const lc       = coachMap[t.id];
-        t.coach_name   = lc?.coach_name   || null;
-        t.coach_email  = lc?.coach_email  || null;
-        t.coach_mobile = lc?.coach_mobile || null;
-      }
+      t.members      = memberMap[t.id] || [];
+      const lc       = coachMap[t.id];
+      t.coach_name   = lc?.coach_name   || null;
+      t.coach_email  = lc?.coach_email  || null;
+      t.coach_mobile = lc?.coach_mobile || null;
     });
 
     // 4. Unique schools
@@ -266,15 +278,16 @@ router.get('/season-details', async (req, res) => {
     }
     const coachRows = [...coachSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
-    // 6. Judges (always live — not part of the team snapshot)
+    // 6. Judges (snapshot-aware if assigned via assignments table)
     const [judgeRows] = await pool.execute(
-      `SELECT j.id, j.full_name, j.contact_number, j.gender, j.status,
+      `SELECT j.id, j.full_name, j.email, j.contact_number, j.gender, j.status,
               COALESCE(
                 (SELECT GROUP_CONCAT(ja.category ORDER BY ja.category SEPARATOR ', ')
                  FROM judge_assignments ja
                  WHERE ja.judge_id = j.id AND ja.season = ?),
                 j.judging_category
-              ) AS judging_category
+              ) AS judging_category,
+              (SELECT MAX(ja.snapshot_data) FROM judge_assignments ja WHERE ja.judge_id = j.id AND ja.season = ?) AS snapshot_data
        FROM   judges j
        WHERE  (j.season = ? OR EXISTS (
                  SELECT 1 FROM judge_assignments ja
@@ -282,8 +295,21 @@ router.get('/season-details', async (req, res) => {
                ))
           AND j.is_deleted = 0
        ORDER  BY j.full_name ASC`,
-      [season, season, season]
+      [season, season, season, season]
     );
+
+    judgeRows.forEach(j => {
+      if (j.snapshot_data) {
+        try {
+          const snap = typeof j.snapshot_data === 'string' ? JSON.parse(j.snapshot_data) : j.snapshot_data;
+          j.full_name = snap.full_name || j.full_name;
+          j.email = snap.email || j.email;
+          j.contact_number = snap.contact_number || j.contact_number;
+          j.gender = snap.gender || j.gender;
+        } catch (e) {}
+      }
+      delete j.snapshot_data;
+    });
 
     // 7. Distinct students — derived from snapshot-aware team members
     const studentSet = new Map();
@@ -331,7 +357,8 @@ router.get('/season-details', async (req, res) => {
 
     res.json({ season, teams: teamRows, schools: schoolRows,
                coaches: coachRows, judges: judgeRows,
-               students: studentRows, events: eventRows });
+               students: studentRows, events: eventRows,
+               awards: [], payments: [] });
   } catch (err) {
     console.error('[Competitions] season-details error:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -341,8 +368,8 @@ router.get('/season-details', async (req, res) => {
 // ── GET /api/competitions/details/:id ────────────────────────
 // Returns all related participants for a competition — teams (with member
 // names), unique schools, coaches, judges, and students.
-// For CONFIRMED teams: member/coach/school data comes from frozen snapshots.
-// For non-confirmed teams: falls back to live joins.
+// For COMPLETED seasons: ALL data comes from the frozen season snapshot.
+// For ongoing seasons: falls back to live joins (confirmed teams prefer per-team snapshots).
 router.get('/details/:id', async (req, res) => {
   try {
     // 1. Fetch the competition itself
@@ -353,6 +380,31 @@ router.get('/details/:id', async (req, res) => {
     if (!compRows[0]) return res.status(404).json({ success: false, error: 'Not found.' });
     const comp   = compRows[0];
     const season = comp.season;
+
+    // 1b. If the parent season is completed, serve entirely from the frozen snapshot
+    if (season) {
+      const [[seasonRow]] = await pool.execute(
+        "SELECT status, snapshot_data FROM seasons WHERE name = ? LIMIT 1",
+        [season]
+      );
+      if (seasonRow?.status === 'completed' && seasonRow?.snapshot_data) {
+        const snap = typeof seasonRow.snapshot_data === 'string'
+          ? JSON.parse(seasonRow.snapshot_data)
+          : seasonRow.snapshot_data;
+        return res.json({
+          competition: comp,
+          _frozen:    true,
+          _frozen_at: snap.frozen_at || null,
+          teams:    snap.teams    || [],
+          schools:  snap.schools  || [],
+          coaches:  snap.coaches  || [],
+          judges:   snap.judges   || [],
+          students: snap.students || [],
+          awards:   snap.awards   || [],
+          payments: snap.payments || [],
+        });
+      }
+    }
 
     // 2. Teams in this season — fetch snapshot columns too
     const [teamRows] = await pool.execute(
@@ -369,15 +421,13 @@ router.get('/details/:id', async (req, res) => {
       [season]
     );
 
-    // 3. Member names per team — prefer snapshots for confirmed teams
+    // 3. Member names per team — ALWAYS use live joins (season-level snapshot is
+    // the only freeze mechanism; per-team snapshots are not used for display here).
     const teamIds = teamRows.map(r => r.id);
     const memberMap  = {};  // team_id → array of member objects
     const coachMap   = {};  // team_id → coach display string
 
-    // Live-join members only for teams that are NOT confirmed (no snapshot or not confirmed)
-    const liveTeamIds = teamRows
-      .filter(t => t.registration_status !== 'confirmed' || !t.snapshot_students)
-      .map(t => t.id);
+    const liveTeamIds = teamIds;
 
     if (liveTeamIds.length > 0) {
       const ph = liveTeamIds.map(() => '?').join(',');
@@ -415,77 +465,18 @@ router.get('/details/:id', async (req, res) => {
       liveCoachRows.forEach(r => { coachMap[r.team_id] = r; });
     }
 
-    // Inflate snapshot data for confirmed teams
+    // Inflate live data for all teams
     teamRows.forEach(t => {
-      if (t.registration_status === 'confirmed' && t.snapshot_students) {
-        // Parse JSON if still a string (shouldn't be after column but just in case)
-        const snapStudents = typeof t.snapshot_students === 'string'
-          ? JSON.parse(t.snapshot_students) : (t.snapshot_students || []);
-        const snapCoaches  = typeof t.snapshot_coaches === 'string'
-          ? JSON.parse(t.snapshot_coaches)  : (t.snapshot_coaches  || []);
-        const snapSchool   = typeof t.snapshot_school === 'string'
-          ? JSON.parse(t.snapshot_school)   : (t.snapshot_school   || null);
-
-        // Map snapshot students to the same shape as live-joined members
-        t.members = snapStudents.map(s => ({
-          student_id:    s.id,
-          full_name:     s.fullName,
-          grade_level:   s.gradeLevel,
-          age:           s.age || null,
-          gender:        s.gender,
-          consent_signed: s.consentSigned || 0,
-          shirt_size:    s.shirtSize || null,
-          parent_name:   s.parentName || null,
-          personal_email: s.personalEmail || null,
-          parent_contact: s.parentContact || null,
-          parent_email:  s.parentEmail || null,
-          birthday:      s.birthday || null,
-          medical_conditions: s.medicalConditions || null,
-          allergies:     s.allergies || null,
-          previous_participation: s.previousParticipation || 0,
-          student_school: s.schoolName || snapSchool?.schoolName || null,
-        }));
-        // Merge snapshot coach info into team row (same shape the frontend expects)
-        t.coach_name   = snapCoaches.map(c => c.fullName).join(', ')  || null;
-        t.coach_email  = snapCoaches.map(c => c.email).join(', ')     || null;
-        t.coach_mobile = snapCoaches.map(c => c.mobile).join(', ')    || null;
-        // Use snapshot school name if available
-        if (snapSchool?.schoolName) t.school_name = snapSchool.schoolName;
-      } else {
-        // Unconfirmed: use live-joined data
-        t.members      = memberMap[t.id] || [];
-        const lc       = coachMap[t.id];
-        t.coach_name   = lc?.coach_name   || null;
-        t.coach_email  = lc?.coach_email  || null;
-        t.coach_mobile = lc?.coach_mobile || null;
-      }
+      t.members      = memberMap[t.id] || [];
+      const lc       = coachMap[t.id];
+      t.coach_name   = lc?.coach_name   || null;
+      t.coach_email  = lc?.coach_email  || null;
+      t.coach_mobile = lc?.coach_mobile || null;
     });
 
-    // 4. Unique schools — derived from team data (snapshots + live)
-    // 4. Unique schools
+    // 4. Unique schools — live from team member schools
     const schoolSet = new Map();
 
-    // First pass: extract schools from confirmed team snapshots
-    teamRows.forEach(t => {
-      if (t.registration_status === 'confirmed') {
-        const snapSchool = typeof t.snapshot_school === 'string' ? JSON.parse(t.snapshot_school) : (t.snapshot_school || null);
-        if (snapSchool?.schoolName && !schoolSet.has(snapSchool.schoolName)) {
-          schoolSet.set(snapSchool.schoolName, {
-            school_name: snapSchool.schoolName,
-            city: snapSchool.city,
-            region: snapSchool.region,
-            school_type: snapSchool.schoolType,
-            contact_number: snapSchool.contactNumber,
-            email: snapSchool.email,
-            school_head: snapSchool.schoolHead,
-            robotics_coordinator: snapSchool.roboticsCoordinator,
-            address: snapSchool.address
-          });
-        }
-      }
-    });
-
-    // Second pass: for unconfirmed teams, we still need live school data
     const [allSchools] = await pool.execute(
       'SELECT id, school_name, city, region, contact_number, email, school_type, school_head, robotics_coordinator, address FROM schools WHERE is_deleted = 0'
     );
@@ -493,15 +484,13 @@ router.get('/details/:id', async (req, res) => {
     allSchools.forEach(s => { schoolByName[s.school_name] = s; });
 
     teamRows.forEach(t => {
-      if (t.registration_status !== 'confirmed') {
-        t.members.forEach(m => {
-          if (m.student_school && !schoolSet.has(m.student_school)) {
-            schoolSet.set(m.student_school, schoolByName[m.student_school] || { school_name: m.student_school });
-          }
-        });
-        if (t.school_name && !schoolSet.has(t.school_name)) {
-          schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
+      t.members.forEach(m => {
+        if (m.student_school && !schoolSet.has(m.student_school)) {
+          schoolSet.set(m.student_school, schoolByName[m.student_school] || { school_name: m.student_school });
         }
+      });
+      if (t.school_name && !schoolSet.has(t.school_name)) {
+        schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
       }
     });
 
@@ -549,15 +538,16 @@ router.get('/details/:id', async (req, res) => {
     }
     const coachRows = [...coachSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
-    // 6. Judges assigned to this season (always live — judges aren't snapshotted)
+    // 6. Judges assigned to this season (snapshot-aware)
     const [judgeRows] = await pool.execute(
-      `SELECT j.id, j.full_name, j.contact_number, j.gender, j.status,
+      `SELECT j.id, j.full_name, j.email, j.contact_number, j.gender, j.status,
               COALESCE(
                 (SELECT GROUP_CONCAT(ja.category ORDER BY ja.category SEPARATOR ', ')
                  FROM judge_assignments ja
                  WHERE ja.judge_id = j.id AND ja.season = ?),
                 j.judging_category
-              ) AS judging_category
+              ) AS judging_category,
+              (SELECT MAX(ja.snapshot_data) FROM judge_assignments ja WHERE ja.judge_id = j.id AND ja.season = ?) AS snapshot_data
        FROM   judges j
        WHERE  (j.season = ? OR EXISTS (
                  SELECT 1 FROM judge_assignments ja
@@ -565,8 +555,21 @@ router.get('/details/:id', async (req, res) => {
                ))
           AND j.is_deleted = 0
        ORDER  BY j.full_name ASC`,
-      [season, season, season]
+      [season, season, season, season]
     );
+
+    judgeRows.forEach(j => {
+      if (j.snapshot_data) {
+        try {
+          const snap = typeof j.snapshot_data === 'string' ? JSON.parse(j.snapshot_data) : j.snapshot_data;
+          j.full_name = snap.full_name || j.full_name;
+          j.email = snap.email || j.email;
+          j.contact_number = snap.contact_number || j.contact_number;
+          j.gender = snap.gender || j.gender;
+        } catch (e) {}
+      }
+      delete j.snapshot_data;
+    });
 
     // 7. Distinct students — derived from team members (snapshot-aware)
     const studentSet = new Map();
@@ -605,6 +608,8 @@ router.get('/details/:id', async (req, res) => {
       coaches:  coachRows,
       judges:   judgeRows,
       students: studentRows,
+      awards:   [],
+      payments: [],
     });
   } catch (err) {
     console.error('[Competitions] details error:', err);

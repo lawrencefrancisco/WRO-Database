@@ -108,6 +108,24 @@ router.put('/:id', adminOnly, async (req, res) => {
 
     const [rows] = await pool.execute('SELECT * FROM judges WHERE id = ?', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Judge not found.' });
+
+    // Update snapshot for active seasons
+    const judgeProfile = rows[0];
+    const snapshotStr = JSON.stringify({
+      full_name: judgeProfile.full_name,
+      email: judgeProfile.email,
+      contact_number: judgeProfile.contact_number,
+      gender: judgeProfile.gender
+    });
+    
+    await pool.execute(
+      `UPDATE judge_assignments ja
+       JOIN seasons s ON s.name = ja.season
+       SET ja.snapshot_data = ?
+       WHERE ja.judge_id = ? AND s.is_active = 1`,
+      [snapshotStr, req.params.id]
+    );
+
     res.json(rows[0]);
   } catch (err) {
     console.error('[Judges] PUT error:', err);
@@ -162,14 +180,20 @@ router.put('/:id/assignments', adminOnly, async (req, res) => {
   const judgeId = parseInt(req.params.id, 10);
   const { seasons = [], categories = [] } = req.body;
 
-  // --- Validate judge exists ---
+  // --- Validate judge exists & get profile for snapshot ---
   const [jRows] = await pool.execute(
-    'SELECT id FROM judges WHERE id = ? AND is_deleted = 0',
+    'SELECT full_name, email, contact_number, gender FROM judges WHERE id = ? AND is_deleted = 0',
     [judgeId]
   );
   if (!jRows[0]) {
     return res.status(404).json({ success: false, error: 'Judge not found.' });
   }
+  const snapshotStr = JSON.stringify({
+    full_name: jRows[0].full_name,
+    email: jRows[0].email,
+    contact_number: jRows[0].contact_number,
+    gender: jRows[0].gender
+  });
 
   // --- Validate season values against the live seasons table ---
   if (seasons.length > 0) {
@@ -197,7 +221,7 @@ router.put('/:id/assignments', adminOnly, async (req, res) => {
   const pairs = [];
   for (const season of seasons) {
     for (const category of categories) {
-      pairs.push([judgeId, season, category]);
+      pairs.push([judgeId, season, category, snapshotStr]);
     }
   }
 
@@ -211,10 +235,10 @@ router.put('/:id/assignments', adminOnly, async (req, res) => {
     );
 
     if (pairs.length > 0) {
-      const placeholders = pairs.map(() => '(?, ?, ?)').join(', ');
+      const placeholders = pairs.map(() => '(?, ?, ?, ?)').join(', ');
       const flat         = pairs.flat();
       await conn.execute(
-        `INSERT INTO judge_assignments (judge_id, season, category) VALUES ${placeholders}`,
+        `INSERT INTO judge_assignments (judge_id, season, category, snapshot_data) VALUES ${placeholders}`,
         flat
       );
     }
