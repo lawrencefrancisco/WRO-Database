@@ -1,5 +1,5 @@
 // ============================================================
-// WRO Philippines DBMS – Teams Routes
+// WRO Philippines DBMS ΓÇô Teams Routes
 // id is INT AUTO_INCREMENT. team_code is the business code.
 // competition_id, school_id, coach_id are INT UNSIGNED FKs.
 // team_members junction uses INT UNSIGNED for both columns.
@@ -40,17 +40,17 @@ async function resolveId(conn, table, codeCol, value) {
 }
 
 /**
- * freezeTeamSnapshot – captures a point-in-time snapshot of all member, coach,
+ * freezeTeamSnapshot ΓÇô captures a point-in-time snapshot of all member, coach,
  * and school profiles linked to a team and writes it into the three JSON columns.
  * Call this whenever a team's registration_status transitions to 'confirmed'.
- * Safe to call multiple times – will always reflect the state at the moment of call.
+ * Safe to call multiple times ΓÇô will always reflect the state at the moment of call.
  *
  * @param {object} conn  - active mysql2 connection (can be a pool or transaction conn)
  * @param {number} teamId
  */
 async function freezeTeamSnapshot(conn, teamId) {
   try {
-    // 1. Students – include their current school name for full historical context
+    // 1. Students ΓÇô include their current school name for full historical context
     const [students] = await conn.execute(`
       SELECT s.id, s.full_name AS fullName, s.grade_level AS gradeLevel,
              s.gender, s.shirt_size AS shirtSize, s.age, s.consent_signed AS consentSigned,
@@ -65,7 +65,7 @@ async function freezeTeamSnapshot(conn, teamId) {
       WHERE  tm.team_id = ?
     `, [teamId]);
 
-    // 2. Coaches – include their current school affiliation
+    // 2. Coaches ΓÇô include their current school affiliation
     const [coaches] = await conn.execute(`
       SELECT c.id, c.full_name AS fullName, c.email, c.mobile,
              c.position, c.birthday, c.gender, c.shirt_size AS shirtSize,
@@ -153,12 +153,7 @@ router.get('/:id', async (req, res) => {
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Not found' });
     rows[0].members = await getMembers(req.params.id);
     rows[0].coaches = await getCoaches(req.params.id);
-    res.json({
-      ...rows[0],
-      confirmed_warning: previousRegStatus === 'confirmed' && d.registrationStatus !== 'confirmed'
-        ? 'This team was confirmed. Its historical snapshot has been preserved. Re-set the status to Confirmed to refresh the snapshot with the current roster.'
-        : null,
-    });
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -190,7 +185,7 @@ router.post('/', adminOnly, async (req, res) => {
       }
     }
 
-    // ── Duplicate check: team name must be unique WITHIN THE SAME COMPETITION ─
+    // ΓöÇΓöÇ Duplicate check: team name must be unique WITHIN THE SAME COMPETITION ΓöÇ
     if (!d.teamName) {
       await conn.rollback();
       return res.status(400).json({ success: false, error: 'Team Name is required.' });
@@ -212,7 +207,7 @@ router.post('/', adminOnly, async (req, res) => {
       [teamCode, d.season, competitionId, d.teamName, d.category, d.ageGroup || null,
        schoolId,
        d.registrationStatus || 'registered',
-       // payment_status is managed exclusively by Payment Management — always default to 'unpaid' on insert
+       // payment_status is managed exclusively by Payment Management ΓÇö always default to 'unpaid' on insert
        'unpaid',
        d.qualificationStatus || 'pending', d.status || 'active']
     );
@@ -272,14 +267,14 @@ router.put('/:id', adminOnly, async (req, res) => {
       }
     }
 
-    // Preserve the existing payment_status — it is managed exclusively by Payment Management
+    // Preserve the existing payment_status ΓÇö it is managed exclusively by Payment Management
     const [existingTeam] = await conn.execute(
       'SELECT payment_status, registration_status FROM teams WHERE id = ? LIMIT 1', [teamId]
     );
     const currentPaymentStatus  = existingTeam[0]?.payment_status       || 'unpaid';
     const previousRegStatus     = existingTeam[0]?.registration_status  || 'registered';
 
-    // ── Duplicate check: new team name must not clash with another active team in the same competition ──
+    // ΓöÇΓöÇ Duplicate check: new team name must not clash with another active team in the same competition ΓöÇΓöÇ
     if (d.teamName) {
       const [dupTeam] = await conn.execute(
         'SELECT id FROM teams WHERE team_name = ? AND competition_id = ? AND is_deleted = 0 AND id != ? LIMIT 1',
@@ -318,7 +313,7 @@ router.put('/:id', adminOnly, async (req, res) => {
 
     await conn.commit();
 
-    // ── Historical snapshot logic ─────────────────────────────────────
+    // ΓöÇΓöÇ Historical snapshot logic ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     // RULE: A snapshot is NEVER wiped once it has been written.
     //       It is only (re-)frozen when the status transitions TO 'confirmed'.
     //       This guarantees that masterlist edits can never corrupt confirmed records.
@@ -327,7 +322,7 @@ router.put('/:id', adminOnly, async (req, res) => {
       // Re-freeze with the current (just-saved) roster
       await freezeTeamSnapshot(pool, teamId);
     }
-    // If de-confirming: intentionally do NOT touch snapshot_* — preserve historical record.
+    // If de-confirming: intentionally do NOT touch snapshot_* ΓÇö preserve historical record.
 
     const [rows] = await pool.execute('SELECT * FROM teams WHERE id = ?', [teamId]);
     rows[0].members = await getMembers(teamId);
@@ -371,7 +366,7 @@ router.delete('/:id', adminOnly, async (req, res) => {
   }
 });
 
-// POST /api/teams/:id/generate-qr  — generate (or regenerate) a secure QR token
+// POST /api/teams/:id/generate-qr  ΓÇö generate (or regenerate) a secure QR token
 router.post('/:id/generate-qr', adminOnly, async (req, res) => {
   try {
     const crypto = require('crypto');
