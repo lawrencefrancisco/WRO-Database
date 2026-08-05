@@ -132,13 +132,12 @@ const Coaches = {
   /** Converts MySQL DATE value to YYYY-MM-DD string for <input type="date"> */
   _toDateInput(val) {
     if (!val) return '';
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    try {
-      const d = new Date(val);
-      if (isNaN(d.getTime())) return '';
-      return d.toISOString().split('T')[0];
-    } catch { return ''; }
+    // First: try to extract YYYY-MM-DD directly from the string (avoids any timezone shifting)
+    const m = String(val).match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    return '';
   },
+
 
   async openForm(id = null) {
     const c      = id ? await DB.getById('coaches', id) : null;

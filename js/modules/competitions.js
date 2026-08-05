@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Module 5 – Competition Management (Redesigned)
 // Seasons are first-class DB records; statistics are computed
 // live from the teams / team_members tables — never stored.
@@ -973,6 +973,72 @@ const Competitions = {
       return;
     }
 
+
+    // -- For live seasons: override teams with real-time masterlist data ------
+    // The Teams tab in the Season overlay ALWAYS shows live masterlist data.
+    // team.snapshotStudents/Coaches/School are for Teams.viewDetail() only.
+    if (data && !data._frozen) {
+      try {
+        const [allTeams, allSchools, allCoaches, allStudents] = await Promise.all([
+          DB.getAll('teams'),
+          DB.getAll('schools'),
+          DB.getAll('coaches'),
+          DB.getAll('students'),
+        ]);
+
+        // Lookup maps (keyed by id)
+        const schoolsMap  = {};
+        allSchools.forEach(s  => { schoolsMap[s.id]  = s; });
+        const coachesMap  = {};
+        allCoaches.forEach(c  => { coachesMap[c.id]  = c; });
+        const studentsMap = {};
+        allStudents.forEach(st => { studentsMap[st.id] = st; });
+
+        // Filter teams by this season, exclude deleted
+        const seasonTeams = allTeams
+          .filter(t => !t.isDeleted && t.season === seasonName)
+          .sort((a, b) => (a.teamName || '').localeCompare(b.teamName || ''));
+
+        // Always use live masterlist data -- never snapshot fields
+        data.teams = seasonTeams.map(t => {
+          const liveCoachNames = (t.coaches || [])
+            .map(cid => coachesMap[cid]?.fullName)
+            .filter(Boolean);
+          const schoolName = schoolsMap[t.schoolId]?.schoolName || '-';
+          const members = (t.members || []).map(sid => {
+            const s  = studentsMap[sid];
+            const sc = s ? schoolsMap[s.schoolId] : null;
+            return {
+              student_id:     sid,
+              full_name:      s?.fullName      || `ID:${sid}`,
+              grade_level:    s?.gradeLevel    || '',
+              gender:         s?.gender        || '',
+              student_school: sc?.schoolName   || '',
+            };
+          });
+          return {
+            id:                   t.id,
+            team_name:            t.teamName,
+            team_code:            t.teamCode,
+            season:               t.season,
+            category:             t.category,
+            age_group:            t.ageGroup,
+            school_name:          schoolName,
+            coach_name:           liveCoachNames.join(', ') || '-',
+            registration_status:  t.registrationStatus,
+            qualification_status: t.qualificationStatus,
+            payment_status:       t.paymentStatus,
+            robot_platform:       t.robotPlatform,
+            programming_language: t.programmingLanguage,
+            members,
+            _has_snapshot: Array.isArray(t.snapshotStudents) && t.snapshotStudents.length > 0,
+          };
+        });
+      } catch (e) {
+        console.warn('[Competitions] Masterlist team load failed:', e.message);
+      }
+    }
+
     this._showSeasonOverlay(seasonName, data);
   },
 
@@ -1060,51 +1126,85 @@ const Competitions = {
       </div>`;
 
     // ── Teams Tab ─────────────────────────────────────────────
-    const teamsHTML = teams.length === 0 ? _empty('No teams registered for this season.') :
-      `<div style="display:flex;flex-direction:column;gap:14px;">
-        ${teams.map(t => {
-          const memberSchools = [...new Set((t.members || []).map(m => m.student_school).filter(Boolean))];
-          const displaySchool = memberSchools.length > 0 ? memberSchools.join(', ') : (t.school_name || '—');
-          return `
-          <div style="background:rgba(246,201,69,0.04);border:1px solid rgba(246,201,69,0.16);border-radius:16px;padding:18px;transition:border-color .2s;" onmouseover="this.style.borderColor='rgba(246,201,69,0.4)'" onmouseout="this.style.borderColor='rgba(246,201,69,0.16)'">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-              <div style="display:flex;align-items:center;gap:12px;">
-                ${_avatar(t.team_name, '#F6C945', 44)}
-                <div>
-                  <div style="font-weight:800;color:#f1f5f9;font-size:14px;">${t.team_name}</div>
-                  <div style="font-size:11px;color:#64748b;margin-top:2px;">${displaySchool}</div>
-                </div>
-              </div>
-              <div style="display:flex;flex-wrap:wrap;gap:5px;">
-                ${_badge(t.category || '—', '#F6C945')}
-                ${_badge(t.age_group || '—', '#4f9cf9')}
-                ${_statusBadge(t.registration_status)}
-                ${_statusBadge(t.qualification_status)}
-                ${_statusBadge(t.payment_status)}
-              </div>
-            </div>
-            ${(t.coach_name || t.coach_mobile || t.coach_email) ? `
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px;margin-bottom:${(t.members||[]).length>0?'14px':'0'};">
-              ${_field('Coach', t.coach_name)}
-              ${_field('Coach Mobile', t.coach_mobile)}
-              ${_field('Coach Email', t.coach_email)}
-            </div>` : ''}
-            ${(t.members || []).length > 0 ? `
-              <div style="border-top:1px solid rgba(246,201,69,0.12);padding-top:12px;">
-                <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:9px;">Members (${t.members.length})</div>
-                <div style="display:flex;flex-wrap:wrap;gap:7px;">
-                  ${t.members.map(m => `
-                    <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:24px;padding:5px 12px 5px 6px;">
-                      <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,${m.gender==='Female'?'#ec4899,#f43f5e':'#6366f1,#8b5cf6'});display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;">${(m.full_name||'?')[0]}</div>
-                      <span style="font-size:12px;color:#cbd5e1;font-weight:600;">${m.full_name}</span>
-                      ${m.grade_level ? `<span style="font-size:10px;color:#475569;">· ${m.grade_level}</span>` : ''}
-                      ${m.student_school ? `<span style="font-size:10px;color:#374151;">· ${m.student_school}</span>` : ''}
-                    </div>`).join('')}
-                </div>
-              </div>` : ''}
-          </div>`;
-        }).join('')}
-      </div>`;
+    const seasonNameEsc = (seasonName || '').replace(/'/g, "\\'");
+
+    // Build the teams list using string concat to avoid nested backtick issues
+    const _teamCard = (t) => {
+      // Normalize member fields: per-team snapshots use camelCase (fullName, gradeLevel, schoolName)
+      // season-level live data uses snake_case (full_name, grade_level, student_school).
+      // Accept both so frozen and live seasons render correctly.
+      const normM = m => ({
+        full_name:      m.full_name      || m.fullName     || '?',
+        grade_level:    m.grade_level    || m.gradeLevel   || '',
+        gender:         m.gender         || '',
+        student_school: m.student_school || m.schoolName   || '',
+      });
+      const members = (t.members || []).map(normM);
+
+      // Derive coach display name: live seasons set t.coach_name (string),
+      // frozen snapshots set t.coaches (array of {full_name|fullName}).
+      const coachDisplay = t.coach_name
+        || (Array.isArray(t.coaches) && t.coaches.length > 0
+            ? t.coaches.map(c => c.full_name || c.fullName || '').filter(Boolean).join(', ')
+            : '');
+
+      const memberSchools = [...new Set(members.map(m => m.student_school).filter(Boolean))];
+      const displaySchool = memberSchools.length > 0 ? memberSchools.join(', ') : (t.school_name || '—');
+      const canLink = !!t.id;
+      const isConfirmedFrozen = t._has_snapshot || t.registration_status === 'confirmed';
+      const tNameEsc = (t.team_name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<div style="background:rgba(246,201,69,0.04);border:1px solid rgba(246,201,69,0.16);border-radius:16px;padding:18px;transition:border-color .2s;" onmouseover="this.style.borderColor='rgba(246,201,69,0.4)'" onmouseout="this.style.borderColor='rgba(246,201,69,0.16)'">
+         <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+           <div style="display:flex;align-items:center;gap:12px;">
+             ${_avatar(t.team_name, '#F6C945', 44)}
+             <div>
+               <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                 <div style="font-weight:800;color:#f1f5f9;font-size:14px;">${t.team_name}</div>
+                 ${isConfirmedFrozen ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:#10b981;background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:1px 6px;">\uD83D\uDD12 Confirmed</span>' : ''}
+               </div>
+               <div style="font-size:11px;color:#64748b;margin-top:2px;">${displaySchool}</div>
+               ${t.team_code ? `<div style="font-size:10px;color:#475569;margin-top:1px;font-family:monospace;">${t.team_code}</div>` : ''}
+             </div>
+           </div>
+           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+             <div style="display:flex;flex-wrap:wrap;gap:5px;">
+               ${_badge(t.category || '—', '#F6C945')}
+               ${_badge(t.age_group || '—', '#4f9cf9')}
+               ${_statusBadge(t.registration_status)}
+               ${_statusBadge(t.qualification_status)}
+               ${_statusBadge(t.payment_status)}
+             </div>
+             ${canLink
+               ? `<button onclick="Competitions.goToTeamInMasterlist(${t.id},'${tNameEsc}','${seasonNameEsc}')" title="Open in Team Management" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(246,201,69,0.12);color:#F6C945;border:1px solid rgba(246,201,69,0.28);cursor:pointer;white-space:nowrap;transition:all .18s;flex-shrink:0;" onmouseover="this.style.background='rgba(246,201,69,0.26)'" onmouseout="this.style.background='rgba(246,201,69,0.12)'"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Open in Masterlist</button>`
+               : `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(100,116,139,0.08);color:#475569;border:1px solid rgba(100,116,139,0.2);white-space:nowrap;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Frozen record</span>`}
+           </div>
+         </div>
+         ${(t.robot_platform || t.programming_language || coachDisplay)
+           ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px;margin-bottom:${members.length > 0 ? '12px' : '0'}">${_field('Coach', coachDisplay)}${_field('Robot Platform', t.robot_platform)}${_field('Programming Language', t.programming_language)}</div>`
+           : ''}
+         ${members.length > 0
+           ? `<div style="border-top:1px solid rgba(246,201,69,0.12);padding-top:12px;"><div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:9px;">Members (${members.length})</div><div style="display:flex;flex-wrap:wrap;gap:7px;">${members.map(m => `<div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:24px;padding:5px 12px 5px 6px;"><div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,${m.gender==='Female'?'#ec4899,#f43f5e':'#6366f1,#8b5cf6'});display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;">${(m.full_name||'?')[0]}</div><span style="font-size:12px;color:#cbd5e1;font-weight:600;">${m.full_name}</span>${m.grade_level ? `<span style="font-size:10px;color:#475569;">\u00b7 ${m.grade_level}</span>` : ''}${m.student_school ? `<span style="font-size:10px;color:#374151;">\u00b7 ${m.student_school}</span>` : ''}</div>`).join('')}</div></div>`
+           : ''}
+       </div>`;
+    };
+
+    const teamsHTML =
+      // Toolbar
+      `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${teams.length} Team${teams.length !== 1 ? 's' : ''}</div>
+          ${_frozen
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(100,116,139,0.14);color:#64748b;border:1px solid rgba(100,116,139,0.25);"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Historical Snapshot</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(45,198,83,0.10);color:#2dc653;border:1px solid rgba(45,198,83,0.22);"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="6"/></svg> Live \u2014 Team Management Masterlist</span>`}
+        </div>
+        ${!_frozen
+          ? `<button onclick="Competitions.goToTeamInMasterlist(null,'','${seasonNameEsc}')" title="Open Team Management filtered to this season" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:12px;font-weight:700;background:rgba(246,201,69,0.10);color:#F6C945;border:1px solid rgba(246,201,69,0.28);cursor:pointer;transition:all .18s;" onmouseover="this.style.background='rgba(246,201,69,0.22)'" onmouseout="this.style.background='rgba(246,201,69,0.10)'"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>View All in Team Management</button>`
+          : ''}
+      </div>` +
+      // Team cards
+      (teams.length === 0
+        ? _empty('No teams registered for this season.')
+        : `<div style="display:flex;flex-direction:column;gap:14px;">${teams.map(_teamCard).join('')}</div>`);
 
     // ── Schools Tab ────────────────────────────────────────────
     const schoolsHTML = schools.length === 0 ? _empty('No schools participating in this season.') :
@@ -1147,7 +1247,7 @@ const Competitions = {
             <div style="display:flex;flex-direction:column;gap:6px;">
               ${_field('School', c.school_name)}
               ${_field('Gender', c.gender)}
-              ${c.birthday ? _field('Birthday', (() => { try { return new Date(c.birthday).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}); } catch(e){ return c.birthday; } })()) : ''}
+              ${c.birthday ? _field('Birthday', Utils.formatDateLong(c.birthday)) : ''}
               ${_field('Mobile', c.mobile)}
               ${_field('Email', c.email)}
               ${c.status ? `<div style="display:flex;gap:8px;font-size:12px;line-height:1.6;"><span style="color:#475569;min-width:120px;flex-shrink:0;font-weight:600;">Status</span><span>${_statusBadge(c.status)}</span></div>` : ''}
@@ -1211,26 +1311,37 @@ const Competitions = {
         </table>
       </div>`;
 
-    // ── Awards Tab ────────────────────────────────────────────
+    // -- Awards Tab (data from Awards Management module) --
     const awardsHTML = !awards || awards.length === 0
       ? _empty('No awards recorded for this season.')
-      : `<div style="display:flex;flex-direction:column;gap:10px;">
-          ${(awards || []).map((a, i) => `
-            <div style="display:flex;align-items:flex-start;gap:14px;background:rgba(246,201,69,0.05);border:1px solid rgba(246,201,69,0.15);border-radius:14px;padding:14px 18px;">
-              <div style="min-width:32px;height:32px;border-radius:50%;background:rgba(246,201,69,0.15);border:1px solid rgba(246,201,69,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#F6C945;flex-shrink:0;">${a.placement || (i+1)}</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-weight:800;color:#f1f5f9;font-size:14px;">${a.title || '—'}</div>
-                <div style="font-size:11px;color:#64748b;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px;">
-                  ${a.team_name   ? `<span>🏆 ${a.team_name}</span>` : ''}
-                  ${a.school_name ? `<span>🏫 ${a.school_name}</span>` : ''}
-                  ${a.category    ? `<span>🏷 ${a.category}</span>` : ''}
-                  ${a.award_date  ? `<span>📅 ${new Date(a.award_date).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'})}</span>` : ''}
-                </div>
-                ${a.awarded_to ? `<div style="font-size:11px;color:#94a3b8;margin-top:4px;">Awarded to: ${a.awarded_to}</div>` : ''}
-                ${a.notes ? `<div style="font-size:11px;color:#475569;margin-top:2px;font-style:italic;">${a.notes}</div>` : ''}
-              </div>
-            </div>`).join('')}
-        </div>`;
+      : '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">' +
+        (awards || []).map(a => {
+          const aColor = a.award === 'Champion' ? '#F6C945'
+            : (a.award||'').match(/Runner|2nd|3rd/) ? '#cd7f32' : '#8338ec';
+          const hw = [
+            a.has_trophy      ? 'Trophy'      : '',
+            a.has_medal       ? 'Medal'        : '',
+            a.has_certificate ? 'Certificate'  : '',
+          ].filter(Boolean);
+          return `<div style="background:rgba(246,201,69,0.04);border:1px solid rgba(246,201,69,0.16);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s;" onmouseover="this.style.borderColor='rgba(246,201,69,0.4)'" onmouseout="this.style.borderColor='rgba(246,201,69,0.16)'">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${aColor}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+              <div style="font-weight:800;color:#f1f5f9;font-size:14px;flex:1;">${a.award||'—'}</div>
+              ${a.year ? `<span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(131,56,236,0.15);color:#a890f0;border:1px solid rgba(131,56,236,0.3);">${a.year}</span>` : '' }
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              ${a.team_name && a.team_name!=='—' ? `<div style="font-size:12px;color:#cbd5e1;font-weight:600;">🏆 ${a.team_name}</div>` : '' }
+              ${a.school_name && a.school_name!=='—' ? `<div style="font-size:12px;color:#94a3b8;">🏫 ${a.school_name}</div>` : '' }
+              ${a.category ? `<div style="font-size:11px;color:#64748b;">🏷 ${a.category}</div>` : '' }
+            </div>
+            ${hw.length > 0 || a.status ? `<div style="display:flex;flex-wrap:wrap;gap:5px;padding-top:6px;border-top:1px solid rgba(246,201,69,0.10);">
+              ${hw.map(h=>`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,0.06);color:#94a3b8;border:1px solid rgba(255,255,255,0.08);">🎖 ${h}</span>`).join('')}
+              \
+              \
+            </div>` : '' }
+          </div>`;
+        }).join('') +
+        '</div>';
 
     const tabContents = { schools:schoolsHTML, coaches:coachesHTML, students:studentsHTML,
                           teams:teamsHTML, judges:judgesHTML, events:eventsHTML,
@@ -1312,6 +1423,46 @@ const Competitions = {
       <div id="season-tab-content" style="flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:rgba(246,201,69,0.3) transparent;">
         ${tabContents[firstTab]}
       </div>`;
+  },
+
+  // ── Navigate to Team Management and open a specific team ────────────────────
+  // Closes the season overlay, navigates to the Teams module,
+  // pre-filters by season, then auto-opens the team's detail view.
+  goToTeamInMasterlist(teamId, teamName, seasonName) {
+    // 1. Close the season detail overlay
+    this._closeSeasonOverlay();
+
+    // 2. Navigate to the Team Management route
+    Router.navigate('teams');
+
+    // 3. After Teams module renders, apply filters and open the detail panel
+    setTimeout(async () => {
+      // Apply season filter
+      const seasonSel   = document.getElementById('team-season');
+      const searchInput = document.getElementById('team-search');
+
+      if (seasonSel && seasonName) {
+        seasonSel.value        = seasonName;
+        Teams._filterSeason    = seasonName;
+      }
+      // Pre-fill search with team name so it's visible in the list
+      if (searchInput && teamName) {
+        searchInput.value = teamName;
+        Teams._search     = teamName;
+      }
+
+      Teams._page = 1;
+
+      // Redraw the table with the applied filters
+      if (typeof Teams._loadTable === 'function') {
+        await Teams._loadTable();
+      }
+
+      // 4. Open the team detail modal
+      if (teamId && typeof Teams.viewDetail === 'function') {
+        setTimeout(() => Teams.viewDetail(teamId), 250);
+      }
+    }, 250);
   },
 
   // ── Season Overlay Helpers ────────────────────────────────────

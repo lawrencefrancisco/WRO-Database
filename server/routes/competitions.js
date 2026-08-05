@@ -355,10 +355,67 @@ router.get('/season-details', async (req, res) => {
       }
     });
 
+    // 9. Awards for teams in this season
+    // Join via teams table to filter by season; prefer snapshot_team for names.
+    const [awardRows] = await pool.execute(
+      `SELECT aw.id,
+              aw.award,
+              aw.category,
+              aw.year,
+              aw.status,
+              aw.has_trophy,
+              aw.has_medal,
+              aw.has_certificate,
+              aw.competition_id,
+              aw.event,
+              aw.snapshot_team,
+              t.team_name  AS live_team_name,
+              sc.school_name AS live_school_name
+       FROM   awards aw
+       LEFT JOIN teams   t  ON t.id  = aw.team_id  AND t.is_deleted  = 0
+       LEFT JOIN schools sc ON sc.id = t.school_id  AND sc.is_deleted = 0
+       WHERE  aw.is_deleted = 0
+         AND  t.season = ?
+       ORDER  BY aw.year DESC, aw.award ASC`,
+      [season]
+    );
+
+    // Resolve display names: prefer frozen snapshot, fallback to live join
+    const awardsFinal = awardRows.map(aw => {
+      let teamName   = aw.live_team_name  || '—';
+      let schoolName = aw.live_school_name || '—';
+      if (aw.snapshot_team) {
+        try {
+          const snap = typeof aw.snapshot_team === 'string'
+            ? JSON.parse(aw.snapshot_team)
+            : aw.snapshot_team;
+          if (snap.teamName)  teamName   = snap.teamName;
+          if (snap.schools && snap.schools.length > 0) {
+            schoolName = snap.schools.map(s => s.schoolName).filter(Boolean).join(', ');
+          }
+        } catch (_) {}
+      }
+      return {
+        id:               aw.id,
+        award:            aw.award,
+        category:         aw.category,
+        year:             aw.year,
+        status:           aw.status,
+        has_trophy:       aw.has_trophy,
+        has_medal:        aw.has_medal,
+        has_certificate:  aw.has_certificate,
+        competition_id:   aw.competition_id,
+        event:            aw.event,
+        team_name:        teamName,
+        school_name:      schoolName,
+      };
+    });
+
     res.json({ season, teams: teamRows, schools: schoolRows,
                coaches: coachRows, judges: judgeRows,
                students: studentRows, events: eventRows,
-               awards: [], payments: [] });
+               awards: awardsFinal, payments: [] });
+
   } catch (err) {
     console.error('[Competitions] season-details error:', err);
     res.status(500).json({ success: false, error: err.message });

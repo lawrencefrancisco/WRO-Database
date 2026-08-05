@@ -142,14 +142,11 @@ const Students = {
   /** Converts any date value (Date object, ISO string, YYYY-MM-DD) → YYYY-MM-DD for <input type="date"> */
   _toDateInput(val) {
     if (!val) return '';
-    // If it's already YYYY-MM-DD, return as-is
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    // Otherwise parse and convert (handles Date objects and ISO strings from MySQL)
-    try {
-      const d = new Date(val);
-      if (isNaN(d.getTime())) return '';
-      return d.toISOString().split('T')[0];
-    } catch { return ''; }
+    // Extract YYYY-MM-DD directly from the string — avoids timezone shifting
+    // that occurs when constructing new Date() from a date-only string then calling toISOString()
+    const m = String(val).match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    return '';
   },
 
   async openForm(id = null) {

@@ -157,17 +157,52 @@ router.put('/:id/status', adminOnly, async (req, res) => {
     }
 
     // 3. Inflate team members + coaches (prefer existing snapshot for confirmed teams)
+    // IMPORTANT: per-team snapshots (freezeTeamSnapshot) store data in camelCase
+    // (fullName, gradeLevel, schoolName). The season overlay renderer expects
+    // snake_case (full_name, grade_level, student_school). Normalize here.
+    const normalizeMember = s => ({
+      student_id:             s.student_id             || s.id              || null,
+      full_name:              s.full_name              || s.fullName        || '',
+      grade_level:            s.grade_level            || s.gradeLevel      || '',
+      age:                    s.age                    || null,
+      gender:                 s.gender                 || '',
+      consent_signed:         s.consent_signed         ?? s.consentSigned  ?? 0,
+      shirt_size:             s.shirt_size             || s.shirtSize       || null,
+      parent_name:            s.parent_name            || s.parentName      || null,
+      personal_email:         s.personal_email         || s.personalEmail   || null,
+      parent_contact:         s.parent_contact         || s.parentContact   || null,
+      parent_email:           s.parent_email           || s.parentEmail     || null,
+      birthday:               s.birthday               || null,
+      medical_conditions:     s.medical_conditions     || s.medicalConditions || null,
+      allergies:              s.allergies              || null,
+      previous_participation: s.previous_participation ?? s.previousParticipation ?? 0,
+      // student_school: prefer explicit field, then camelCase schoolName
+      student_school:         s.student_school         || s.schoolName      || '',
+    });
+
+    const normalizeCoach = c => ({
+      id:           c.id           || null,
+      full_name:    c.full_name    || c.fullName    || '',
+      email:        c.email        || '',
+      mobile:       c.mobile       || '',
+      position:     c.position     || '',
+      birthday:     c.birthday     || null,
+      gender:       c.gender       || '',
+      shirt_size:   c.shirt_size   || c.shirtSize   || null,
+      coach_school: c.coach_school || c.schoolName  || '',
+    });
+
     const snappedTeams = teamRows.map(t => {
       let members, coaches, schoolName;
 
       if (t.registration_status === 'confirmed' && t.snapshot_students) {
-        // Already has a team-level snapshot — use it
-        const snapS = typeof t.snapshot_students === 'string' ? JSON.parse(t.snapshot_students) : (t.snapshot_students || []);
-        const snapC = typeof t.snapshot_coaches  === 'string' ? JSON.parse(t.snapshot_coaches)  : (t.snapshot_coaches  || []);
-        const snapSc = typeof t.snapshot_school  === 'string' ? JSON.parse(t.snapshot_school)   : (t.snapshot_school   || null);
-        members   = snapS;
-        coaches   = snapC;
-        schoolName = snapSc?.schoolName || t.school_name;
+        // Already has a team-level snapshot — use it, normalizing to snake_case
+        const snapS  = typeof t.snapshot_students === 'string' ? JSON.parse(t.snapshot_students) : (t.snapshot_students || []);
+        const snapC  = typeof t.snapshot_coaches  === 'string' ? JSON.parse(t.snapshot_coaches)  : (t.snapshot_coaches  || []);
+        const snapSc = typeof t.snapshot_school   === 'string' ? JSON.parse(t.snapshot_school)   : (t.snapshot_school   || null);
+        members    = snapS.map(normalizeMember);
+        coaches    = snapC.map(normalizeCoach);
+        schoolName = snapSc?.schoolName || snapSc?.school_name || t.school_name;
       } else {
         members   = (memberMap[t.id] || []).map(s => ({
           student_id: s.student_id, full_name: s.full_name, grade_level: s.grade_level,
@@ -335,37 +370,51 @@ router.put('/:id/status', adminOnly, async (req, res) => {
       notes:          p.notes,
     }));
 
-    // 10. Awards — podium + recognition records for this season
+    // 10. Awards — for teams in this season
+    // NOTE: awards table has no direct season column; filter via team join.
+    // Actual columns: award, category, year, has_trophy, has_medal, has_certificate, status, snapshot_team
     const [awardRows] = await conn.execute(
-      `SELECT a.id, a.award_code, a.title, a.category, a.placement,
-              a.awarded_to, a.season, a.award_date, a.notes,
+      `SELECT a.id, a.award, a.category, a.year,
+              a.has_trophy, a.has_medal, a.has_certificate,
+              a.status, a.event, a.competition_id,
               a.snapshot_team,
-              t.team_name, t.team_code, sc.school_name
+              t.team_name AS live_team_name,
+              sc.school_name AS live_school_name
        FROM   awards a
-       LEFT JOIN teams   t  ON t.id = a.team_id
-       LEFT JOIN schools sc ON sc.id = a.school_id
-       WHERE  a.season = ? AND a.is_deleted = 0
-       ORDER  BY a.placement ASC, a.title ASC`,
+       JOIN   teams   t  ON t.id  = a.team_id  AND t.is_deleted = 0
+       LEFT JOIN schools sc ON sc.id = t.school_id AND sc.is_deleted = 0
+       WHERE  t.season = ? AND a.is_deleted = 0
+       ORDER  BY a.year DESC, a.award ASC`,
       [seasonName]
     ).catch(() => [[]]);
+
     const awardsSnap = awardRows.map(a => {
-      // Prefer the per-award snapshot if available, fall back to live join
-      const snapTeam = a.snapshot_team
-        ? (typeof a.snapshot_team === 'string' ? JSON.parse(a.snapshot_team) : a.snapshot_team)
-        : null;
+      let teamName   = a.live_team_name  || '—';
+      let schoolName = a.live_school_name || '—';
+      if (a.snapshot_team) {
+        try {
+          const snap = typeof a.snapshot_team === 'string'
+            ? JSON.parse(a.snapshot_team)
+            : a.snapshot_team;
+          if (snap.teamName) teamName = snap.teamName;
+          if (snap.schools && snap.schools.length > 0) {
+            schoolName = snap.schools.map(s => s.schoolName).filter(Boolean).join(', ');
+          }
+        } catch (_) {}
+      }
       return {
-        award_code:  a.award_code,
-        title:       a.title,
-        category:    a.category,
-        placement:   a.placement,
-        awarded_to:  a.awarded_to,
-        season:      a.season,
-        award_date:  a.award_date,
-        notes:       a.notes,
-        team_name:   snapTeam?.teamName  || a.team_name  || null,
-        team_code:   a.team_code         || null,
-        school_name: snapTeam?.schools?.[0]?.schoolName || a.school_name || null,
-        coaches:     snapTeam?.coaches   || [],
+        id:              a.id,
+        award:           a.award,
+        category:        a.category,
+        year:            a.year,
+        status:          a.status,
+        has_trophy:      a.has_trophy,
+        has_medal:       a.has_medal,
+        has_certificate: a.has_certificate,
+        event:           a.event,
+        competition_id:  a.competition_id,
+        team_name:       teamName,
+        school_name:     schoolName,
       };
     });
 

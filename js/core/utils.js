@@ -6,24 +6,66 @@ const Utils = {
 
   // ── Formatting ────────────────────────────────────────────
 
-  formatDate(iso) {
-    if (!iso) return '—';
-    try {
-      return new Date(iso).toLocaleDateString('en-PH', {
-        year: 'numeric', month: 'short', day: 'numeric'
-      });
-    } catch { return iso; }
+  /**
+   * Parse a date value safely without timezone shifting.
+   * Date-only strings like "1990-09-13" are treated as LOCAL midnight,
+   * not UTC midnight, preventing the classic +/-1 day birthday bug in
+   * timezones that are offset from UTC (e.g. UTC+8 Philippines).
+   */
+  _parseDate(val) {
+    if (!val) return null;
+    const s = String(val);
+    // Extract YYYY-MM-DD portion regardless of whether it's a full ISO string
+    const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      // Construct as local midnight — never UTC midnight
+      return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    }
+    // Fallback for non-standard formats
+    return new Date(val);
   },
 
-  formatDateTime(iso) {
-    if (!iso) return '—';
+  formatDate(val) {
+    if (!val) return '—';
     try {
-      return new Date(iso).toLocaleString('en-PH', {
+      return this._parseDate(val).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+    } catch { return val; }
+  },
+
+  formatDateLong(val) {
+    if (!val) return '—';
+    try {
+      return this._parseDate(val).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      });
+    } catch { return val; }
+  },
+
+  formatDateTime(val) {
+    if (!val) return '—';
+    try {
+      // For datetimes keep full ISO parsing (has an explicit time component)
+      return new Date(val).toLocaleString('en-PH', {
         year: 'numeric', month: 'short', day: 'numeric',
         hour: '2-digit', minute: '2-digit'
       });
-    } catch { return iso; }
+    } catch { return val; }
   },
+
+  /** Calculate age from birthday using timezone-safe local date parsing */
+  calcAge(birthday) {
+    if (!birthday) return null;
+    const d = this._parseDate(birthday);
+    if (!d || isNaN(d)) return null;
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    return age;
+  },
+
 
   parseNumber(val) {
     if (val == null || val === '') return 0;
@@ -44,13 +86,6 @@ const Utils = {
 
   formatNumber(n) {
     return new Intl.NumberFormat('en-PH').format(this.parseNumber(n));
-  },
-
-  /** Calculate age from birthday */
-  calcAge(birthday) {
-    if (!birthday) return null;
-    const diff = Date.now() - new Date(birthday).getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
   },
 
   /** Truncate text */

@@ -234,14 +234,20 @@ const Awards = {
     const students= (await DB.getAll('students')).filter(s => !s.isDeleted);
     const competitions = (await DB.getAll('competitions')).filter(c => !c.isDeleted);
 
-    // Pre-calculate schools and coaches per team for the UI map
+    // Pre-calculate schools, coaches, category per team
     const _sMap = {}; schools.forEach(s => _sMap[s.id] = s.schoolName);
     const _cMap = {}; coaches.forEach(c => _cMap[c.id] = c.fullName);
     const _stMap = {}; students.forEach(s => _stMap[s.id] = s);
 
+    // Build competition lookup: id -> competition object
+    const compById = {};
+    competitions.forEach(c => compById[c.id] = c);
+    // Store serialisable competition list on window for onTeamChange
+    window._awardsCompetitions = competitions;
+
     const teamMetaMap = {};
     teams.forEach(t => {
-      // Get all unique schools from team members, fallback to team.schoolId
+      // Schools from team members, fallback to team.schoolId
       let sNames = [];
       if (t.members && t.members.length > 0) {
         const sIds = new Set(t.members.map(mid => _stMap[mid]?.schoolId).filter(Boolean));
@@ -249,14 +255,18 @@ const Awards = {
       }
       if (sNames.length === 0 && t.schoolId) sNames = [_sMap[t.schoolId]];
 
-      // Get all coach names
       const cNames = (t.coaches || []).map(cid => _cMap[cid]).filter(Boolean);
 
+      // Extract year from season string (e.g. 'WRO 2026' -> 2026)
+      const seasonYear = parseInt((t.season || '').replace(/\D/g, '')) || new Date().getFullYear();
+
       teamMetaMap[t.id] = {
-        schools: sNames.length > 0 ? sNames : ['No School assigned'],
-        coaches: cNames.length > 0 ? cNames : ['No Coach assigned'],
-        category: t.category || '',
-        season: t.season || ''
+        schools:    sNames.length > 0 ? sNames : ['No School assigned'],
+        coaches:    cNames.length > 0 ? cNames : ['No Coach assigned'],
+        // category is the authoritative source — always from team record
+        category:   t.category || '',
+        season:     t.season   || '',
+        seasonYear,
       };
     });
     window._awardsTeamMetaMap = teamMetaMap;
@@ -268,7 +278,7 @@ const Awards = {
         <div class="md:col-span-2"><label class="form-label">Team <span class="text-red-400">*</span></label>
           <select class="form-input" name="teamId" id="award-team-select" onchange="Awards._onTeamChange()">
             <option value="">— Select Team —</option>
-            ${teams.map(t=>`<option value="${t.id}" ${a?.teamId===t.id?'selected':''}>${Utils.esc(t.teamName)} (${t.season||''})</option>`).join('')}
+            ${teams.map(t => `<option value="${t.id}" ${a?.teamId===t.id?'selected':''}>${Utils.esc(t.teamName)} (${t.season||''})</option>`).join('')}
           </select>
         </div>
 
@@ -290,10 +300,20 @@ const Awards = {
           </div>
         </div>
 
-        <div><label class="form-label">Category</label>
-          <select class="form-input" name="category">
-            ${Seeder.WRO_CATEGORIES.map(c=>`<option value="${c}" ${a?.category===c?'selected':''}>${c}</option>`).join('')}
-          </select>
+        <!-- Category: AUTO-DETECTED from team — read-only, never manually entered -->
+        <div><label class="form-label">Category
+          <span class="text-xs font-normal text-slate-500 ml-1">(auto-detected from team)</span>
+        </label>
+          <!-- Hidden input carries the value for FormData -->
+          <input type="hidden" name="category" id="award-category-input" value="${a?.category||''}">
+          <!-- Visual display pill -->
+          <div id="award-category-display"
+               class="form-input flex items-center gap-2 min-h-[42px]"
+               style="background:rgba(255,255,255,0.04);cursor:default;">
+            ${a?.category
+              ? `<span class="px-2.5 py-1 rounded-full text-xs font-bold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${a.category}</span>`
+              : '<span class="text-slate-500 text-sm">Auto-detected after team selection</span>'}
+          </div>
         </div>
 
         <div><label class="form-label">Award <span class="text-red-400">*</span></label>
@@ -303,14 +323,16 @@ const Awards = {
         </div>
 
         <div><label class="form-label">Year</label>
-          <select class="form-input" name="year">
+          <select class="form-input" name="year" id="award-year-select">
             ${Awards._yearOptions(a?.year)}
           </select>
         </div>
 
         <!-- Competition dropdown – spans full width -->
-        <div class="md:col-span-2"><label class="form-label">Competition</label>
-          <select class="form-input" name="competitionId">
+        <div class="md:col-span-2"><label class="form-label">Competition
+          <span class="text-xs font-normal text-slate-500 ml-1" id="award-comp-hint"></span>
+        </label>
+          <select class="form-input" name="competitionId" id="award-competition-select">
             <option value="">— Select Competition —</option>
             ${competitions.map(c => `<option value="${c.id}" ${a?.competitionId===c.id?'selected':''}>${c.name} (${c.season||''})</option>`).join('')}
           </select>
@@ -348,29 +370,80 @@ const Awards = {
        <button onclick="Awards._save('${id||''}')" class="btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"><svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'/><polyline points='17 21 17 13 7 13 7 21'/><polyline points='7 3 7 8 15 8'/></svg> Save Award</button>`,
       'max-w-3xl'
     );
-    // Trigger team change on load if editing
-    setTimeout(() => { if(a?.teamId) Awards._onTeamChange(a.teamId); }, 50);
+    // Trigger team change on load if editing (restores all auto-detected fields)
+    setTimeout(() => { if (a?.teamId) Awards._onTeamChange(a.teamId); }, 50);
   },
 
   _onTeamChange(overrideId = null) {
-    const sMap = window._awardsTeamMetaMap || {};
-    const teamId = overrideId || document.getElementById('award-team-select')?.value;
-    const meta = sMap[teamId];
+    const metaMap = window._awardsTeamMetaMap || {};
+    const allComps = window._awardsCompetitions || [];
+    const teamId   = overrideId || document.getElementById('award-team-select')?.value;
+    const meta     = metaMap[teamId];
 
-    const schoolDisp = document.getElementById('award-school-display');
-    const coachDisp = document.getElementById('award-coach-display');
+    const schoolDisp   = document.getElementById('award-school-display');
+    const coachDisp    = document.getElementById('award-coach-display');
+    const catInput     = document.getElementById('award-category-input');
+    const catDisp      = document.getElementById('award-category-display');
+    const yearSel      = document.getElementById('award-year-select');
+    const compSel      = document.getElementById('award-competition-select');
+    const compHint     = document.getElementById('award-comp-hint');
 
     if (!teamId || !meta) {
       if (schoolDisp) schoolDisp.innerHTML = '<span class="text-slate-500 text-sm">Select a team first</span>';
-      if (coachDisp) coachDisp.innerHTML = '<span class="text-slate-500 text-sm">Select a team first</span>';
+      if (coachDisp)  coachDisp.innerHTML  = '<span class="text-slate-500 text-sm">Select a team first</span>';
+      if (catInput)   catInput.value       = '';
+      if (catDisp)    catDisp.innerHTML    = '<span class="text-slate-500 text-sm">Auto-detected after team selection</span>';
       return;
     }
 
+    // ── Schools ──
     if (schoolDisp) {
-      schoolDisp.innerHTML = meta.schools.map(s => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(30,158,191,0.15);color:#1E9EBF;">${s}</span>`).join('');
+      schoolDisp.innerHTML = meta.schools.map(s =>
+        `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(30,158,191,0.15);color:#1E9EBF;">${s}</span>`
+      ).join('');
     }
+
+    // ── Coaches ──
     if (coachDisp) {
-      coachDisp.innerHTML = meta.coaches.map(c => `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${c}</span>`).join('');
+      coachDisp.innerHTML = meta.coaches.map(c =>
+        `<span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${c}</span>`
+      ).join('');
+    }
+
+    // ── Category — authoritative source is the team record ──
+    const detectedCategory = meta.category || '';
+    if (catInput) catInput.value = detectedCategory;
+    if (catDisp) {
+      catDisp.innerHTML = detectedCategory
+        ? `<span class="px-2.5 py-1 rounded-full text-xs font-bold" style="background:rgba(246,201,69,0.18);color:#F6C945;">${detectedCategory}</span>
+           <span class="text-xs text-slate-500 ml-1">from team "${meta.season}"</span>`
+        : '<span class="text-amber-400 text-xs">⚠ No category set on this team</span>';
+    }
+
+    // ── Year — auto-fill from team\'s season ──
+    if (yearSel && meta.seasonYear) {
+      yearSel.value = meta.seasonYear;
+    }
+
+    // ── Competition — filter to same season, pre-select if only one match ──
+    if (compSel) {
+      const seasonComps = allComps.filter(c => c.season === meta.season);
+      // Rebuild options: keep blank + all comps, highlight season matches
+      compSel.innerHTML =
+        '<option value="">\u2014 Select Competition \u2014</option>' +
+        allComps.map(c => {
+          const isSameSeason = c.season === meta.season;
+          return `<option value="${c.id}" ${isSameSeason ? 'data-season-match="1"' : ''}>${c.name} (${c.season||''})</option>`;
+        }).join('');
+      // Auto-select if exactly one competition matches this season
+      if (seasonComps.length === 1) {
+        compSel.value = seasonComps[0].id;
+      }
+      if (compHint) {
+        compHint.textContent = seasonComps.length > 0
+          ? `(${seasonComps.length} competition${seasonComps.length !== 1 ? 's' : ''} in ${meta.season})`
+          : '';
+      }
     }
   },
 
@@ -381,14 +454,33 @@ const Awards = {
     data.hasMedal       = data.hasMedal       === 'true';
     data.hasCertificate = data.hasCertificate === 'true';
     data.year           = parseInt(data.year);
+
+    // Category MUST come from the team record — never trust a stale stored value.
+    // The hidden input #award-category-input is set by _onTeamChange from the
+    // live team.category field, so data.category is already correct here.
+    // Guard: ensure a team is selected and category is not empty.
+    if (!data.teamId) {
+      Toast.error('Please select a team.');
+      return;
+    }
+    if (!data.category) {
+      // Fallback: read directly from the team meta map in case the hidden input
+      // was somehow empty (e.g. team has no category set yet).
+      const meta = (window._awardsTeamMetaMap || {})[data.teamId];
+      data.category = meta?.category || '';
+    }
+
     let res;
     if (id) { res = await DB.update('awards', id, data); }
     else    { res = await DB.insert('awards', data); }
-    
+
     if (!res) return; // Halt on error
-    
+
     Toast.success(id ? 'Award updated!' : 'Award added!');
-    Modal.close(); await this._renderHOF(); await this._renderTopSchools(); await this._loadTable();
+    Modal.close();
+    await this._renderHOF();
+    await this._renderTopSchools();
+    await this._loadTable();
   },
 
   async confirmDelete(id) {
