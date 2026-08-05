@@ -233,41 +233,61 @@ router.put('/:id/status', adminOnly, async (req, res) => {
       };
     });
 
-    // 4. Unique schools
+    // 4. Unique schools — mirrors the live season-details logic exactly.
+    //    Collect: (a) each team's primary school, (b) every member's student_school.
+    //    This correctly handles multi-school teams.
     const schoolSet = new Map();
+
+    // Step 1: collect all school names we need to look up
+    const schoolNamesNeeded = new Set();
     snappedTeams.forEach(t => {
-      if (t.school_name && !schoolSet.has(t.school_name)) {
-        schoolSet.set(t.school_name, { school_name: t.school_name });
-      }
+      if (t.school_name) schoolNamesNeeded.add(t.school_name);
+      (t.members || []).forEach(m => {
+        if (m.student_school) schoolNamesNeeded.add(m.student_school);
+      });
     });
 
-    // Also pull school details directly for confirmed teams
-    if (teamIds.length > 0) {
-      const ph = teamIds.map(() => '?').join(',');
+    // Step 2: load full school details for all needed names
+    const schoolByName = {};
+    if (schoolNamesNeeded.size > 0) {
+      const ph2 = [...schoolNamesNeeded].map(() => '?').join(',');
       const [schoolDetails] = await conn.execute(
-        `SELECT DISTINCT sc.school_name, sc.school_type, sc.region, sc.province,
-                sc.city, sc.address, sc.contact_number, sc.email,
-                sc.school_head, sc.robotics_coordinator, sc.website, sc.status
-         FROM   teams t
-         JOIN   schools sc ON sc.id = t.school_id
-         WHERE  t.id IN (${ph}) AND sc.is_deleted = 0`,
-        teamIds
-      );
-      schoolDetails.forEach(s => {
-        if (!schoolSet.has(s.school_name)) schoolSet.set(s.school_name, s);
-        else Object.assign(schoolSet.get(s.school_name), s);
-      });
+        `SELECT school_name, school_type, region, province, city, address,
+                contact_number, email, school_head, robotics_coordinator, website, status
+         FROM   schools
+         WHERE  school_name IN (${ph2}) AND is_deleted = 0`,
+        [...schoolNamesNeeded]
+      ).catch(() => [[]]);
+      schoolDetails.forEach(s => { schoolByName[s.school_name] = s; });
     }
+
+    // Step 3: build the ordered set
+    snappedTeams.forEach(t => {
+      // Team's primary school
+      if (t.school_name && !schoolSet.has(t.school_name)) {
+        schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
+      }
+      // Each member's individual school
+      (t.members || []).forEach(m => {
+        const sName = m.student_school;
+        if (sName && !schoolSet.has(sName)) {
+          schoolSet.set(sName, schoolByName[sName] || { school_name: sName });
+        }
+      });
+    });
+
     const schoolRows = [...schoolSet.values()].sort((a, b) => (a.school_name || '').localeCompare(b.school_name || ''));
 
-    // 5. Unique coaches
+    // 5. Unique coaches — always from the live coachMap queried above.
+    //    Never use per-team snapshot_coaches here: it may be stale.
     const coachSet = new Map();
-    snappedTeams.forEach(t => {
-      (t.coaches || []).forEach(c => {
+    teamIds.forEach(tid => {
+      (coachMap[tid] || []).forEach(c => {
         if (c.full_name && !coachSet.has(c.full_name)) coachSet.set(c.full_name, c);
       });
     });
     const coachRows = [...coachSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
 
     // 6. Judges
     const [rawJudges] = await conn.execute(

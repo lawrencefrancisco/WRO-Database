@@ -53,12 +53,19 @@ router.get('/stats', async (req, res) => {
     );
 
     const [[schoolRow]] = await pool.execute(
-      `SELECT COUNT(DISTINCT s.school_id) AS schools
-       FROM team_members tm
-       JOIN teams    t ON t.id = tm.team_id
-       JOIN students s ON s.id = tm.student_id
-       WHERE t.season = ? AND t.is_deleted = 0 AND s.school_id IS NOT NULL`,
-      [season]
+      `SELECT COUNT(*) AS schools FROM (
+         SELECT t.school_id AS sid
+         FROM   teams t
+         WHERE  t.season = ? AND t.is_deleted = 0 AND t.school_id IS NOT NULL
+         UNION
+         SELECT s.school_id
+         FROM   team_members tm
+         JOIN   teams    t ON t.id  = tm.team_id
+         JOIN   students s ON s.id  = tm.student_id
+         WHERE  t.season = ? AND t.is_deleted = 0
+           AND  s.school_id IS NOT NULL AND s.is_deleted = 0
+       ) AS combined_schools`,
+      [season, season]
     );
 
     const [[studentRow]] = await pool.execute(
@@ -191,92 +198,51 @@ router.get('/season-details', async (req, res) => {
       t.coach_mobile = lc?.coach_mobile || null;
     });
 
-    // 4. Unique schools
-    const schoolSet = new Map();
-
-    // First pass: extract schools from confirmed team snapshots
-    teamRows.forEach(t => {
-      if (t.registration_status === 'confirmed') {
-        const snapSchool = typeof t.snapshot_school === 'string' ? JSON.parse(t.snapshot_school) : (t.snapshot_school || null);
-        if (snapSchool?.schoolName && !schoolSet.has(snapSchool.schoolName)) {
-          schoolSet.set(snapSchool.schoolName, {
-            school_name: snapSchool.schoolName,
-            city: snapSchool.city,
-            region: snapSchool.region,
-            school_type: snapSchool.schoolType,
-            contact_number: snapSchool.contactNumber,
-            email: snapSchool.email,
-            school_head: snapSchool.schoolHead,
-            robotics_coordinator: snapSchool.roboticsCoordinator,
-            address: snapSchool.address
-          });
-        }
-      }
-    });
-
-    // Second pass: for unconfirmed teams, we still need live school data
+    // 4. Unique schools — always from LIVE data for ongoing seasons.
+    //    Per-team snapshots are only used when building the season-level freeze.
     const [allSchools] = await pool.execute(
-      'SELECT id, school_name, city, region, contact_number, email, school_type, school_head, robotics_coordinator, address FROM schools WHERE is_deleted = 0'
+      'SELECT id, school_name, city, region, contact_number, email, school_type, school_head, robotics_coordinator, address, website, status FROM schools WHERE is_deleted = 0'
     );
     const schoolByName = {};
     allSchools.forEach(s => { schoolByName[s.school_name] = s; });
 
+    const schoolSet = new Map();
     teamRows.forEach(t => {
-      if (t.registration_status !== 'confirmed') {
-        t.members.forEach(m => {
-          if (m.student_school && !schoolSet.has(m.student_school)) {
-            schoolSet.set(m.student_school, schoolByName[m.student_school] || { school_name: m.student_school });
-          }
-        });
-        if (t.school_name && !schoolSet.has(t.school_name)) {
-          schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
+      // Team's primary school
+      if (t.school_name && !schoolSet.has(t.school_name)) {
+        schoolSet.set(t.school_name, schoolByName[t.school_name] || { school_name: t.school_name });
+      }
+      // Each member's individual school (handles multi-school teams)
+      t.members.forEach(m => {
+        const sName = m.student_school;
+        if (sName && !schoolSet.has(sName)) {
+          schoolSet.set(sName, schoolByName[sName] || { school_name: sName });
         }
-      }
+      });
     });
+    const schoolRows = [...schoolSet.values()].sort((a, b) => (a.school_name || '').localeCompare(b.school_name || ''));
 
-    const schoolRows = [...schoolSet.values()];
-    schoolRows.sort((a, b) => (a.school_name || '').localeCompare(b.school_name || ''));
 
-    // 5. Coaches — derived from snapshot-aware team data
+    // 5. Coaches — ALWAYS from live queries for ongoing seasons.
+    //    Never read snapshot_coaches here; that is only used during season freeze.
     const coachSet = new Map();
-    teamRows.forEach(t => {
-      if (t.registration_status === 'confirmed' && t.snapshot_coaches) {
-        const snapCoaches = typeof t.snapshot_coaches === 'string'
-          ? JSON.parse(t.snapshot_coaches) : (t.snapshot_coaches || []);
-        snapCoaches.forEach(c => {
-          if (c.fullName && !coachSet.has(c.fullName)) {
-            coachSet.set(c.fullName, { 
-              full_name: c.fullName, 
-              email: c.email, 
-              mobile: c.mobile, 
-              school_name: c.schoolName, 
-              position: c.position,
-              gender: c.gender,
-              birthday: c.birthday,
-              emergency_contact: c.emergencyContact,
-              shirt_size: c.shirtSize
-            });
-          }
-        });
-      }
-    });
     if (liveTeamIds.length > 0) {
       const ph = liveTeamIds.map(() => '?').join(',');
       const [liveCoachDetail] = await pool.execute(
-        `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile, co.position, 
+        `SELECT DISTINCT co.id, co.full_name, co.email, co.mobile, co.position,
                 co.gender, co.birthday, co.emergency_contact, co.shirt_size,
                 sc.school_name
          FROM   coaches co
          JOIN   team_coaches tc ON tc.coach_id = co.id
          LEFT JOIN schools sc ON sc.id = co.school_id
-         WHERE  tc.team_id IN (${ph}) AND co.is_deleted = 0`,
+         WHERE  tc.team_id IN (${ph}) AND co.is_deleted = 0
+         ORDER  BY co.full_name ASC`,
         liveTeamIds
       );
-      liveCoachDetail.forEach(c => {
-        if (!coachSet.has(c.full_name)) coachSet.set(c.full_name, c);
-      });
+      liveCoachDetail.forEach(c => { coachSet.set(c.full_name, c); });
     }
     const coachRows = [...coachSet.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
 
     // 6. Judges (snapshot-aware if assigned via assignments table)
     const [judgeRows] = await pool.execute(
