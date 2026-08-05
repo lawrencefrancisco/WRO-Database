@@ -14,8 +14,12 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:   10,
   queueLimit:        0,
-  // Return JS Date objects for DATETIME columns
-  dateStrings:       false,
+  // dateStrings: true — return DATE/DATETIME columns as plain 'YYYY-MM-DD' strings
+  // instead of JS Date objects. Prevents UTC-to-local timezone shifting
+  // (e.g. in UTC+8 Philippines, midnight UTC+8 = "prev-dayT16:00:00Z" which
+  // JSON-serializes as the previous day, causing the birthday off-by-one bug).
+  dateStrings:       true,
+
   // Automatically parse JSON columns
   typeCast(field, next) {
     if (field.type === 'JSON') {
