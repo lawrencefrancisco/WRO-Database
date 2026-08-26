@@ -227,8 +227,9 @@ const Coaches = {
     if (!c) return;
     const school = await DB.getById('schools', c.schoolId);
     const numId  = parseInt(id, 10);
-    const teams  = await DB.query('teams', t => t.coachId === numId && !t.isDeleted);
-    const awards = await DB.query('awards', a => a.coachId === numId && !a.isDeleted);
+    const teams  = await DB.query('teams', t => !t.isDeleted && Array.isArray(t.coaches) && t.coaches.map(Number).includes(numId));
+    const teamIds = teams.map(t => Number(t.id));
+    const awards = await DB.query('awards', a => !a.isDeleted && teamIds.includes(Number(a.teamId)));
     Modal.show(c.fullName, `
       <div class="flex items-center gap-4 mb-6 p-4 glass-light rounded-xl">
         <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl">

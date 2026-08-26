@@ -78,11 +78,12 @@ router.post('/', adminOnly, async (req, res) => {
     }
     const [result] = await pool.execute(
       `INSERT INTO students (student_code, full_name, birthday, age, gender, grade_level, school_id,
-       parent_name, parent_contact, parent_email, personal_email, shirt_size,
+       parent_name, parent_contact, parent_email, personal_email, personal_contact, shirt_size,
        consent_signed, status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())`,
       [studentCode, d.fullName, d.birthday || null, d.age || null, d.gender, d.gradeLevel,
-       schoolId, d.parentName, d.parentContact, d.parentEmail, d.personalEmail || null, d.shirtSize,
+       schoolId, d.parentName, d.parentContact, d.parentEmail, d.personalEmail || null,
+       d.personalContact || null, d.shirtSize,
        d.consentSigned ? 1 : 0, d.status || 'active']
     );
     const [rows] = await pool.execute('SELECT * FROM students WHERE id = ?', [result.insertId]);
@@ -135,11 +136,11 @@ router.put('/:id', adminOnly, async (req, res) => {
     await pool.execute(
       `UPDATE students SET full_name=?, birthday=?, age=?, gender=?, grade_level=?,
        school_id=?, parent_name=?, parent_contact=?, parent_email=?, personal_email=?,
-       shirt_size=?, consent_signed=?, status=?,
+       personal_contact=?, shirt_size=?, consent_signed=?, status=?,
        updated_at=NOW() WHERE id = ?`,
       [d.fullName, d.birthday || null, d.age || null,
        d.gender, d.gradeLevel, schoolId, d.parentName, d.parentContact, d.parentEmail,
-       d.personalEmail || null,
+       d.personalEmail || null, d.personalContact || null,
        d.shirtSize, d.consentSigned ? 1 : 0, d.status, req.params.id]
     );
     const [rows] = await pool.execute('SELECT * FROM students WHERE id = ?', [req.params.id]);

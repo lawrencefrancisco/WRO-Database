@@ -159,7 +159,7 @@ router.get('/season-details', async (req, res) => {
       const [memberRows] = await pool.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
                 s.gender, s.consent_signed, s.shirt_size,
-                s.parent_name, s.personal_email, s.parent_contact, s.parent_email,
+                s.parent_name, s.personal_email, s.personal_contact, s.parent_contact, s.parent_email,
                 s.birthday, s.medical_conditions, s.allergies, s.previous_participation,
                 COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
@@ -293,6 +293,7 @@ router.get('/season-details', async (req, res) => {
             shirt_size:    m.shirt_size || null,
             parent_name:   m.parent_name || null,
             personal_email: m.personal_email || null,
+            personal_contact: m.personal_contact || null,
             parent_contact: m.parent_contact || null,
             parent_email:  m.parent_email || null,
             birthday:      m.birthday || null,
@@ -457,7 +458,7 @@ router.get('/details/:id', async (req, res) => {
       const [memberRows] = await pool.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
                 s.gender, s.consent_signed, s.shirt_size,
-                s.parent_name, s.personal_email, s.parent_contact, s.parent_email,
+                s.parent_name, s.personal_email, s.personal_contact, s.parent_contact, s.parent_email,
                 s.birthday, s.medical_conditions, s.allergies, s.previous_participation,
                 COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
@@ -610,6 +611,7 @@ router.get('/details/:id', async (req, res) => {
             shirt_size:    m.shirt_size || null,
             parent_name:   m.parent_name || null,
             personal_email: m.personal_email || null,
+            personal_contact: m.personal_contact || null,
             parent_contact: m.parent_contact || null,
             parent_email:  m.parent_email || null,
             birthday:      m.birthday || null,

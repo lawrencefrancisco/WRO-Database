@@ -276,6 +276,7 @@ const DB = {
       parent_contact:         'parentContact',
       parent_email:           'parentEmail',
       personal_email:         'personalEmail',
+      personal_contact:       'personalContact',
       medical_conditions:     'medicalConditions',
       previous_participation: 'previousParticipation',
       consent_signed:         'consentSigned',

@@ -190,6 +190,9 @@ const Students = {
         <div><label class="form-label">Personal Email (Student)</label>
           <input class="form-input" type="email" name="personalEmail" value="${Utils.esc(s?.personalEmail||'')}" placeholder="student@email.com">
         </div>
+        <div><label class="form-label">Personal Contact No. (Student)</label>
+          <input class="form-input" type="tel" name="personalContact" value="${Utils.esc(s?.personalContact||'')}" placeholder="e.g. 09171234567">
+        </div>
         <div><label class="form-label">Shirt Size</label>
           <select class="form-input" name="shirtSize">
             ${['XS','S','M','L','XL'].map(sz=>`<option ${s?.shirtSize===sz?'selected':''}>${sz}</option>`).join('')}
@@ -255,8 +258,9 @@ const Students = {
         <div><span class="text-slate-500">Parent Email:</span> <span class="text-slate-200">${s.parentEmail || '—'}</span></div>
         <div><span class="text-slate-500">Personal Email:</span> ${s.personalEmail
           ? `<a href="mailto:${s.personalEmail}" class="text-blue-400 hover:underline">${s.personalEmail}</a>`
-          : '<span class="text-slate-500 italic text-xs">No Personal Email</span>'}
+          : '<span class="text-slate-500 italic text-xs">—</span>'}
         </div>
+        <div><span class="text-slate-500">Personal Contact:</span> <span class="text-slate-200">${s.personalContact || '—'}</span></div>
         <div><span class="text-slate-500">Consent:</span> ${Utils.statusBadge(s.consentSigned ? 'active' : 'inactive')}</div>
 
       </div>
@@ -274,10 +278,10 @@ const Students = {
     const _schoolsMap = await DB.getLookup('schools');
     const rows = await this._getData();
     Utils.downloadCSV('WRO_Students.csv',
-      ['ID','Full Name','Birthday','Age','Gender','Grade','School','Personal Email','Parent Name','Parent Contact','Parent Email'],
+      ['ID','Full Name','Birthday','Age','Gender','Grade','School','Personal Email','Personal Contact','Parent Name','Parent Contact','Parent Email'],
       rows.map(s => {
         const sc = _schoolsMap[s.schoolId];
-        return [s.id,s.fullName,s.birthday,s.age,s.gender,s.gradeLevel,sc?.schoolName||'',s.personalEmail||'',s.parentName,s.parentContact,s.parentEmail||''];
+        return [s.id,s.fullName,s.birthday,s.age,s.gender,s.gradeLevel,sc?.schoolName||'',s.personalEmail||'',s.personalContact||'',s.parentName,s.parentContact,s.parentEmail||''];
       })
     );
     Toast.success('Student list exported!');

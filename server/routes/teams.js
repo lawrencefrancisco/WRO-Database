@@ -56,6 +56,7 @@ async function freezeTeamSnapshot(conn, teamId) {
              s.gender, s.shirt_size AS shirtSize, s.age, s.consent_signed AS consentSigned,
              s.birthday, s.parent_name AS parentName, s.parent_contact AS parentContact,
              s.parent_email AS parentEmail, s.personal_email AS personalEmail,
+             s.personal_contact AS personalContact,
              s.medical_conditions AS medicalConditions, s.allergies,
              s.previous_participation AS previousParticipation,
              sc.school_name AS schoolName, sc.region

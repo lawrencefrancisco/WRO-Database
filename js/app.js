@@ -314,13 +314,11 @@ const App = {
     document.getElementById('sidebar').innerHTML = `
       <!-- Logo -->
       <div style="padding:16px;border-bottom:1px solid rgba(246,201,69,0.2);">
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col items-center gap-1">
           <img id="sidebar-logo" src="assets/image/FELTA_LOGO_LIGHT.png" alt="FELTA WRO Philippines logo"
             class="sidebar-logo-text js-theme-logo w-auto object-contain"
             style="height: 48px; max-width: 160px; filter:drop-shadow(0 1px 6px rgba(246,201,69,0.35));">
-          <div class="sidebar-logo-text" style="white-space:nowrap;">
-            <div style="font-size:10px;font-weight:700;color:#F6C945;letter-spacing:0.4px;" aria-hidden="true">DATABASE SYSTEM</div>
-          </div>
+          <div style="font-size:10px;font-weight:700;color:#F6C945;letter-spacing:0.4px;text-align:center;" aria-hidden="true">DATABASE SYSTEM</div>
         </div>
         <!-- WRO Rainbow Bar -->
         <div class="wro-rainbow-bar rounded-full mt-3" role="presentation"></div>

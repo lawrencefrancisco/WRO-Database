@@ -123,7 +123,7 @@ router.put('/:id/status', adminOnly, async (req, res) => {
       const [memberRows] = await conn.execute(
         `SELECT tm.team_id, s.id AS student_id, s.full_name, s.grade_level, s.age,
                 s.gender, s.consent_signed, s.shirt_size,
-                s.parent_name, s.personal_email, s.parent_contact, s.parent_email,
+                s.parent_name, s.personal_email, s.personal_contact, s.parent_contact, s.parent_email,
                 s.birthday, s.medical_conditions, s.allergies, s.previous_participation,
                 COALESCE(sc_s.school_name, sc_t.school_name) AS student_school
          FROM   team_members tm
@@ -170,6 +170,7 @@ router.put('/:id/status', adminOnly, async (req, res) => {
       shirt_size:             s.shirt_size             || s.shirtSize       || null,
       parent_name:            s.parent_name            || s.parentName      || null,
       personal_email:         s.personal_email         || s.personalEmail   || null,
+      personal_contact:       s.personal_contact       || s.personalContact || null,
       parent_contact:         s.parent_contact         || s.parentContact   || null,
       parent_email:           s.parent_email           || s.parentEmail     || null,
       birthday:               s.birthday               || null,
@@ -208,7 +209,8 @@ router.put('/:id/status', adminOnly, async (req, res) => {
           student_id: s.student_id, full_name: s.full_name, grade_level: s.grade_level,
           age: s.age, gender: s.gender, consent_signed: s.consent_signed,
           shirt_size: s.shirt_size, parent_name: s.parent_name,
-          personal_email: s.personal_email, parent_contact: s.parent_contact,
+          personal_email: s.personal_email, personal_contact: s.personal_contact,
+          parent_contact: s.parent_contact,
           parent_email: s.parent_email, birthday: s.birthday,
           medical_conditions: s.medical_conditions, allergies: s.allergies,
           previous_participation: s.previous_participation,
@@ -339,6 +341,7 @@ router.put('/:id/status', adminOnly, async (req, res) => {
             shirt_size:    m.shirt_size    || m.shirtSize,
             parent_name:   m.parent_name   || m.parentName,
             personal_email: m.personal_email || m.personalEmail,
+            personal_contact: m.personal_contact || m.personalContact || null,
             parent_contact: m.parent_contact || m.parentContact,
             parent_email:  m.parent_email  || m.parentEmail,
             birthday:      m.birthday,
